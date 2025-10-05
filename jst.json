@@ -1,0 +1,9 @@
+{
+    "dirs": {
+        "apps": "./core/apps/",
+        "locale": "./resources/locale/"
+    },
+    "stubs": {},
+    "apps": "core.apps.",
+    "jst": true
+}

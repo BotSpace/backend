@@ -1,0 +1,28 @@
+{
+ "template": "https://github.com/JscorpTech/django",
+ "commit": "b301e899ede7e20909b6462f054709e6770307b9",
+ "checkout": null,
+ "context": {
+  "cookiecutter": {
+   "cacheops": true,
+   "silk": true,
+   "storage": true,
+   "rosetta": true,
+   "channels": true,
+   "ckeditor": true,
+   "modeltranslation": true,
+   "parler": true,
+   "project_name": "django",
+   "settings_module": "config.settings.local",
+   "runner": "wsgi",
+   "script": "entrypoint.sh",
+   "key": "key",
+   "port": "8081",
+   "phone": "998888112309",
+   "password": "2309",
+   "max_line_length": "120",
+   "project_slug": "django"
+  }
+ },
+ "directory": null
+}
