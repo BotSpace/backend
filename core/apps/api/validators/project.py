@@ -13,3 +13,17 @@ class BotValidator:
 
     def __call__(self):
         return True
+
+
+class FlowValidator:
+    def __init__(self): ...
+
+    def __call__(self):
+        return True
+
+
+class RelaseValidator:
+    def __init__(self): ...
+
+    def __call__(self):
+        return True

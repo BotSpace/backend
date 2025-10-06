@@ -1,6 +1,6 @@
 from django_filters import rest_framework as filters
 
-from core.apps.api.models import BotModel, ProjectModel
+from core.apps.api.models import BotModel, FlowModel, ProjectModel, RelaseModel
 
 
 class ProjectFilter(filters.FilterSet):
@@ -18,6 +18,26 @@ class BotFilter(filters.FilterSet):
 
     class Meta:
         model = BotModel
+        fields = [
+            "name",
+        ]
+
+
+class FlowFilter(filters.FilterSet):
+    # name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = FlowModel
+        fields = [
+            "name",
+        ]
+
+
+class RelaseFilter(filters.FilterSet):
+    # name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = RelaseModel
         fields = [
             "name",
         ]

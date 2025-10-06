@@ -25,4 +25,6 @@ class CreateBotSerializer(BaseBotSerializer):
         fields = [
             "id",
             "name",
+            "token",
+            "username",
         ]

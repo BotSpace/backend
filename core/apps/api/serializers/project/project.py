@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.apps.api.models import ProjectModel
+from core.apps.api.serializers.project import ListBotSerializer
 
 
 class BaseProjectSerializer(serializers.ModelSerializer):
@@ -15,11 +16,20 @@ class BaseProjectSerializer(serializers.ModelSerializer):
 
 
 class ListProjectSerializer(BaseProjectSerializer):
-    class Meta(BaseProjectSerializer.Meta): ...
+    class Meta(BaseProjectSerializer.Meta):...
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
-    class Meta(BaseProjectSerializer.Meta): ...
+    bot_for_debug = ListBotSerializer()
+    bot_for_release = ListBotSerializer()
+
+    class Meta(BaseProjectSerializer.Meta):
+        fields = [
+            *BaseProjectSerializer.Meta.fields,
+            "flow",
+            "bot_for_debug",
+            "bot_for_release"
+        ]
 
 
 class CreateProjectSerializer(BaseProjectSerializer):
@@ -27,4 +37,6 @@ class CreateProjectSerializer(BaseProjectSerializer):
         fields = [
             "id",
             "name",
+            "bot_for_debug",
+            "bot_for_release"
         ]
