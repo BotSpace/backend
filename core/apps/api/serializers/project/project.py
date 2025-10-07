@@ -18,9 +18,6 @@ class ListProjectSerializer(BaseProjectSerializer):
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
-    bot_for_debug = ListBotSerializer()
-    bot_for_release = ListBotSerializer()
-
     class Meta(BaseProjectSerializer.Meta):
         fields = [*BaseProjectSerializer.Meta.fields, "flow"]
 

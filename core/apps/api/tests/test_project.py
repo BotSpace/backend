@@ -13,6 +13,7 @@ class ProjectTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.instance = self._create_data()
+        self.client.force_authenticate(self.instance.owner)
         self.urls = {
             "list": reverse("project-list"),
             "retrieve": reverse("project-detail", kwargs={"pk": self.instance.pk}),
@@ -97,6 +98,7 @@ class RelaseTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.instance = self._create_data()
+        self.client.force_authenticate(self.instance.project.owner)
         self.urls = {
             "list": reverse("relase-list"),
             "retrieve": reverse("relase-detail", kwargs={"pk": self.instance.pk}),
