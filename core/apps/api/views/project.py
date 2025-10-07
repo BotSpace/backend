@@ -1,4 +1,3 @@
-import asyncio
 import hashlib
 import json
 
@@ -25,24 +24,36 @@ from core.apps.api.serializers.project import (
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.project import DebugProjectSerializer
+from core.apps.api.services.docker_service import (
+    deploy_debug_service,
+    remove_service,
+    service_logs_async,
+)
 
 
-def logs(request, pk):
+async def logs(request, pk):
     try:
-        instance = ProjectModel.objects.get(pk=pk)
+        instance = await ProjectModel.objects.aget(pk=pk)
     except ProjectModel.DoesNotExist:
         return NotFound()
 
     async def stream():
-        for i in range(5):
-            await asyncio.sleep(1)
-            yield f"data: {i}\n\n"
+        if not instance.service_id:
+            yield f"data: Container is not running\n\n"
+            return
 
-    # if not instance.is_debug_active:
-    #     return Response(data={"detail": _("Container not running")})
+        async for line in service_logs_async(instance.service_id):
+            if line[-1] == "\n":
+                line = line[:-1]
+            if line is None or line == "":
+                continue
+            yield f"data: {line}\n\n"
+
+        yield f"data: Container is not running\n\n"
+
     response = StreamingHttpResponse(stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"  # 🔥 Nginx bufferini o‘chiradi
+    response["X-Accel-Buffering"] = "no"
     return response
 
 
@@ -78,6 +89,17 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         if instance.flow_hash == hash:
             return Response(data={"detail": _("No changes")})
         instance.flow_hash = hash
+        instance.save()
+        if instance.service_id:
+            remove_service(instance.service_id)
+        service = deploy_debug_service(
+            ser.data.get("flow"),
+            instance.id,
+            [
+                "BOT_TOKEN=6317984983:AAGBUy7exUV4ABhSDsHy_qo0PnPDLRgTeQU",
+            ],
+        )
+        instance.service_id = service.id
         instance.save()
         return Response(data={"detail": _("Updated")})
 

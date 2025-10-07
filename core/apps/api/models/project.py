@@ -12,7 +12,7 @@ class ProjectModel(AbstractBaseModel):
     flow = models.JSONField(default=list)
     flow_hash = models.CharField(max_length=255, null=True, blank=True)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
-    container_id = models.CharField(max_length=255, null=True, blank=True)
+    service_id = models.CharField(max_length=255, null=True, blank=True)
     is_debug_active = models.BooleanField(default=False)
 
     def __str__(self):
@@ -55,7 +55,7 @@ class RelaseModel(AbstractBaseModel):
     project = models.ForeignKey("ProjectModel", on_delete=models.CASCADE, related_name="relases", null=True, blank=True)
     version = models.CharField(verbose_name=_("version"), max_length=255)
     flow = models.JSONField(default=list)
-    container_id = models.CharField(_("container id"), max_length=255, null=True, blank=True)
+    service_id = models.CharField(_("service id"), max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
