@@ -1,12 +1,6 @@
-from core.apps.api.models import FlowModel, RelaseModel
 from django import forms
 
-
-class FlowForm(forms.ModelForm):
-
-    class Meta:
-        model = FlowModel
-        fields = "__all__"
+from core.apps.api.models import RelaseModel
 
 
 class RelaseForm(forms.ModelForm):

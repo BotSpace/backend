@@ -1,6 +1,6 @@
 from modeltranslation.translator import TranslationOptions, register
 
-from core.apps.api.models import BotModel, FlowModel, ProjectModel, RelaseModel
+from core.apps.api.models import BotModel, ProjectModel, RelaseModel
 
 
 @register(ProjectModel)
@@ -10,11 +10,6 @@ class ProjectTranslation(TranslationOptions):
 
 @register(BotModel)
 class BotTranslation(TranslationOptions):
-    fields = []
-
-
-@register(FlowModel)
-class FlowTranslation(TranslationOptions):
     fields = []
 
 

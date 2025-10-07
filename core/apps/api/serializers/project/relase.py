@@ -8,6 +8,9 @@ class BaseRelaseSerializer(serializers.ModelSerializer):
         model = RelaseModel
         fields = [
             "id",
+            "project",
+            "flow",
+            "version",
         ]
 
 
@@ -23,4 +26,7 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
     class Meta(BaseRelaseSerializer.Meta):
         fields = [
             "id",
+            "project",
+            "flow",
+            "version",
         ]

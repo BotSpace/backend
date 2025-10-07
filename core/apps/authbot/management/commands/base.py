@@ -1,5 +1,9 @@
 from telebot import TeleBot
+
 from config.env import env
 
-
-bot = TeleBot(env.str("BOT_TOKEN"))
+try:
+    bot = TeleBot(str(env.str("BOT_TOKEN")))
+except Exception as e:
+    print(e)
+    bot = None

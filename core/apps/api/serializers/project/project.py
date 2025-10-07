@@ -16,7 +16,7 @@ class BaseProjectSerializer(serializers.ModelSerializer):
 
 
 class ListProjectSerializer(BaseProjectSerializer):
-    class Meta(BaseProjectSerializer.Meta):...
+    class Meta(BaseProjectSerializer.Meta): ...
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
@@ -24,12 +24,7 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     bot_for_release = ListBotSerializer()
 
     class Meta(BaseProjectSerializer.Meta):
-        fields = [
-            *BaseProjectSerializer.Meta.fields,
-            "flow",
-            "bot_for_debug",
-            "bot_for_release"
-        ]
+        fields = [*BaseProjectSerializer.Meta.fields, "flow", "bot_for_debug", "bot_for_release"]
 
 
 class CreateProjectSerializer(BaseProjectSerializer):
@@ -37,6 +32,12 @@ class CreateProjectSerializer(BaseProjectSerializer):
         fields = [
             "id",
             "name",
-            "bot_for_debug",
-            "bot_for_release"
+        ]
+
+
+class DebugProjectSerializer(BaseProjectSerializer):
+    class Meta(BaseProjectSerializer.Meta):
+        fields = [
+            "id",
+            "flow",
         ]

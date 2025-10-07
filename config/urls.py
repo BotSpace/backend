@@ -2,14 +2,15 @@
 All urls configurations tree
 """
 
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-
-from config.env import env
 from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+
+from config.env import env
+from core.apps.api.views.project import logs
 
 
 def home(request):
@@ -22,6 +23,7 @@ urlpatterns = [
     path("", include("core.apps.accounts.urls")),
     path("api/", include("core.apps.shared.urls")),
     path("api/", include("core.apps.api.urls")),
+    path("sse/api/project/<int:pk>/logs/", logs),
 ]
 urlpatterns += [
     path("admin/", admin.site.urls),
