@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        PROD_ENV     = "/opt/env/.env.django"
-        IMAGE_NAME   = "django"
+        PROD_ENV     = "/opt/env/.env.botmother"
+        IMAGE_NAME   = "botmother"
         TEST_TAG     = "test"
         PROD_TAG     = "latest"
-        CONTAINER_DB = "django_db_test"
-        CONTAINER_WEB = "django_web_test"
-        CONTAINER_REDIS = "django_redis_test"
-        STACK_NAME = "django"
+        CONTAINER_DB = "botmother_db_test"
+        CONTAINER_WEB = "botmother_web_test"
+        CONTAINER_REDIS = "botmother_redis_test"
+        STACK_NAME = "botmother"
     }
 
     stages {
@@ -31,7 +31,7 @@ pipeline {
         }
         stage('Checkout Code') {
             steps {
-                git branch: 'main', credentialsId: 'ssh', url: 'git@github.com:JscorpTech/django.git'
+                git branch: 'main', credentialsId: 'ssh', url: 'git@github.com:BotMather/backend.git'
             }
         }
         stage('Prepare') {
