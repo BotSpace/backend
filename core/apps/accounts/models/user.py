@@ -20,5 +20,12 @@ class User(auth_models.AbstractUser):
     USERNAME_FIELD = "phone"
     objects = UserManager()
 
+    @classmethod
+    def _create_fake(cls):
+        return cls.objects.create(
+            phone="+1234567890",
+            username="mockuser",
+        )
+
     def __str__(self):
         return self.phone

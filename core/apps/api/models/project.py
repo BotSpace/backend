@@ -1,6 +1,9 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_core.models import AbstractBaseModel
+
+User = get_user_model()
 
 
 class ProjectModel(AbstractBaseModel):
@@ -19,9 +22,22 @@ class ProjectModel(AbstractBaseModel):
         return str(self.pk)
 
     @classmethod
-    def _create_fake(cls):
+    def _create_fake(cls, owner=None):
         return cls.objects.create(
-            name="mock",
+            name="Mock Project",
+            description="This is a static fake description.",
+            username="mockuser",
+            avatar="https://example.com/avatar.png",
+            project_members_count=3,
+            flow=[
+                {"step": "start", "action": "initialize project"},
+                {"step": "middle", "action": "do something"},
+                {"step": "end", "action": "finalize project"},
+            ],
+            flow_hash="abcdef1234567890",
+            owner=User._create_fake(),  # type: ignore
+            service_id="service123",
+            is_debug_active=False,
         )
 
     class Meta:
@@ -64,7 +80,15 @@ class RelaseModel(AbstractBaseModel):
     @classmethod
     def _create_fake(cls):
         return cls.objects.create(
-            name="mock",
+            project=ProjectModel._create_fake(),
+            version="v1.0.0",
+            flow=[
+                {"step": "init", "action": "initialize release"},
+                {"step": "deploy", "action": "deploy release"},
+                {"step": "verify", "action": "verify release"},
+            ],
+            service_id="release123",
+            is_active=True,
         )
 
     class Meta:
