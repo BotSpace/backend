@@ -7,7 +7,11 @@ from docker.types import Mount
 
 import docker
 
-client = docker.from_env()
+try:
+    client = docker.from_env()
+except Exception as e:
+    print(e)
+    client = None
 
 
 async def service_logs_async(service_id):
