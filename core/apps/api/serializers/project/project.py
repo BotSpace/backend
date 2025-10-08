@@ -26,7 +26,7 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
 
 
 class CreateProjectSerializer(BaseProjectSerializer):
-    debug = CreateDebugSerializer()
+    debug = CreateDebugSerializer(required=False)
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [

@@ -1,8 +1,12 @@
+import os
+from unittest.mock import MagicMock, patch
+
+import pytest
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
 
 
 class ProjectTest(TestCase):
@@ -21,10 +25,14 @@ class ProjectTest(TestCase):
         }
 
     def test_create(self):
-        self.assertTrue(True)
+        response = self.client.post(self.urls["list"], data={"name": "test"})
+        self.assertTrue(response.json()["status"])
+        self.assertEqual(response.status_code, 201)
 
     def test_update(self):
-        self.assertTrue(True)
+        response = self.client.patch(self.urls["retrieve"], data={"name": "test"})
+        self.assertTrue(response.json()["status"])
+        self.assertEqual(response.status_code, 200)
 
     def test_partial_update(self):
         self.assertTrue(True)
@@ -46,6 +54,18 @@ class ProjectTest(TestCase):
         response = self.client.get(self.urls["retrieve-not-found"])
         self.assertFalse(response.json()["status"])
         self.assertEqual(response.status_code, 404)
+
+
+@pytest.fixture(autouse=True)
+def test_docker_fixture():
+    with patch("core.apps.api.signals.project.remove_service") as mock_remove, patch(
+        "core.apps.api.signals.project.deploy_service"
+    ) as mock_deploy:
+        magic = MagicMock()
+        magic.id = "321312"
+        mock_deploy.return_value = magic
+        mock_remove.return_value = True
+        yield
 
 
 class RelaseTest(TestCase):
