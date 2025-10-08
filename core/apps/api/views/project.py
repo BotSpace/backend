@@ -24,11 +24,7 @@ from core.apps.api.serializers.project import (
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
-from core.apps.api.services.docker_service import (
-    deploy_debug_service,
-    remove_service,
-    service_logs_async,
-)
+from core.apps.api.services.docker_service import deploy_debug_service, remove_service, service_logs_async
 
 
 async def logs(request, pk):

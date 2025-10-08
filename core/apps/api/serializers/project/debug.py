@@ -8,7 +8,6 @@ class BaseDebugSerializer(serializers.ModelSerializer):
         model = DebugModel
         fields = [
             "id",
-            "flow",
             "status",
             "service_id",
             # "flow_hash",
@@ -20,7 +19,8 @@ class ListDebugSerializer(BaseDebugSerializer):
 
 
 class RetrieveDebugSerializer(BaseDebugSerializer):
-    class Meta(BaseDebugSerializer.Meta): ...
+    class Meta(BaseDebugSerializer.Meta):
+        fields = [*BaseDebugSerializer.Meta.fields, "flow"]
 
 
 class CreateDebugSerializer(BaseDebugSerializer):

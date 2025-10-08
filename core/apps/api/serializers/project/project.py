@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from core.apps.api.models import ProjectModel
 from core.apps.api.models.project import DebugModel
-from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
+from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
 
 
 class BaseProjectSerializer(serializers.ModelSerializer):
@@ -19,7 +19,7 @@ class ListProjectSerializer(BaseProjectSerializer):
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
-    debug = ListDebugSerializer()
+    debug = RetrieveDebugSerializer()
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [*BaseProjectSerializer.Meta.fields, "debug"]
