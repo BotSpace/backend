@@ -1,18 +1,17 @@
 import hashlib
 import json
 
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
-from rest_framework import exceptions, serializers
+from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from core.apps.api.admin import project
 from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel
 from core.apps.api.serializers.project import (
     CreateBotSerializer,
@@ -35,7 +34,7 @@ from core.apps.api.services.enviroment import project_enviroment
 
 async def logs(request, pk):
     try:
-        instance = await ProjectModel.objects.aget(pk=pk)
+        instance = await ProjectModel.objects.select_related("debug").aget(pk=pk)
         debug = instance.debug  # type: ignore
     except ProjectModel.DoesNotExist:
         raise NotFound()
