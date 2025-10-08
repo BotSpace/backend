@@ -17,7 +17,7 @@ def sync_debug_service_status():
 
 @shared_task
 def sync_starting_debug_service_status():
-    services = DebugModel.objects.filter(service_id__isnull=False, status="starting").all()
+    services = DebugModel.objects.filter(service_id__isnull=False, status="initializing").all()
     for service in services:
         try:
             service.status = get_service_status(service.service_id)
