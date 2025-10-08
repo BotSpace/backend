@@ -25,15 +25,7 @@ class ProjectModel(AbstractBaseModel):
             username="mockuser",
             avatar="https://example.com/avatar.png",
             project_members_count=3,
-            flow=[
-                {"step": "start", "action": "initialize project"},
-                {"step": "middle", "action": "do something"},
-                {"step": "end", "action": "finalize project"},
-            ],
-            flow_hash="abcdef1234567890",
             owner=User._create_fake(),  # type: ignore
-            service_id="service123",
-            is_debug_active=False,
         )
 
     class Meta:
