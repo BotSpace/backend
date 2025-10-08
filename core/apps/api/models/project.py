@@ -136,7 +136,4 @@ class EnviromentModel(AbstractBaseModel):
         db_table = "enviroment"
         verbose_name = _("EnviromentModel")
         verbose_name_plural = _("EnviromentModels")
-        unique_together = (
-            "key",
-            "project",
-        )
+        constraints = [models.UniqueConstraint(fields=["key", "project"], name="unique_project_key_project")]
