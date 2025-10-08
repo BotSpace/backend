@@ -36,7 +36,7 @@ async def logs(request, pk):
         instance = await ProjectModel.objects.aget(pk=pk)
         debug = instance.debug  # type: ignore
     except ProjectModel.DoesNotExist:
-        return NotFound()
+        raise NotFound()
 
     async def stream():
         if not debug.service_id:
