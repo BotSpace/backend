@@ -103,6 +103,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             ],
         )
         instance.service_id = service.id
+        instance.status = "initializing"
         instance.save()
         return Response(data={"detail": _("Updated")})
 
