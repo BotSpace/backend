@@ -13,6 +13,7 @@ class ProjectModel(AbstractBaseModel):
     avatar = models.URLField(null=True, blank=True)
     project_members_count = models.IntegerField(default=0)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
+    flow = models.JSONField(default=list)
 
     def __str__(self):
         return str(self.pk)
@@ -95,7 +96,6 @@ class DebugModel(AbstractBaseModel):
         ("active", _("active")),
     )
     project = models.OneToOneField("ProjectModel", on_delete=models.CASCADE, related_name="debug")
-    flow = models.JSONField(default=list)
     flow_hash = models.CharField(max_length=255, null=True, blank=True)
     service_id = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(max_length=255, default="starting")
@@ -113,3 +113,30 @@ class DebugModel(AbstractBaseModel):
         db_table = "debug"
         verbose_name = _("DebugModel")
         verbose_name_plural = _("DebugModels")
+
+
+class EnviromentModel(AbstractBaseModel):
+    project = models.ForeignKey("ProjectModel", on_delete=models.CASCADE, related_name="enviroments")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    key = models.CharField(verbose_name=_("name"), max_length=255)
+    value = models.CharField(_("value"), max_length=255)
+
+    def __str__(self):
+        return str(self.pk)
+
+    @classmethod
+    def _create_fake(cls):
+        return cls.objects.create(
+            key="mok",
+            value="value",
+            project=ProjectModel._create_fake(),
+        )
+
+    class Meta:
+        db_table = "enviroment"
+        verbose_name = _("EnviromentModel")
+        verbose_name_plural = _("EnviromentModels")
+        unique_together = (
+            "key",
+            "project",
+        )

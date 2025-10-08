@@ -20,3 +20,10 @@ class RelaseValidator:
 
     def __call__(self):
         return True
+
+
+class EnviromentValidator:
+    def __init__(self): ...
+
+    def __call__(self):
+        return True

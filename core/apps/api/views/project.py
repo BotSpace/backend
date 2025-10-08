@@ -5,26 +5,32 @@ from django.http import StreamingHttpResponse
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
+from rest_framework import exceptions, serializers
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from core.apps.api.models import BotModel, ProjectModel, RelaseModel
+from core.apps.api.admin import project
+from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel
 from core.apps.api.serializers.project import (
     CreateBotSerializer,
+    CreateEnviromentSerializer,
     CreateProjectSerializer,
     CreateRelaseSerializer,
     ListBotSerializer,
+    ListEnviromentSerializer,
     ListProjectSerializer,
     ListRelaseSerializer,
     RetrieveBotSerializer,
+    RetrieveEnviromentSerializer,
     RetrieveProjectSerializer,
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 from core.apps.api.services.docker_service import deploy_debug_service, remove_service, service_logs_async
+from core.apps.api.services.enviroment import project_enviroment
 
 
 async def logs(request, pk):
@@ -60,7 +66,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = ProjectModel.objects.all()
+        queryset = ProjectModel.objects.order_by("-id").all()
         if self.request.user.is_authenticated:
             return queryset.filter(owner=self.request.user)
         return queryset.none()
@@ -83,28 +89,25 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         instance = self.get_object().debug
         return Response(data=self.get_serializer(instance).data)
 
-    @action(methods=["PATCH", "GET"], detail=True, url_name="debug", url_path="debug")
+    @action(methods=["GET"], detail=True, url_name="debug", url_path="debug")
     def debug(self, request, pk):
-        ser = self.get_serializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        instance = self.get_object().debug
-        hash = hashlib.md5(json.dumps(ser.data.get("flow")).encode()).hexdigest()
-        if instance.flow_hash == hash:
+        instance = self.get_object()
+        debug = instance.debug
+        hash = hashlib.md5(json.dumps(instance.flow).encode()).hexdigest()
+        if debug.flow_hash == hash:
             return Response(data={"detail": _("No changes")})
-        instance.flow_hash = hash
-        instance.save()
-        if instance.service_id:
-            remove_service(instance.service_id)
+        debug.flow_hash = hash
+        debug.save()
+        if debug.service_id:
+            remove_service(debug.service_id)
         service = deploy_debug_service(
-            ser.data.get("flow"),
+            instance.flow,
             instance.id,
-            [
-                "BOT_TOKEN=6317984983:AAGBUy7exUV4ABhSDsHy_qo0PnPDLRgTeQU",
-            ],
+            project_enviroment(instance.id),
         )
-        instance.service_id = service.id
-        instance.status = "initializing"
-        instance.save()
+        debug.service_id = service.id
+        debug.status = "initializing"
+        debug.save()
         return Response(data={"detail": _("Updated")})
 
 
@@ -134,3 +137,26 @@ class RelaseView(BaseViewSetMixin, ModelViewSet):
         "retrieve": RetrieveRelaseSerializer,
         "create": CreateRelaseSerializer,
     }
+
+
+@extend_schema(tags=["enviroment"])
+class EnviromentView(BaseViewSetMixin, ModelViewSet):
+    serializer_class = ListEnviromentSerializer
+    permission_classes = [IsAuthenticated]
+
+    action_permission_classes = {}
+    action_serializer_class = {
+        "list": ListEnviromentSerializer,
+        "retrieve": RetrieveEnviromentSerializer,
+        "create": CreateEnviromentSerializer,
+    }
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        project = self.request.query_params.get("project")
+        if project is None:
+            raise exceptions.ValidationError(detail={"project": _("project is required")})
+        queryset = EnviromentModel.objects.filter(project=project, user=self.request.user)
+        return queryset

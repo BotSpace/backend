@@ -19,13 +19,8 @@ class ListDebugSerializer(BaseDebugSerializer):
 
 
 class RetrieveDebugSerializer(BaseDebugSerializer):
-    class Meta(BaseDebugSerializer.Meta):
-        fields = [*BaseDebugSerializer.Meta.fields, "flow"]
+    class Meta(BaseDebugSerializer.Meta): ...
 
 
 class CreateDebugSerializer(BaseDebugSerializer):
-    class Meta(BaseDebugSerializer.Meta):
-        fields = [
-            "flow",
-        ]
-        extra_kwargs = {"flow": {"required": True}}
+    class Meta(BaseDebugSerializer.Meta): ...

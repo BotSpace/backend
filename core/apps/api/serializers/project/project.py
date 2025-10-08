@@ -22,7 +22,7 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     debug = RetrieveDebugSerializer()
 
     class Meta(BaseProjectSerializer.Meta):
-        fields = [*BaseProjectSerializer.Meta.fields, "debug"]
+        fields = [*BaseProjectSerializer.Meta.fields, "debug", "flow"]
 
 
 class CreateProjectSerializer(BaseProjectSerializer):
@@ -33,6 +33,7 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "id",
             "name",
             "debug",
+            "flow",
         ]
 
     def create(self, validated_data):
