@@ -141,23 +141,41 @@ class EnviromentTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.instance = self._create_data()
+        self.client.force_authenticate(self.instance.project.owner)
         self.urls = {
-            "list": reverse("enviroment-list"),
-            "retrieve": reverse("enviroment-detail", kwargs={"pk": self.instance.pk}),
-            "retrieve-not-found": reverse("enviroment-detail", kwargs={"pk": 1000}),
+            "list": reverse("enviroment-list") + "?project=" + str(self.instance.project.pk),
+            "retrieve": reverse("enviroment-detail", kwargs={"pk": self.instance.pk})
+            + "?project="
+            + str(self.instance.project.pk),
+            "retrieve-not-found": reverse("enviroment-detail", kwargs={"pk": 1000})
+            + "?project="
+            + str(self.instance.project.pk),
         }
 
     def test_create(self):
-        self.assertTrue(True)
+        response = self.client.post(
+            self.urls["list"],
+            data={
+                "key": "test",
+                "value": "test",
+                "project": self.instance.project.pk,
+            },
+        )
+        self.assertTrue(response.json()["status"])
+        self.assertEqual(response.status_code, 201)
 
     def test_update(self):
-        self.assertTrue(True)
+        response = self.client.patch(
+            self.urls["retrieve"], data={"flow": [{"step": "init", "action": "initialize release"}]}
+        )
+        self.assertTrue(response.json()["status"])
 
     def test_partial_update(self):
         self.assertTrue(True)
 
     def test_destroy(self):
-        self.assertTrue(True)
+        response = self.client.delete(self.urls["retrieve"])
+        self.assertEqual(response.status_code, 204)
 
     def test_list(self):
         response = self.client.get(self.urls["list"])

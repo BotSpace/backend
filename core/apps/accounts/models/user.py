@@ -22,10 +22,10 @@ class User(auth_models.AbstractUser):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
+        return cls.objects.get_or_create(
             phone="+1234567890",
             username="mockuser",
-        )
+        )[0]
 
     def __str__(self):
         return self.phone

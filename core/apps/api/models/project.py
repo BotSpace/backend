@@ -26,7 +26,7 @@ class ProjectModel(AbstractBaseModel):
             username="mockuser",
             avatar="https://example.com/avatar.png",
             project_members_count=3,
-            owner=User._create_fake(),  # type: ignore
+            owner=owner or User._create_fake(),  # type: ignore
         )
 
     class Meta:
@@ -129,6 +129,7 @@ class EnviromentModel(AbstractBaseModel):
         return cls.objects.create(
             key="mok",
             value="value",
+            user=User._create_fake(),
             project=ProjectModel._create_fake(),
         )
 
