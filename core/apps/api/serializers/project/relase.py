@@ -9,8 +9,9 @@ class BaseRelaseSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "project",
-            "flow",
             "version",
+            "status",
+            "service_id",
         ]
 
 
@@ -19,7 +20,15 @@ class ListRelaseSerializer(BaseRelaseSerializer):
 
 
 class RetrieveRelaseSerializer(BaseRelaseSerializer):
-    class Meta(BaseRelaseSerializer.Meta): ...
+    class Meta(BaseRelaseSerializer.Meta):
+        fields = [
+            "id",
+            "project",
+            "version",
+            "status",
+            "service_id",
+            "flow",
+        ]
 
 
 class CreateRelaseSerializer(BaseRelaseSerializer):
@@ -27,6 +36,6 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
         fields = [
             "id",
             "project",
-            "flow",
             "version",
         ]
+        extra_kwargs = {"version": {"read_only": True}}

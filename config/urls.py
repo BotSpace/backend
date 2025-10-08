@@ -23,7 +23,7 @@ urlpatterns = [
     path("", include("core.apps.accounts.urls")),
     path("api/", include("core.apps.shared.urls")),
     path("api/", include("core.apps.api.urls")),
-    path("sse/api/project/<int:pk>/logs/", logs),
+    path("sse/api/project/<str:service_id>/logs/", logs),
 ]
 urlpatterns += [
     path("admin/", admin.site.urls),

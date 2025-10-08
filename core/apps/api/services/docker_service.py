@@ -6,6 +6,7 @@ import aiodocker
 from docker.types import Mount
 
 import docker
+from core.apps.api.enums.container import ContainerStatusEnum
 
 try:
     client = docker.from_env()
@@ -21,18 +22,21 @@ async def service_logs_async(service_id):
 
 
 def get_service_status(service_id):
-    state = client.services.get(service_id).tasks()[0]["Status"]["State"]
+    try:
+        state = client.services.get(service_id).tasks()[0]["Status"]["State"]
+    except:
+        return ContainerStatusEnum.STOPPED.value
     match state:
         case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting":
-            return "initializing"
+            return ContainerStatusEnum.INIT.value
         case "running":
-            return "running"
+            return ContainerStatusEnum.RUNNING.value
         case "complete" | "shutdown" | "remove":
-            return "stopped"
+            return ContainerStatusEnum.STOPPED.value
         case "failed" | "rejected" | "orphaned":
-            return "failed"
+            return ContainerStatusEnum.FAILED.value
         case _:
-            return "failed"
+            return ContainerStatusEnum.STOPPED.value
 
 
 def create_service(image, name, command=None, **kwargs):
@@ -53,19 +57,19 @@ def create_volume(name):
     return client.volumes.create(name=name)
 
 
-def deploy_debug_service(flow, key, env=[]):
-    debug_path = "/var/lib/engine/debug_%s/" % key
-    pathlib.Path(debug_path).mkdir(parents=True, exist_ok=True)
-    with open(debug_path + "flow.json", "w") as file:
+def deploy_service(prefix, flow, key, env=[]):
+    path = "/var/lib/engine/%s_%s/" % (prefix, key)
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+    with open(path + "flow.json", "w") as file:
         file.write(json.dumps(flow, indent=4))
     mount = Mount(
         target="/code/assets/",
-        source=debug_path,
+        source=path,
         type="bind",
     )
     return create_service(
         "jscorptech/engine:latest",
-        "debug_%s" % key,
+        "%s_%s" % (prefix, key),
         mounts=[mount],
         env=env,
     )

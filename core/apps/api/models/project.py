@@ -3,6 +3,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_core.models import AbstractBaseModel
 
+from core.apps.api.enums.container import ContainerStatusEnum
+
 User = get_user_model()
 
 
@@ -58,10 +60,12 @@ class BotModel(AbstractBaseModel):
 
 class RelaseModel(AbstractBaseModel):
     project = models.ForeignKey("ProjectModel", on_delete=models.CASCADE, related_name="relases", null=True, blank=True)
-    version = models.CharField(verbose_name=_("version"), max_length=255)
+    version = models.IntegerField(verbose_name=_("version"))
     flow = models.JSONField(default=list)
     service_id = models.CharField(_("service id"), max_length=255, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    status = models.CharField(
+        max_length=255, default=ContainerStatusEnum.PENDING.value, choices=ContainerStatusEnum.choices
+    )
 
     def __str__(self):
         return str(self.pk)
@@ -87,18 +91,12 @@ class RelaseModel(AbstractBaseModel):
 
 
 class DebugModel(AbstractBaseModel):
-    STATUS = (
-        ("initializing", _("initializing")),  # new, pending, assigned, accepted, preparing, starting
-        ("running", _("running")),
-        ("stopped", _("stopped")),  # complete, shutdown, remove
-        ("failed", _("failed")),  # failed, rejected, orphaned
-        ("suspended", _("suspended")),
-        ("active", _("active")),
-    )
     project = models.OneToOneField("ProjectModel", on_delete=models.CASCADE, related_name="debug")
     flow_hash = models.CharField(max_length=255, null=True, blank=True)
     service_id = models.CharField(max_length=255, null=True, blank=True)
-    status = models.CharField(max_length=255, default="starting")
+    status = models.CharField(
+        max_length=255, default=ContainerStatusEnum.PENDING.value, choices=ContainerStatusEnum.choices
+    )
 
     def __str__(self):
         return str(self.pk)
@@ -129,7 +127,7 @@ class EnviromentModel(AbstractBaseModel):
         return cls.objects.create(
             key="mok",
             value="value",
-            user=User._create_fake(),
+            user=User._create_fake(),  # type: ignore
             project=ProjectModel._create_fake(),
         )
 
