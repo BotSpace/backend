@@ -109,7 +109,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
 
 @extend_schema(tags=["relase"])
-class RelaseView(BaseViewSetMixin, ModelViewSet):
+class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
     queryset = RelaseModel.objects.order_by("-id").all()
     serializer_class = ListRelaseSerializer
     permission_classes = [AllowAny]
@@ -143,7 +143,7 @@ class RelaseView(BaseViewSetMixin, ModelViewSet):
 
 
 @extend_schema(tags=["enviroment"])
-class EnviromentView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
+class EnviromentView(BaseViewSetMixin, ModelViewSet):
     serializer_class = ListEnviromentSerializer
     permission_classes = [IsAuthenticated]
 

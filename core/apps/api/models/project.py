@@ -74,14 +74,13 @@ class RelaseModel(AbstractBaseModel):
     def _create_fake(cls):
         return cls.objects.create(
             project=ProjectModel._create_fake(),
-            version="v1.0.0",
+            version=1,
             flow=[
                 {"step": "init", "action": "initialize release"},
                 {"step": "deploy", "action": "deploy release"},
                 {"step": "verify", "action": "verify release"},
             ],
             service_id="release123",
-            is_active=True,
         )
 
     class Meta:
