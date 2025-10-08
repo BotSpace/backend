@@ -12,11 +12,7 @@ class ProjectModel(AbstractBaseModel):
     username = models.CharField(max_length=255, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     project_members_count = models.IntegerField(default=0)
-    flow = models.JSONField(default=list)
-    flow_hash = models.CharField(max_length=255, null=True, blank=True)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
-    service_id = models.CharField(max_length=255, null=True, blank=True)
-    is_debug_active = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.pk)
@@ -95,3 +91,33 @@ class RelaseModel(AbstractBaseModel):
         db_table = "relase"
         verbose_name = _("RelaseModel")
         verbose_name_plural = _("RelaseModels")
+
+
+class DebugModel(AbstractBaseModel):
+    STATUS = (
+        ("initializing", _("initializing")),  # new, pending, assigned, accepted, preparing, starting
+        ("running", _("running")),
+        ("stopped", _("stopped")),  # complete, shutdown, remove
+        ("failed", _("failed")),  # failed, rejected, orphaned
+        ("suspended", _("suspended")),
+        ("active", _("active")),
+    )
+    project = models.OneToOneField("ProjectModel", on_delete=models.CASCADE, related_name="debug")
+    flow = models.JSONField(default=list)
+    flow_hash = models.CharField(max_length=255, null=True, blank=True)
+    service_id = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=255, default="starting")
+
+    def __str__(self):
+        return str(self.pk)
+
+    @classmethod
+    def _create_fake(cls):
+        return cls.objects.create(
+            project=ProjectModel._create_fake(),
+        )
+
+    class Meta:
+        db_table = "debug"
+        verbose_name = _("DebugModel")
+        verbose_name_plural = _("DebugModels")

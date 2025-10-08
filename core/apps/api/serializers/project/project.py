@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from core.apps.api.models import ProjectModel
-from core.apps.api.serializers.project import ListBotSerializer
+from core.apps.api.models.project import DebugModel
+from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 
 
 class BaseProjectSerializer(serializers.ModelSerializer):
@@ -18,21 +19,24 @@ class ListProjectSerializer(BaseProjectSerializer):
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
+    debug = ListDebugSerializer()
+
     class Meta(BaseProjectSerializer.Meta):
-        fields = [*BaseProjectSerializer.Meta.fields, "flow"]
+        fields = [*BaseProjectSerializer.Meta.fields, "debug"]
 
 
 class CreateProjectSerializer(BaseProjectSerializer):
+    debug = CreateDebugSerializer()
+
     class Meta(BaseProjectSerializer.Meta):
         fields = [
             "id",
             "name",
+            "debug",
         ]
 
-
-class DebugProjectSerializer(BaseProjectSerializer):
-    class Meta(BaseProjectSerializer.Meta):
-        fields = [
-            "id",
-            "flow",
-        ]
+    def create(self, validated_data):
+        debug = validated_data.pop("debug")
+        instance = super().create(validated_data)
+        DebugModel.objects.create(project=instance, **debug)
+        return instance

@@ -23,7 +23,7 @@ from core.apps.api.serializers.project import (
     RetrieveProjectSerializer,
     RetrieveRelaseSerializer,
 )
-from core.apps.api.serializers.project.project import DebugProjectSerializer
+from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 from core.apps.api.services.docker_service import (
     deploy_debug_service,
     remove_service,
@@ -34,15 +34,16 @@ from core.apps.api.services.docker_service import (
 async def logs(request, pk):
     try:
         instance = await ProjectModel.objects.aget(pk=pk)
+        debug = instance.debug  # type: ignore
     except ProjectModel.DoesNotExist:
         return NotFound()
 
     async def stream():
-        if not instance.service_id:
+        if not debug.service_id:
             yield f"data: Container is not running\n\n"
             return
 
-        async for line in service_logs_async(instance.service_id):
+        async for line in service_logs_async(debug.service_id):
             if line[-1] == "\n":
                 line = line[:-1]
             if line is None or line == "":
@@ -74,17 +75,23 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "retrieve": RetrieveProjectSerializer,
         "create": CreateProjectSerializer,
         "partial_update": CreateProjectSerializer,
-        "debug": DebugProjectSerializer,
+        "debug": CreateDebugSerializer,
+        "info": ListDebugSerializer,
     }
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
-    @action(methods=["PATCH"], detail=True, url_name="debug", url_path="debug")
+    @action(methods=["GET"], detail=True, url_name="info", url_path="info")
+    def info(self, request, pk):
+        instance = self.get_object().debug
+        return Response(data=self.get_serializer(instance).data)
+
+    @action(methods=["PATCH", "GET"], detail=True, url_name="debug", url_path="debug")
     def debug(self, request, pk):
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        instance = self.get_object()
+        instance = self.get_object().debug
         hash = hashlib.md5(json.dumps(ser.data.get("flow")).encode()).hexdigest()
         if instance.flow_hash == hash:
             return Response(data={"detail": _("No changes")})

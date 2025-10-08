@@ -20,6 +20,21 @@ async def service_logs_async(service_id):
         yield line
 
 
+def get_service_status(service_id):
+    state = client.services.get(service_id).tasks()[0]["Status"]["State"]
+    match state:
+        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting":
+            return "initializing"
+        case "running":
+            return "running"
+        case "complete" | "shutdown" | "remove":
+            return "stopped"
+        case "failed" | "rejected" | "orphaned":
+            return "failed"
+        case _:
+            return "failed"
+
+
 def create_service(image, name, command=None, **kwargs):
     kwargs["name"] = name
     return client.services.create(image=image, command=command, **kwargs)

@@ -1,7 +1,8 @@
+from celery.schedules import crontab
+
 CELERY_BEAT_SCHEDULE = {
-    # "test": {
-    #     "task": "core.apps.home.tasks.demo.add",
-    #     "schedule": 5.0,
-    #     "args": (1, 2)
-    # },
+    "test": {
+        "task": "core.apps.api.tasks.docker_task.sync_debug_service_status",
+        "schedule": crontab(minute="*/2"),
+    },
 }

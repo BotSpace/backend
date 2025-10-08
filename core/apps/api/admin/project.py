@@ -1,7 +1,13 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 
-from core.apps.api.models import BotModel, ProjectModel, RelaseModel
+from core.apps.api.models import BotModel, DebugModel, ProjectModel, RelaseModel
+
+
+class DebugInline(TabularInline):
+    model = DebugModel
+    tab = True
+    fields = ["flow", "flow_hash", "service_id", "status"]
 
 
 class RelaseAdminTabularInline(admin.TabularInline):
@@ -12,7 +18,7 @@ class RelaseAdminTabularInline(admin.TabularInline):
 
 @admin.register(ProjectModel)
 class ProjectAdmin(ModelAdmin):
-    inlines = [RelaseAdminTabularInline]
+    inlines = [RelaseAdminTabularInline, DebugInline]
     list_display = (
         "id",
         "__str__",
@@ -25,3 +31,8 @@ class BotAdmin(ModelAdmin):
         "id",
         "__str__",
     )
+
+
+@admin.register(DebugModel)
+class DebugAdmin(ModelAdmin):
+    list_display = ("id", "flow", "flow_hash", "service_id", "status")
