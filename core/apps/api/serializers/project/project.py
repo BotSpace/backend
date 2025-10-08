@@ -36,8 +36,11 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "flow",
         ]
 
-    def create(self, validated_data):
-        debug = validated_data.pop("debug")
+    def create(self, validated_data: dict):
+        if "debug" in validated_data:
+            debug = validated_data.pop("debug")
+        else:
+            debug = {}
         instance = super().create(validated_data)
         DebugModel.objects.create(project=instance, **debug)
         return instance
