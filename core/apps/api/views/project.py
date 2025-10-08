@@ -102,7 +102,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         service = deploy_debug_service(
             instance.flow,
             instance.id,
-            project_enviroment(instance.id),
+            list(project_enviroment(instance.id)),
         )
         debug.service_id = service.id
         debug.status = "initializing"
