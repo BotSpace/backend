@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 
-from core.apps.api.models import BotModel, DebugModel, EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import DebugModel, EnviromentModel, ProjectModel, RelaseModel
 
 
 class DebugInline(TabularInline):
@@ -19,14 +19,6 @@ class RelaseAdminTabularInline(admin.TabularInline):
 @admin.register(ProjectModel)
 class ProjectAdmin(ModelAdmin):
     inlines = [RelaseAdminTabularInline, DebugInline]
-    list_display = (
-        "id",
-        "__str__",
-    )
-
-
-@admin.register(BotModel)
-class BotAdmin(ModelAdmin):
     list_display = (
         "id",
         "__str__",

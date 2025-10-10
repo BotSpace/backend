@@ -22,7 +22,7 @@ class ProjectModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls, owner=None):
-        return cls.objects.create(
+        instance = cls.objects.create(
             name="Mock Project",
             description="This is a static fake description.",
             username="mockuser",
@@ -30,6 +30,8 @@ class ProjectModel(AbstractBaseModel):
             project_members_count=3,
             owner=owner or User._create_fake(),  # type: ignore
         )
+        DebugModel.objects.create(project=instance)
+        return instance
 
     class Meta:
         db_table = "project"
