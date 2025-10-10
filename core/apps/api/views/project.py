@@ -72,7 +72,10 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     }
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(
+            owner=self.request.user,
+            flow={"nodes": [], "edges": []},
+        )
 
     @action(methods=["GET"], detail=True, url_name="info", url_path="info")
     def info(self, request, pk):
