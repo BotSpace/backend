@@ -1,7 +1,9 @@
 import hashlib
 import json
 
+from aiohttp import request
 from django.http import StreamingHttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
@@ -153,6 +155,12 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
         "retrieve": RetrieveEnviromentSerializer,
         "create": CreateEnviromentSerializer,
     }
+
+    def get_object(self):
+        return get_object_or_404(
+            self.filter_queryset(self.get_queryset()),
+            key=self.kwargs["pk"],
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

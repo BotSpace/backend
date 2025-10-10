@@ -122,12 +122,12 @@ class EnviromentTest(TestCase):
         self.client.force_authenticate(self.instance.project.owner)
         self.urls = {
             "list": reverse("enviroment-list") + "?project=" + str(self.instance.project.pk),
-            "retrieve": reverse("enviroment-detail", kwargs={"pk": self.instance.pk})
+            "retrieve": reverse("enviroment-detail", kwargs={"pk": self.instance.key})
             + "?project="
-            + str(self.instance.project.pk),
-            "retrieve-not-found": reverse("enviroment-detail", kwargs={"pk": 1000})
+            + str(self.instance.project.id),
+            "retrieve-not-found": reverse("enviroment-detail", kwargs={"pk": "NO_KEY"})
             + "?project="
-            + str(self.instance.project.pk),
+            + str(self.instance.project.id),
         }
 
     def test_create(self):
