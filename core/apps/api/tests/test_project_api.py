@@ -1,0 +1,118 @@
+from unittest.mock import MagicMock, patch
+
+import pytest
+from django.urls import reverse
+from rest_framework.test import APIClient
+
+from core.apps.api.models import ProjectModel
+
+
+# --- GLOBAL PATCH FIXTURE ---
+@pytest.fixture(autouse=True)
+def patch_docker_services():
+    with patch("core.apps.api.signals.project.remove_service") as mock_remove, patch(
+        "core.apps.api.signals.project.deploy_service"
+    ) as mock_deploy, patch("core.apps.api.views.project.deploy_service") as mock_deploy_view:
+        magic = MagicMock()
+        magic.id = "321312"
+        mock_deploy.return_value = magic
+        mock_remove.return_value = True
+        mock_deploy_view.return_value = magic
+        yield
+
+
+# --- PROJECT FIXTURE ---
+@pytest.fixture
+def project_client(db):
+    instance = ProjectModel._create_fake()
+    client = APIClient()
+    client.force_authenticate(instance.owner)
+    urls = {
+        "list": reverse("project-list"),
+        "retrieve": reverse("project-detail", kwargs={"pk": instance.pk}),
+        "info": reverse("project-info", kwargs={"pk": instance.pk}),
+        "stop": reverse("project-stop", kwargs={"pk": instance.pk}),
+        "debug": reverse("project-debug", kwargs={"pk": instance.pk}),
+        "retrieve-not-found": reverse("project-detail", kwargs={"pk": 1000}),
+    }
+    return client, urls
+
+
+# --- PROJECT TESTS ---
+@pytest.mark.django_db
+def test_project_create(project_client):
+    client, urls = project_client
+    response = client.post(urls["list"], data={"name": "test"})
+    assert response.status_code == 201
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_info(project_client):
+    client, urls = project_client
+    response = client.get(urls["info"])
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_stop(project_client):
+    client, urls = project_client
+    response = client.get(urls["stop"])
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_debug(project_client):
+    client, urls = project_client
+    response = client.get(urls["debug"])
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_update(project_client):
+    client, urls = project_client
+    response = client.put(urls["retrieve"], data={"name": "test"})
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_partial_update(project_client):
+    client, urls = project_client
+    response = client.patch(urls["retrieve"], data={"name": "test"})
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_destroy(project_client):
+    client, urls = project_client
+    response = client.delete(urls["retrieve"])
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_project_list(project_client):
+    client, urls = project_client
+    response = client.get(urls["list"])
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_retrieve(project_client):
+    client, urls = project_client
+    response = client.get(urls["retrieve"])
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_retrieve_not_found(project_client):
+    client, urls = project_client
+    response = client.get(urls["retrieve-not-found"])
+    assert response.status_code == 404
+    assert response.json()["status"] is False

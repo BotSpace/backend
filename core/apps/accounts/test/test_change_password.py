@@ -1,9 +1,10 @@
-from core.apps.accounts.serializers import ChangePasswordSerializer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
+
+from core.apps.accounts.serializers import ChangePasswordSerializer
 
 
 class ChangePasswordViewTest(TestCase):
@@ -25,7 +26,7 @@ class ChangePasswordViewTest(TestCase):
         }
         response = self.client.post(self.path, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']["detail"], "password changed successfully")
+        self.assertEqual(response.data["data"]["detail"], "password changed successfully")
         self.assertTrue(self.user.check_password("newpassword"))
 
     def test_change_password_invalid_old_password(self):
@@ -35,7 +36,7 @@ class ChangePasswordViewTest(TestCase):
         }
         response = self.client.post(self.path, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data['data']["detail"], "invalida password")
+        self.assertEqual(response.data["data"]["detail"], "invalida password")
 
     def test_change_password_serializer_validation(self):
         data = {
