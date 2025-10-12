@@ -75,6 +75,7 @@ def test_project_debug(project_client):
 def test_project_update(project_client):
     client, urls = project_client
     response = client.put(urls["retrieve"], data={"name": "test"})
+    print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] is True
 

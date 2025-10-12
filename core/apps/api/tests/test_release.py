@@ -27,7 +27,7 @@ def relase_client(db):
     client = APIClient()
     client.force_authenticate(instance.project.owner)
     urls = {
-        "list": reverse("relase-list"),
+        "list": reverse("relase-list") + "?project=" + str(instance.project.pk),
         "retrieve": reverse("relase-detail", kwargs={"pk": instance.pk}),
         "stop": reverse("relase-stop", kwargs={"pk": instance.pk}),
         "retrieve-not-found": reverse("relase-detail", kwargs={"pk": 1000}),
