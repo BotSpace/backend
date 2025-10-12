@@ -118,7 +118,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
 @extend_schema(tags=["relase"])
 class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
-    queryset = RelaseModel.objects.order_by("-id").all()
     serializer_class = ListRelaseSerializer
     permission_classes = [AllowAny]
 
@@ -128,6 +127,15 @@ class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMod
         "retrieve": RetrieveRelaseSerializer,
         "create": CreateRelaseSerializer,
     }
+
+    def get_queryset(self):
+        queryset = RelaseModel.objects.order_by("-id")
+        if self.action in ["list"]:
+            project_id = self.request.query_params.get("project")
+            if project_id is None:
+                raise exceptions.ValidationError(detail={"project": _("project is required")})
+            queryset = queryset.filter(project_id=project_id)
+        return queryset
 
     @action(methods=["GET"], detail=True, url_path="stop", url_name="stop")
     def stop(self, request, pk):
