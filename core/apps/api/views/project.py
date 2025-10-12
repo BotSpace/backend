@@ -70,6 +70,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "retrieve": RetrieveProjectSerializer,
         "create": CreateProjectSerializer,
         "partial_update": CreateProjectSerializer,
+        "update": CreateProjectSerializer,
         "debug": CreateDebugSerializer,
         "info": ListDebugSerializer,
     }
