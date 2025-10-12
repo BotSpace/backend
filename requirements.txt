@@ -25,6 +25,7 @@ rich
 pydantic
 bcrypt
 pytest-django
+requests
 
 jst-parler
 jst-parler-rest
