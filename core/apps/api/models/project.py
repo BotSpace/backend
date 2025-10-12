@@ -33,6 +33,10 @@ class ProjectModel(AbstractBaseModel):
         DebugModel.objects.create(project=instance)
         return instance
 
+    @property
+    def release(self):
+        return RelaseModel.objects.filter(project_id=self.pk).order_by("id").last()
+
     class Meta:
         db_table = "project"
         verbose_name = _("ProjectModel")
