@@ -44,8 +44,8 @@ boto3
 
 
 # !NOTE: on-websocket
-# websockets
-# channels-redis
+websockets
+channels-redis
 
 
 # INFO: docker
