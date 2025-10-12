@@ -8,7 +8,6 @@ class BaseRelaseSerializer(serializers.ModelSerializer):
         model = RelaseModel
         fields = [
             "id",
-            "project",
             "version",
             "status",
             "service_id",
