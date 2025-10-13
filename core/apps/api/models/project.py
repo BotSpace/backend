@@ -72,16 +72,7 @@ class RelaseModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
-            project=ProjectModel._create_fake(),
-            version=1,
-            flow=[
-                {"step": "init", "action": "initialize release"},
-                {"step": "deploy", "action": "deploy release"},
-                {"step": "verify", "action": "verify release"},
-            ],
-            service_id="release123",
-        )
+        return baker.make(cls, _fill_optional=True)
 
     class Meta:
         db_table = "relase"
@@ -102,9 +93,7 @@ class DebugModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
-            project=ProjectModel._create_fake(),
-        )
+        return baker.make(cls, _fill_optional=True)
 
     class Meta:
         db_table = "debug"
@@ -123,11 +112,13 @@ class EnviromentModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
-            key="mok",
-            value="value",
-            user=User._create_fake(),  # type: ignore
-            project=ProjectModel._create_fake(),
+        user = baker.make(User)
+        return baker.make(
+            cls,
+            _fill_optional=True,
+            project=baker.make(ProjectModel, owner=user),
+            user=user,
+            key="key",
         )
 
     class Meta:

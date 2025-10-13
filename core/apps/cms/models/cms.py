@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.apps.cms.enums import FieldType
 from django_core.models import AbstractBaseModel
+from model_bakery import baker
 
 User = get_user_model()
 
@@ -17,10 +18,7 @@ class CollectionModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
-            name="mock",
-            user=User._create_fake(),
-        )
+        return baker(cls, user=User._create_fake())
 
     class Meta:
         db_table = "collection"
@@ -38,11 +36,7 @@ class FieldModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return cls.objects.create(
-            collection=CollectionModel._create_fake(),
-            name="mock",
-            type=FieldType.BOOL.value,
-        )
+        return baker(cls)
 
     class Meta:
         db_table = "field"
