@@ -5,8 +5,9 @@ from .jwt import *  # noqa
 from .logs import *  # noqa
 from .rest_framework import *  # noqa
 from .unfold import *  # noqa
-from .spectacular import * # noqa
+from .spectacular import *  # noqa
 
 from .ckeditor import *  # noqa
 from .storage import *  # noqa
-from .channels import * # noqa
+from .channels import *  # noqa
+
