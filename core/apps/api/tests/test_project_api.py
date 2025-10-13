@@ -6,6 +6,8 @@ from rest_framework.test import APIClient
 
 from core.apps.api.models import ProjectModel
 
+from core.apps.api.models.project import EnviromentModel
+
 
 # --- GLOBAL PATCH FIXTURE ---
 @pytest.fixture(autouse=True)
@@ -35,13 +37,13 @@ def project_client(db):
         "debug": reverse("project-debug", kwargs={"pk": instance.pk}),
         "retrieve-not-found": reverse("project-detail", kwargs={"pk": 1000}),
     }
-    return client, urls
+    return client, urls, instance
 
 
 # --- PROJECT TESTS ---
 @pytest.mark.django_db
 def test_project_create(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.post(urls["list"], data={"name": "test"})
     assert response.status_code == 201
     assert response.json()["status"] is True
@@ -49,7 +51,7 @@ def test_project_create(project_client):
 
 @pytest.mark.django_db
 def test_project_info(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["info"])
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -57,7 +59,7 @@ def test_project_info(project_client):
 
 @pytest.mark.django_db
 def test_project_stop(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["stop"])
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -65,7 +67,7 @@ def test_project_stop(project_client):
 
 @pytest.mark.django_db
 def test_project_debug(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["debug"])
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -73,16 +75,15 @@ def test_project_debug(project_client):
 
 @pytest.mark.django_db
 def test_project_update(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.put(urls["retrieve"], data={"name": "test"})
-    print(response.json())
     assert response.status_code == 200
     assert response.json()["status"] is True
 
 
 @pytest.mark.django_db
 def test_project_partial_update(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.patch(urls["retrieve"], data={"name": "test"})
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -90,14 +91,14 @@ def test_project_partial_update(project_client):
 
 @pytest.mark.django_db
 def test_project_destroy(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.delete(urls["retrieve"])
     assert response.status_code == 204
 
 
 @pytest.mark.django_db
 def test_project_list(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["list"])
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -105,7 +106,7 @@ def test_project_list(project_client):
 
 @pytest.mark.django_db
 def test_project_retrieve(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["retrieve"])
     assert response.status_code == 200
     assert response.json()["status"] is True
@@ -113,7 +114,27 @@ def test_project_retrieve(project_client):
 
 @pytest.mark.django_db
 def test_project_retrieve_not_found(project_client):
-    client, urls = project_client
+    client, urls, _ = project_client
     response = client.get(urls["retrieve-not-found"])
     assert response.status_code == 404
     assert response.json()["status"] is False
+
+
+@pytest.mark.django_db
+def test_project_debug_bot_inactive_token(project_client):
+    client, urls, _ = project_client
+    response = client.get(urls["retrieve"])
+    data = response.json()["data"]
+    assert data["debug_bot"] is False
+    assert data["release_bot"] is False
+
+
+@pytest.mark.django_db
+def test_project_debug_bot_active_token(project_client):
+    client, urls, instance = project_client
+    EnviromentModel.objects.create(user_id=instance.owner_id, project=instance, key="BOT_TOKEN", value="salom")
+    EnviromentModel.objects.create(user_id=instance.owner_id, project=instance, key="RELEASE_BOT_TOKEN", value="salom")
+    response = client.get(urls["retrieve"])
+    data = response.json()["data"]
+    assert data["debug_bot"] is True
+    assert data["release_bot"] is True
