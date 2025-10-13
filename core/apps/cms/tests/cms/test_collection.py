@@ -3,11 +3,12 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from core.apps.cms.models import CollectionModel
+from model_bakery import baker
 
 
 @pytest.fixture
 def instance(db):
-    return CollectionModel._create_fake()
+    return baker.make(CollectionModel)
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_core.models import AbstractBaseModel
+from model_bakery import baker
 
 from core.apps.api.enums.container import ContainerStatusEnum
 
@@ -22,15 +23,8 @@ class ProjectModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls, owner=None):
-        instance = cls.objects.create(
-            name="Mock Project",
-            description="This is a static fake description.",
-            username="mockuser",
-            avatar="https://example.com/avatar.png",
-            project_members_count=3,
-            owner=owner or User._create_fake(),  # type: ignore
-        )
-        DebugModel.objects.create(project=instance)
+        instance = baker.make(cls, owner=owner or User._create_fake())
+        baker.make(DebugModel, project=instance)
         return instance
 
     @property
