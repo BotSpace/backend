@@ -58,7 +58,8 @@ def test_project_info(project_client):
 
 
 @pytest.mark.django_db
-def test_project_stop(project_client):
+@patch("core.apps.api.views.project.remove_service")
+def test_project_stop(_, project_client):
     client, urls, _ = project_client
     response = client.get(urls["stop"])
     assert response.status_code == 200

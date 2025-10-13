@@ -40,7 +40,7 @@ async def logs(request, service_id):
                 continue
             yield f"data: {line}\n\n"
 
-        yield f"data: Container is not running\n\n"
+        yield "data: Container is not running\n\n"
 
     response = StreamingHttpResponse(stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

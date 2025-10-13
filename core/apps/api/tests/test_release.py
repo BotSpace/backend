@@ -44,7 +44,8 @@ def test_relase_create(relase_client):
 
 
 @pytest.mark.django_db
-def test_relase_stop(relase_client):
+@patch("core.apps.api.views.project.remove_service")
+def test_relase_stop(_, relase_client):
     client, urls, _ = relase_client
     response = client.get(urls["stop"])
     assert response.status_code == 200
