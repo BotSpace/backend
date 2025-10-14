@@ -26,6 +26,7 @@ pydantic
 bcrypt
 pytest-django
 requests
+model_bakery
 
 jst-parler
 jst-parler-rest
