@@ -1,6 +1,7 @@
 from config.env import env
 
 APPS = [
+    "django_prometheus",
     "channels",
     "cacheops",
     "rosetta",

@@ -1,3 +1,4 @@
+# type: ignore
 import os
 import pathlib
 from typing import List, Union
@@ -56,6 +57,7 @@ for module_path in MODULES:
     INSTALLED_APPS.append("{}.apps.ModuleConfig".format(module_path))
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # Cors middleware
@@ -65,6 +67,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 if env.bool("SILK_ENEBLED", False):
     MIDDLEWARE += [
@@ -96,13 +99,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 # fmt: on
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.{}".format(validator)
-    } for validator in [
+    {"NAME": "django.contrib.auth.password_validation.{}".format(validator)}
+    for validator in [
         "UserAttributeSimilarityValidator",
         "MinimumLengthValidator",
         "CommonPasswordValidator",
-        "NumericPasswordValidator"
+        "NumericPasswordValidator",
     ]
 ]
 
@@ -157,14 +159,20 @@ MODELTRANSLATION_DEFAULT_LANGUAGE = "uz"
 
 PARLER_LANGUAGES = {
     None: (
-        {'code': 'uz',},
-        {'code': 'en',},
-        {'code': 'ru',},
+        {
+            "code": "uz",
+        },
+        {
+            "code": "en",
+        },
+        {
+            "code": "ru",
+        },
     ),
-    'default': {
-        'fallbacks': ['uz'],          # defaults to PARLER_DEFAULT_LANGUAGE_CODE
-        'hide_untranslated': False,   # the default; let .active_translations() return fallbacks too.
-    }
+    "default": {
+        "fallbacks": ["uz"],  # defaults to PARLER_DEFAULT_LANGUAGE_CODE
+        "hide_untranslated": False,  # the default; let .active_translations() return fallbacks too.
+    },
 }
 
 
@@ -181,5 +189,5 @@ JST_LANGUAGES = [
     {
         "code": "ru",
         "name": "Russia",
-    }
+    },
 ]

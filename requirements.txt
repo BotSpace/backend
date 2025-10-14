@@ -52,3 +52,6 @@ channels-redis
 # INFO: docker
 docker
 aiodocker
+
+#INFO: Monitoring
+django-prometheus
