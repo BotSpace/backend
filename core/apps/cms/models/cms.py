@@ -28,7 +28,7 @@ class CollectionModel(AbstractBaseModel):
 
 
 class FieldModel(AbstractBaseModel):
-    collection = models.ForeignKey("CollectionModel", on_delete=models.CASCADE)
+    collection = models.ForeignKey("CollectionModel", on_delete=models.CASCADE, related_name="fields")
     name = models.CharField(verbose_name=_("name"), max_length=255)
     type = models.CharField(_("name"), max_length=255, default=FieldType.TEXT.value, choices=FieldType.choices)
 

@@ -9,6 +9,7 @@ class BaseFieldSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "type",
         ]
 
 
@@ -25,4 +26,5 @@ class CreateFieldSerializer(BaseFieldSerializer):
         fields = [
             "id",
             "name",
+            "type",
         ]

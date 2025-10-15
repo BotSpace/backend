@@ -1,5 +1,4 @@
 # type: ignore
-import logging
 from bson import ObjectId
 from django.http import request
 from rest_framework import serializers
@@ -22,7 +21,8 @@ class ListCollectionSerializer(BaseCollectionSerializer):
 
 
 class RetrieveCollectionSerializer(BaseCollectionSerializer):
-    class Meta(BaseCollectionSerializer.Meta): ...
+    class Meta(BaseCollectionSerializer.Meta):
+        fields = [*BaseCollectionSerializer.Meta.fields, "fields"]
 
 
 class CreateCollectionSerializer(BaseCollectionSerializer):

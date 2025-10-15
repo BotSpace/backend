@@ -10,28 +10,19 @@ class DebugInline(TabularInline):
     fields = ["flow_hash", "service_id", "status"]
 
 
-class RelaseAdminTabularInline(admin.TabularInline):
-    model = RelaseModel
-    extra = 0
-    readonly_fields = ("created_at", "updated_at")
+class InlineRelease(TabularInline):
+    mode = RelaseModel
+    tab = True
+
+
+class InlineEnviroment(TabularInline):
+    model = EnviromentModel
+    tab = True
 
 
 @admin.register(ProjectModel)
 class ProjectAdmin(ModelAdmin):
-    inlines = [RelaseAdminTabularInline, DebugInline]
-    list_display = (
-        "id",
-        "__str__",
-    )
-
-
-@admin.register(DebugModel)
-class DebugAdmin(ModelAdmin):
-    list_display = ("id", "flow_hash", "service_id", "status")
-
-
-@admin.register(EnviromentModel)
-class EnviromentAdmin(ModelAdmin):
+    inlines = [InlineRelease, DebugInline, InlineEnviroment]
     list_display = (
         "id",
         "__str__",
