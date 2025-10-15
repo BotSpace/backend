@@ -10,6 +10,8 @@ class BaseFieldSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "type",
+            "required",
+            "default",
         ]
 
 
@@ -27,4 +29,6 @@ class CreateFieldSerializer(BaseFieldSerializer):
             "id",
             "name",
             "type",
+            "required",
+            "default",
         ]

@@ -8,11 +8,18 @@ class DebugInline(TabularInline):
     model = DebugModel
     tab = True
     fields = ["flow_hash", "service_id", "status"]
+    extra = 0
 
 
 class InlineRelease(TabularInline):
-    mode = RelaseModel
+    model = RelaseModel
     tab = True
+    extra = 0
+    fields = [
+        "version",
+        "service_id",
+        "status",
+    ]
 
 
 class InlineEnviroment(TabularInline):
@@ -27,3 +34,12 @@ class ProjectAdmin(ModelAdmin):
         "id",
         "__str__",
     )
+
+
+@admin.register(RelaseModel)
+class ReleaseAdmin(ModelAdmin):
+    list_display = [
+        "version",
+        "service_id",
+        "status",
+    ]

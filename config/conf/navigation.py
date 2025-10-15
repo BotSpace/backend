@@ -19,12 +19,33 @@ PAGES = [
             {
                 "title": _("Users"),
                 "icon": "group",
-                "link": reverse_lazy("admin:http_user_changelist"),
+                "link": reverse_lazy("admin:accounts_user_changelist"),
             },
             {
                 "title": _("Group"),
                 "icon": "group",
                 "link": reverse_lazy("admin:auth_group_changelist"),
+            },
+        ],
+    },
+    {
+        "title": _("Dashboard"),
+        "separator": True,  # Top border
+        "items": [
+            {
+                "title": _("Projects"),
+                "icon": "group",
+                "link": reverse_lazy("admin:api_projectmodel_changelist"),
+            },
+            {
+                "title": _("Release"),
+                "icon": "group",
+                "link": reverse_lazy("admin:api_relasemodel_changelist"),
+            },
+            {
+                "title": _("Collection"),
+                "icon": "group",
+                "link": reverse_lazy("admin:cms_collectionmodel_changelist"),
             },
         ],
     },

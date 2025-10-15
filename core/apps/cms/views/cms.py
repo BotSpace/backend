@@ -22,8 +22,10 @@ from core.apps.cms.serializers.cms.collection import (
     DeleteDataCollectionSerializer,
     FindDataCollectionSerializer,
     FindOneDataCollectionSerializer,
+    UpdateCollectionSerializer,
     UpdateDataCollectionSerializer,
 )
+from core.apps.cms.services.collection import collection_validate_data
 from core.apps.cms.services.mongo import delete, find, find_one, get_collection_name, insert_one, update
 
 
@@ -38,8 +40,8 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         "list": ListCollectionSerializer,
         "retrieve": RetrieveCollectionSerializer,
         "create": CreateCollectionSerializer,
-        "update": CreateCollectionSerializer,
-        "partial_update": CreateCollectionSerializer,
+        "update": UpdateCollectionSerializer,
+        "partial_update": UpdateCollectionSerializer,
     }
 
     def perform_create(self, serializer):
@@ -67,6 +69,9 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         ser.is_valid(raise_exception=True)
         try:
             if action == "insert":
+                errors, success = collection_validate_data(instance, ser.validated_data)
+                if not success:
+                    return Response(data=errors, status=400)
                 inserted_id = insert_one(collection_name, ser.validated_data)
                 return Response(data={"inserted_id": str(inserted_id)})
             elif action == "find":

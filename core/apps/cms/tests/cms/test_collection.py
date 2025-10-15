@@ -4,8 +4,11 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models import CollectionModel
 from model_bakery import baker
+
+from core.apps.cms.models.cms import FieldModel
 
 
 @pytest.fixture
@@ -38,7 +41,7 @@ def data(api_client):
 @pytest.mark.django_db
 def test_create(data):
     urls, client, _ = data
-    response = client.post(urls["list"], data={"name": "test"})
+    response = client.post(urls["list"], data={"name": "test", "fields": []}, format="json")
     assert response.json()["status"] is True
     assert response.status_code == 201
 
@@ -48,15 +51,23 @@ def test_update(data):
     response = client.patch(
         urls["retrieve"],
         data={
-            "name": "updated",
+            "fields": [
+                {
+                    "name": "first_name",
+                    "type": FieldType.TEXT.value,
+                    "required": True,
+                    "default": "Samandar",
+                }
+            ],
         },
+        format="json",
     )
     assert response.json()["status"] is True
     assert response.status_code == 200
     response = client.get(urls["retrieve"])
     assert response.json()["status"] is True
     assert response.status_code == 200
-    assert response.json()["data"]["name"] == "updated"
+    assert response.json()["data"]["fields"][0]["name"] == "first_name"
 
 
 def test_partial_update():
@@ -96,13 +107,36 @@ def test_retrieve_not_found(data):
 
 @pytest.mark.django_db
 def test_insert(data):
-    urls, client, _ = data
+    urls, client, instance = data
     with patch("core.apps.cms.views.cms.insert_one") as mock_insert:
         mock_insert.return_value = "mock_id"
+        FieldModel.objects.bulk_create(
+            [
+                FieldModel(
+                    collection=instance,
+                    name="first_name",
+                    type=FieldType.TEXT.value,
+                    required=True,
+                ),
+                FieldModel(
+                    collection=instance,
+                    name="last_name",
+                    type=FieldType.TEXT.value,
+                    required=False,
+                ),
+                FieldModel(
+                    collection=instance,
+                    name="family_name",
+                    type=FieldType.TEXT.value,
+                    required=True,
+                    default="Olim",
+                ),
+            ]
+        )
         response = client.post(
             urls["query"] + "?action=insert",
             data={
-                "name": "Samandar",
+                "first_name": "Samandar",
             },
         )
         data = response.json()

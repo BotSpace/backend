@@ -9,7 +9,9 @@ class FieldsInline(TabularInline):
     fields = [
         "name",
         "type",
+        "required",
     ]
+    extra = 1
     tab = True
 
 
