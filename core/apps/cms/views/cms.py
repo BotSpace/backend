@@ -80,6 +80,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
                     where=ser.validated_data.get("where", {}),
                     limit=ser.validated_data.get("limit", None),
                     _sort=ser.validated_data.get("sort", None),
+                    skip=ser.validated_data.get("skip", None),
                 )
                 return Response(data=json.loads(json_util.dumps(data)))
             elif action == "find_one":

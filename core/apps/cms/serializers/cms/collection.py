@@ -101,6 +101,7 @@ class AddDataCollectionSerializer(BaseDataCollectionSerializer):
 
 class FindDataCollectionSerializer(BaseDataCollectionSerializer):
     limit = serializers.IntegerField(required=False)
+    skip = serializers.IntegerField(required=False)
     sort = serializers.DictField(required=False)
     where = serializers.DictField(required=False)
 

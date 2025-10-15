@@ -28,11 +28,13 @@ def delete(collection, where: dict = {}):
     return collection.delete_many(where)
 
 
-def find(collection, where: dict = {}, limit=None, _sort=None):
+def find(collection, where: dict = {}, limit=None, _sort=None, skip: int = None):
     collection = db[collection]
     cursor = collection.find(where)
     if limit is not None and limit > 0:
         cursor = cursor.limit(limit)
+    if skip is not None and skip > 0:
+        cursor = cursor.skip(skip)
     if _sort is not None:
         cursor = cursor.sort(_sort)
     return list(cursor)
