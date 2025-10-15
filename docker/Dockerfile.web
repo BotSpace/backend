@@ -16,7 +16,7 @@ COPY ./resources/scripts/$SCRIPT /code/$SCRIPT
 
 RUN chmod +x /code/resources/scripts/$SCRIPT
 
-mkdir -p /tmp/prometheus_metrics
+RUN mkdir -p /tmp/prometheus_metrics
 
 CMD sh /code/resources/scripts/$SCRIPT
 
