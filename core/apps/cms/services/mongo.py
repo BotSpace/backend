@@ -1,0 +1,42 @@
+# type: ignore
+import pymongo
+from config.env import env
+from core.apps.cms.models.cms import CollectionModel
+
+
+client = pymongo.MongoClient(env.str("MONGO_URL"))
+db = client["botmother"]
+
+
+def insert_one(collection, data: dict):
+    collection = db[collection]
+    return collection.insert_one(data).inserted_id
+
+
+def find_one(collection, where: dict):
+    collection = db[collection]
+    return collection.find_one(where)
+
+
+def update(collection, where: dict = {}, data: dict = {}):
+    collection = db[collection]
+    return collection.update_many(where, data)
+
+
+def delete(collection, where: dict = {}):
+    collection = db[collection]
+    return collection.delete_many(where)
+
+
+def find(collection, where: dict = {}, limit=None, _sort=None):
+    collection = db[collection]
+    cursor = collection.find(where)
+    if limit is not None and limit > 0:
+        cursor = cursor.limit(limit)
+    if _sort is not None:
+        cursor = cursor.sort(_sort)
+    return list(cursor)
+
+
+def get_collection_name(collection: CollectionModel):
+    return "collection_%s_%s" % (collection.user.pk, collection.name)

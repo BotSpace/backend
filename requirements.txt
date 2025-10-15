@@ -40,6 +40,8 @@ django-silk
 # !NOTE: on-server
 gunicorn
 
+#INFO: database
+pymongo
 
 django-storages
 boto3
