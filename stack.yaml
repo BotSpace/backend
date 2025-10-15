@@ -78,7 +78,7 @@ services:
     volumes:
       - /var/lib/engine:/var/lib/engine
       - /var/run/docker.sock:/var/run/docker.sock
-      - logs:/code/resources/logs/
+      - /var/log/botmother/:/code/resources/logs/
       - media:/code/resources/media/
       - static:/code/resources/staticfiles/
       - pycache:/var/cache/pycache
@@ -157,4 +157,3 @@ volumes:
   pg_data:
   pycache:
   static:
-  logs:
