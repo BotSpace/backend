@@ -41,4 +41,4 @@ def find(collection, where: dict = {}, limit=None, _sort=None, skip: int = None)
 
 
 def get_collection_name(collection: CollectionModel):
-    return "collection_%s_%s" % (collection.user.pk, collection.name)
+    return "collection_%s_%s_%s" % (collection.user.pk, collection.project.pk, collection.name)
