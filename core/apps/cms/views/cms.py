@@ -4,6 +4,7 @@ import logging
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
@@ -49,7 +50,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
 
     @action(methods=["POST"], detail=True, url_name="query", url_path="query")
     def query(self, request, pk):
-        instance = self.get_object()
+        instance = get_object_or_404(CollectionModel, pk=pk)
         action_seriazlier = {
             "find": FindDataCollectionSerializer,
             "find_one": FindOneDataCollectionSerializer,
