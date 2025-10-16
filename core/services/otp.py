@@ -1,3 +1,4 @@
+# type: ignore
 import requests
 from config.env import env
 
@@ -7,7 +8,7 @@ class ConsoleService:
     def __init__(self) -> None: ...
 
     def send_sms(self, phone_number, message):
-        
+
         print(phone_number, message)
 
 
