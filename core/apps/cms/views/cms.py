@@ -32,7 +32,6 @@ from core.apps.cms.services.mongo import delete, find, find_one, get_collection_
 
 @extend_schema(tags=["collection"])
 class CollectionView(BaseViewSetMixin, ModelViewSet):
-    queryset = CollectionModel.objects.all()
     serializer_class = ListCollectionSerializer
     permission_classes = [IsAuthenticated]
 
@@ -45,12 +44,23 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         "partial_update": UpdateCollectionSerializer,
     }
 
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        return get_object_or_404(queryset, name=self.kwargs["pk"])
+
+    def get_queryset(self):
+        queryset = CollectionModel.objects.filter(user=self.request.user)
+        project = self.request.query_params.get("project")
+        if project is None:
+            raise ValidationError(detail={"project": ["project query_params is required"]})
+        return queryset.filter(project=project)
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
     @action(methods=["POST"], detail=True, url_name="query", url_path="query")
     def query(self, request, pk):
-        instance = get_object_or_404(CollectionModel, pk=pk)
+        instance = self.get_object()
         action_seriazlier = {
             "find": FindDataCollectionSerializer,
             "find_one": FindOneDataCollectionSerializer,
@@ -62,9 +72,9 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         context = {"request": request}
         collection_name = get_collection_name(instance)
         if action is None:
-            raise ValidationError(detail={"action": "action query_params is required"})
+            raise ValidationError(detail={"action": ["action query_params is required"]})
         if action not in action_seriazlier:
-            raise ValidationError(detail={"action": "invalid action"})
+            raise ValidationError(detail={"action": ["invalid action"]})
 
         ser = action_seriazlier.get(action)(context=context, data=request.data)
         ser.is_valid(raise_exception=True)
@@ -95,7 +105,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
             elif action == "delete":
                 res = delete(collection_name, ser.validated_data.get("where", {}))
                 return Response(data={"deleted_count": res.deleted_count})
-            raise ValidationError(detail={"action": "Invalid action"})
+            raise ValidationError(detail={"action": ["Invalid action"]})
         except Exception as e:
             logging.exception(
                 "Collection data %s error: %s" % (action, str(e)),

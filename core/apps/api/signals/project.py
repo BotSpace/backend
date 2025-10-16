@@ -1,3 +1,4 @@
+import logging
 import os
 
 from django.db.models.signals import post_save
@@ -7,10 +8,31 @@ from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import BotModel, DebugModel, EnviromentModel, ProjectModel, RelaseModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
+from core.apps.cms.enums.cms import FieldType
+from core.apps.cms.models.cms import CollectionModel, FieldModel
 
 
 @receiver(post_save, sender=ProjectModel)
-def ProjectSignal(sender, instance, created, **kwargs): ...
+def ProjectSignal(sender, instance, created, **kwargs):
+    if created:
+        collection = CollectionModel.objects.create(
+            name="users",
+            user=instance.owner,
+            project=instance,
+        )
+        FieldModel.objects.bulk_create(
+            [
+                FieldModel(collection=collection, name="chat_id", type=FieldType.NUMBER.value, required=True),
+                FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
+                FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
+            ]
+        )
+        logging.info(
+            "Project uchun collection yaratildi collection=%s project=%s user=%s",
+            "users",
+            instance.name,
+            instance.owner,
+        )
 
 
 @receiver(post_save, sender=BotModel)
@@ -28,6 +50,7 @@ def RelaseSignal(sender, instance, created, **kwargs):
             release.status = ContainerStatusEnum.STOPPING.value
             release.save()
         service = deploy_service(
+            instance.project,
             "release",
             instance.flow,
             "%s_%s" % (instance.project.pk, instance.version),

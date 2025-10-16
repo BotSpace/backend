@@ -10,6 +10,7 @@ from core.apps.cms.models import CollectionModel
 from core.apps.cms.models.cms import FieldModel
 from core.apps.cms.serializers.cms.field import CreateFieldSerializer, RetrieveFieldSerializer
 from core.apps.cms.services.collection import collection_validate_data
+from core.apps.api.models import ProjectModel
 
 
 class BaseCollectionSerializer(serializers.ModelSerializer):
@@ -34,13 +35,20 @@ class RetrieveCollectionSerializer(BaseCollectionSerializer):
 
 class CreateCollectionSerializer(BaseCollectionSerializer):
     fields = CreateFieldSerializer(many=True, required=False)
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=ProjectModel.objects.all(),
+        required=True,
+        allow_null=False,
+    )
 
     class Meta(BaseCollectionSerializer.Meta):
         fields = [
             "id",
             "name",
+            "project",
             "fields",
         ]
+        extra_kwargs = {"project": {"required": True}}
 
     def create(self, validated_data):
         if "fields" in validated_data:
@@ -81,7 +89,7 @@ class UpdateCollectionSerializer(BaseCollectionSerializer):
 class BaseDataCollectionSerializer(serializers.Serializer):
     def validate_where(self, value):
         if not isinstance(value, dict):
-            raise ValidationError(detail={"where": "where is not dict"})
+            raise ValidationError(detail={"where": ["where is not dict"]})
         for field, _value in value.items():
             if field == "_id":
                 value[field] = ObjectId(_value)
@@ -108,6 +116,11 @@ class FindDataCollectionSerializer(BaseDataCollectionSerializer):
 
 class FindOneDataCollectionSerializer(BaseDataCollectionSerializer):
     where = serializers.DictField(required=True)
+
+    def validate(self, attrs):
+        if len(attrs.get("where", {})) <= 0:
+            raise ValidationError(detail={"where": ["where is empty"]})
+        return attrs
 
 
 class DeleteDataCollectionSerializer(BaseDataCollectionSerializer):

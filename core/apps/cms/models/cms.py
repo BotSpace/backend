@@ -25,6 +25,7 @@ class CollectionModel(AbstractBaseModel):
         db_table = "collection"
         verbose_name = _("CollectionModel")
         verbose_name_plural = _("CollectionModels")
+        constraints = [models.UniqueConstraint(fields=["name", "project"], name="name_project_collection")]
 
 
 class FieldModel(AbstractBaseModel):

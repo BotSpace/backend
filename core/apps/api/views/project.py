@@ -28,7 +28,7 @@ from core.apps.api.serializers.project import (
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 from core.apps.api.services.docker_service import deploy_service, remove_service, service_logs_async
-from core.apps.api.services.enviroment import project_enviroment
+from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
 
 
 async def logs(request, service_id):
@@ -64,6 +64,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             return queryset.filter(owner=self.request.user)
         return queryset.none()
 
+    def get_object(self):
+        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
+
     action_permission_classes = {}
     action_serializer_class = {
         "list": ListProjectSerializer,
@@ -96,16 +99,19 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug")
     def debug(self, request, pk):
+        if not validate_debug_enviroment(pk):
+            return Response(data={"detail": _("debug uchun enviroment to'liq emas")}, status=400)
         instance = self.get_object()
         debug = instance.debug
-        hash = hashlib.md5(json.dumps(instance.flow).encode()).hexdigest()
+        # hash = hashlib.md5(json.dumps(instance.flow).encode()).hexdigest()
         # if debug.flow_hash == hash:
         #     return Response(data={"detail": _("No changes")})
-        debug.flow_hash = hash
-        debug.save()
+        # debug.flow_hash = hash
+        # debug.save()
         if debug.service_id:
             remove_service(debug.service_id)
         service = deploy_service(
+            instance,
             "debug",
             instance.flow,
             instance.id,
@@ -134,7 +140,7 @@ class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMod
         if self.action in ["list"]:
             project_id = self.request.query_params.get("project")
             if project_id is None:
-                raise exceptions.ValidationError(detail={"project": _("project is required")})
+                raise exceptions.ValidationError(detail={"project": [_("project is required")]})
             queryset = queryset.filter(project_id=project_id)
         return queryset
 
@@ -183,6 +189,6 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
     def get_queryset(self):
         project = self.request.query_params.get("project")
         if project is None:
-            raise exceptions.ValidationError(detail={"project": _("project is required")})
+            raise exceptions.ValidationError(detail={"project": [_("project is required")]})
         queryset = EnviromentModel.objects.filter(project=project, user=self.request.user)
         return queryset

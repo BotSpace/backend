@@ -5,7 +5,9 @@ import pathlib
 
 import aiodocker
 from docker.types import Mount
+from rest_framework_simplejwt import tokens
 from config.env import env
+import os
 
 import docker
 from core.apps.api.enums.container import ContainerStatusEnum
@@ -60,10 +62,16 @@ def create_volume(name):
 
 
 def get_default_env():
-    return [f'MONGO_URL={env.str("MONGO_URL")}']
+    api_url = os.getenv("API_URL")
+    if api_url is None:
+        logging.error("API_URL not found for .env")
+        return []
+    return [
+        f"API_URL={api_url}",
+    ]
 
 
-def deploy_service(prefix, flow, key, env: list = []):
+def deploy_service(project, prefix, flow, key, _env: list = []):
     path = "/var/lib/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
     with open(path + "flow.json", "w") as file:
@@ -73,10 +81,12 @@ def deploy_service(prefix, flow, key, env: list = []):
         source=path,
         type="bind",
     )
-    env.extend(get_default_env())
+    _env.extend(get_default_env())
+    _env.append(f"API_TOKEN={str(tokens.AccessToken.for_user(project.owner))}")
+    _env.append(f"PROJECT_ID={project.id}")
     return create_service(
         "jscorptech/engine:latest",
         "%s_%s" % (prefix, key),
         mounts=[mount],
-        env=env,
+        env=_env,
     )

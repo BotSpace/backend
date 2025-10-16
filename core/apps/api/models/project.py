@@ -59,7 +59,7 @@ class BotModel(AbstractBaseModel):
 
 
 class RelaseModel(AbstractBaseModel):
-    project = models.ForeignKey("ProjectModel", on_delete=models.CASCADE, related_name="relases", null=True, blank=True)
+    project = models.ForeignKey("ProjectModel", on_delete=models.CASCADE, related_name="relases")
     version = models.IntegerField(verbose_name=_("version"))
     flow = models.JSONField(default=list)
     service_id = models.CharField(_("service id"), max_length=255, null=True, blank=True)
