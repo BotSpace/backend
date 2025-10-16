@@ -72,7 +72,7 @@ class RelaseModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return baker.make(cls, _fill_optional=True)
+        return baker.make(cls, _fill_optional=True, project=ProjectModel._create_fake())
 
     class Meta:
         db_table = "relase"

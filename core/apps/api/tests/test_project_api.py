@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,10 +69,24 @@ def test_project_stop(_, project_client):
 
 @pytest.mark.django_db
 def test_project_debug(project_client):
-    client, urls, _ = project_client
+    client, urls, instance = project_client
+    EnviromentModel.objects.create(
+        project=instance,
+        key="BOT_TOKEN",
+        value="token",
+        user=instance.owner,
+    )
     response = client.get(urls["debug"])
     assert response.status_code == 200
     assert response.json()["status"] is True
+
+
+@pytest.mark.django_db
+def test_project_invalid_debug(project_client):
+    client, urls, _ = project_client
+    response = client.get(urls["debug"])
+    assert response.status_code == 400
+    assert response.json()["status"] is False
 
 
 @pytest.mark.django_db

@@ -2,6 +2,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from core.apps.api.models.project import ProjectModel
 from core.apps.cms.enums import FieldType
 from django_core.models import AbstractBaseModel
 from model_bakery import baker
@@ -19,7 +20,7 @@ class CollectionModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return baker(cls, user=User._create_fake())
+        return baker.make(cls, user=User._create_fake(), _fill_optional=True, project=ProjectModel._create_fake())
 
     class Meta:
         db_table = "collection"
@@ -40,7 +41,7 @@ class FieldModel(AbstractBaseModel):
 
     @classmethod
     def _create_fake(cls):
-        return baker(cls)
+        return baker.make(cls)
 
     class Meta:
         db_table = "field"

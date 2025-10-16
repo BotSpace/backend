@@ -13,7 +13,7 @@ from core.apps.cms.models.cms import FieldModel
 
 @pytest.fixture
 def instance(db):
-    return baker.make(CollectionModel, name="test")
+    return CollectionModel._create_fake()
 
 
 @pytest.fixture
@@ -26,12 +26,13 @@ def api_client(instance):
 @pytest.fixture
 def data(api_client):
     client, instance = api_client
+    project = "?project=" + str(instance.project.pk)
     return (
         {
-            "list": reverse("collection-list"),
-            "retrieve": reverse("collection-detail", kwargs={"pk": instance.pk}),
-            "retrieve-not-found": reverse("collection-detail", kwargs={"pk": 1000}),
-            "query": reverse("collection-query", kwargs={"pk": instance.pk}),
+            "list": reverse("collection-list") + project,
+            "retrieve": reverse("collection-detail", kwargs={"pk": instance.name}) + project,
+            "retrieve-not-found": reverse("collection-detail", kwargs={"pk": "not-found"}) + project,
+            "query": reverse("collection-query", kwargs={"pk": instance.name}) + project,
         },
         client,
         instance,
@@ -40,8 +41,10 @@ def data(api_client):
 
 @pytest.mark.django_db
 def test_create(data):
-    urls, client, _ = data
-    response = client.post(urls["list"], data={"name": "test", "fields": []}, format="json")
+    urls, client, instance = data
+    response = client.post(
+        urls["list"], data={"name": "test", "fields": [], "project": instance.project.pk}, format="json"
+    )
     assert response.json()["status"] is True
     assert response.status_code == 201
 
@@ -134,7 +137,7 @@ def test_insert(data):
             ]
         )
         response = client.post(
-            urls["query"] + "?action=insert",
+            urls["query"] + "&action=insert",
             data={
                 "first_name": "Samandar",
             },
@@ -151,7 +154,7 @@ def test_find(data):
     with patch("core.apps.cms.views.cms.find") as mock_find:
         mock_find.return_value = [{"name": "Samandar"}]
         response = client.post(
-            urls["query"] + "?action=find",
+            urls["query"] + "&action=find",
             data={
                 "where": {"name": "Samandar"},
             },
@@ -169,7 +172,7 @@ def test_find_one(data):
     with patch("core.apps.cms.views.cms.find_one") as mock_find:
         mock_find.return_value = {"name": "Samandar"}
         response = client.post(
-            urls["query"] + "?action=find_one",
+            urls["query"] + "&action=find_one",
             data={
                 "where": {"name": "Samandar"},
             },
@@ -187,7 +190,7 @@ def test_find_one_invalid(data):
     with patch("core.apps.cms.views.cms.find_one") as mock_find:
         mock_find.return_value = None
         response = client.post(
-            urls["query"] + "?action=find_one",
+            urls["query"] + "&action=find_one",
             data={
                 "where": {"name": "Samandar"},
             },
@@ -206,7 +209,7 @@ def test_update_data(data):
         mock.modified_count = 10
         mock_find.return_value = mock
         response = client.post(
-            urls["query"] + "?action=update",
+            urls["query"] + "&action=update",
             data={
                 "where": {"name": "Samandar"},
                 "data": {"$set": {"name": "Muhiddin ko't"}},
@@ -227,7 +230,7 @@ def test_delete(data):
         mock.deleted_count = 10
         mock_find.return_value = mock
         response = client.post(
-            urls["query"] + "?action=delete",
+            urls["query"] + "&action=delete",
             data={
                 "where": {"name": "Samandar"},
             },
