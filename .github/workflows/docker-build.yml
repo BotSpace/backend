@@ -95,9 +95,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "🔄 image to ${{ github.run_number }} [CI SKIP]" || echo "No changes"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push https://x-access-token:${{ secrets.PERSONAL_TOKEN }}@github.com/BotMather/backend.git main
 
       - name: Execute remote SSH commands using SSH key
         uses: appleboy/ssh-action@v1.2.2
