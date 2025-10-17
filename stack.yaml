@@ -68,7 +68,7 @@ services:
         max-file: "3"
 
   web:
-    image: jscorptech/botmother:latest 
+    image: jscorptech/botmother:${BUILD_NUMBER}
     env_file:
       - .env
     environment:
