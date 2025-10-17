@@ -111,4 +111,4 @@ jobs:
           script: |
             cd /opt/projects/botmother/
             git pull origin main
-            docker stack deploy -c stack.yaml
+            docker stack deploy -c stack.yaml botmother
