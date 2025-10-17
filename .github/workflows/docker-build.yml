@@ -86,7 +86,7 @@ jobs:
 
       - name: stack.yaml updated
         run: |
-          sed -i 's|image: ${{ secret.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:.*|image: ${{ secret.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${BUILD_NUMBER}|' stack.yaml
+          sed -i 's|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${BUILD_NUMBER}|' stack.yaml
           sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
 
       - name: Commit and push updated version
