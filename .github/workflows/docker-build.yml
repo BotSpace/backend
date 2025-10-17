@@ -64,6 +64,7 @@ jobs:
             -e DB_PORT=5432 \
             -e DB_NAME=testdb \
             -e DB_USER=postgres \
+            -e REDIS_URL=redis://localhost:6379 \
             -e DB_PASSWORD=postgres \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
             ${{ env.IMAGE_NAME }}:test \
