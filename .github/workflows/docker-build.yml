@@ -8,6 +8,9 @@ on:
 env:
   IMAGE_NAME: botmother
 
+permissions:
+  contents: write
+
 jobs:
   build-test-push:
     runs-on: ubuntu-latest
