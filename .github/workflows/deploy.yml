@@ -122,7 +122,7 @@ jobs:
             if [ -d "$DIR" ]; then
               echo "loyiha mavjud"
             else
-            git clone git@github.com:${{ github.repository }}.git
+              git clone git@github.com:${{ github.repository }}.git
               echo "Clone qilindi";
             fi
 
