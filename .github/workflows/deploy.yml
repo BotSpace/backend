@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  PROJECT_NAME: ${{ github.repository }}
+  PROJECT_NAME: botmother
 
 permissions:
   contents: write
