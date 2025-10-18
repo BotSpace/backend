@@ -123,6 +123,6 @@ jobs:
             export BOT_TOKEN=${{ secrets.BOT_TOKEN }}
             export API_URL=https://botlarnionasi.jscorp.uz
             export SCRIPT=entrypoint-server.sh
-            export PORT=${{ variables.PORT }}
+            export PORT=${{ vars.PORT }}
 
             docker stack deploy -c stack.yaml botmother
