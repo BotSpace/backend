@@ -112,17 +112,28 @@ jobs:
             cd /opt/projects/botmother/
             git fetch origin main
             git reset --hard origin/main
-            set -a
-            source .env.example
-            set +a
-            export MONGO_URL=${{ secrets.MONGO_URL }}
-            export DB_ENGINE=django_prometheus.db.backends.postgresql
-            export CACHE_ENABLED=True
-            export ALLOWED_HOSTS=127.0.0.1,web,botlarnionasi.jscorp.uz
-            export CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz
-            export BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-            export API_URL=https://botlarnionasi.jscorp.uz
-            export SCRIPT=entrypoint-server.sh
-            export PORT=${{ vars.PORT }}
+            cp .env.example .env
+            update_env() {
+                local env_file=".env"
+                cp .env.example "$env_file"
+
+                # argumentlar orqali key=value olish
+                for kv in "$@"; do
+                    local key="${kv%%=*}"
+                    local value="${kv#*=}"
+                    sed -i "s|^$key=.*|$key=$value|" "$env_file"
+                done
+            }
+
+            # Funksiyani chaqirish misoli
+            update_env \
+              "MONGO_URL=${{ secrets.MONGO_URL }}" \
+              "DB_ENGINE=django_prometheus.db.backends.postgresql" \
+              "CACHE_ENABLED=True" \
+              "ALLOWED_HOSTS=127.0.0.1,web,botlarnionasi.jscorp.uz" \
+              "CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz" \
+              "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
+              "API_URL=https://botlarnionasi.jscorp.uz" \
+              "PORT=${{ vars.PORT }}"
 
             docker stack deploy -c stack.yaml botmother
