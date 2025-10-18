@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  IMAGE_NAME: botmother
+  PROJECT_NAME: ${{ github.repository }}
 
 permissions:
   contents: write
@@ -57,7 +57,7 @@ jobs:
           file: ./docker/Dockerfile.web
           push: false
           load: true
-          tags: ${{ env.IMAGE_NAME }}:test
+          tags: ${{ env.PROJECT_NAME }}:test
 
       - name: Run migrations and tests
         run: |
@@ -70,7 +70,7 @@ jobs:
             -e REDIS_URL=redis://localhost:6379 \
             -e DB_PASSWORD=postgres \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
-            ${{ env.IMAGE_NAME }}:test \
+            ${{ env.PROJECT_NAME }}:test \
             sh -c "python manage.py migrate && pytest -v"
 
       - name: Login to Docker Hub
@@ -81,15 +81,15 @@ jobs:
 
       - name: Tag and push to Docker Hub
         run: |
-          docker tag ${{ env.IMAGE_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-          docker tag ${{ env.IMAGE_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+          docker tag ${{ env.PROJECT_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+          docker tag ${{ env.PROJECT_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
           echo "SUCCESS TAGS: latest, ${{ github.run_number }}"
 
       - name: stack.yaml updated
         run: |
-          sed -i 's|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}|' stack.yaml
+          sed -i 's|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}|' stack.yaml
           sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
 
       - name: Commit and push updated version
@@ -109,10 +109,28 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            cd /opt/projects/botmother/
+            PROJECTS=/opt/projects/
+            DIR=/opt/projects/${{ env.PROJECT_NAME }}/
+            
+            if [ -d "$PROJECTS" ]; then
+              echo "projects papkasi mavjud"
+            else
+              mkdir -p $PROJECTS
+              echo "projects papkasi yaratildi"
+            fi
+
+            if [ -d "$DIR"]; then
+              echo "loyiha mavjud"
+            else
+            git clone git@github.com:${{ github.repository }}.git
+              echo "Clone qilindi";
+            fi
+
+            cd $DIR
             git fetch origin main
             git reset --hard origin/main
             cp .env.example .env
+
             update_env() {
                 local env_file=".env"
                 cp .env.example "$env_file"
@@ -136,4 +154,4 @@ jobs:
               "API_URL=https://botlarnionasi.jscorp.uz" \
               "PORT=${{ vars.PORT }}"
 
-            docker stack deploy -c stack.yaml botmother
+            docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} 
