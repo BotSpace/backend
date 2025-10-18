@@ -27,6 +27,7 @@ urlpatterns = [
     path("api/", include("core.apps.cms.urls")),
     path("", include("django_prometheus.urls")),
 ]
+
 urlpatterns += [
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
@@ -34,6 +35,7 @@ urlpatterns += [
     path("rosetta/", include("rosetta.urls")),
     path("ckeditor5/", include("django_ckeditor_5.urls"), name="ck_editor_5_upload_file"),
 ]
+
 if env.bool("SILK_ENEBLED", False):
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 if env.str("PROJECT_ENV") == "debug":
