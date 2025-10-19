@@ -58,6 +58,7 @@ jobs:
           push: false
           load: true
           tags: ${{ env.PROJECT_NAME }}:test
+          no-cache: true
 
       - name: Run migrations and tests
         run: |
@@ -147,6 +148,7 @@ jobs:
             # Funksiyani chaqirish misoli
             update_env \
               "MONGO_URL=${{ secrets.MONGO_URL }}" \
+              "SCRIPT=entrypoint-server.sh" \
               "DB_ENGINE=django_prometheus.db.backends.postgresql" \
               "CACHE_ENABLED=True" \
               "ALLOWED_HOSTS=127.0.0.1,web,botlarnionasi.jscorp.uz" \
