@@ -1,0 +1,18 @@
+#!/bin/bash
+
+while ! nc -z db 5432; do
+  sleep 2
+  echo "Waiting postgress...."
+done
+
+while ! nc -z redis 6379; do
+  sleep 2
+  echo "Waiting redis...."
+done
+
+python3 manage.py collectstatic --noinput
+python3 manage.py migrate --noinput
+
+python3 manage.py authbot
+
+exit $?

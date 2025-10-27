@@ -11,7 +11,6 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from bson import json_util
 
-from config import env
 from core.apps.cms.models import CollectionModel
 from core.apps.cms.serializers.cms import (
     CreateCollectionSerializer,
