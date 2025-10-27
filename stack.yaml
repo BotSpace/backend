@@ -68,7 +68,7 @@ services:
         max-file: "3"
 
   web:
-    image: jscorptech/botmother:20
+    image: jscorptech/botmother:21
     env_file:
       - .env
     environment:
@@ -107,7 +107,7 @@ services:
         max-size: "10m"
         max-file: "3"
   bot:
-    image: jscorptech/botmother:9
+    image: jscorptech/botmother:21
     command: ["sh","./resources/scripts/bot.sh"]
     env_file:
       - .env
