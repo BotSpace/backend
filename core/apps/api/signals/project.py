@@ -10,6 +10,8 @@ from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
+from core.apps.websocket.services.events import ws_publish
+from core.domain.ws import DebugContainerStatus, EventTypes
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -62,7 +64,19 @@ def RelaseSignal(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=DebugModel)
-def DebugSignal(sender, instance, created, **kwargs): ...
+def DebugSignal(sender, instance: DebugModel, created, **kwargs):
+    if instance._status != instance.status:
+        logging.info(
+            "Debug container status o'zgardi instance=%s old_status=%s new_status=%s",
+            instance.pk,
+            instance._status,
+            instance.status,
+        )
+        ws_publish(
+            instance.project.owner.id,
+            DebugContainerStatus(project=instance.project.id, status=instance.status),
+            EventTypes.DEBUG_CONTAINER_STATUS,
+        )
 
 
 @receiver(post_save, sender=EnviromentModel)

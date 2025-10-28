@@ -1,3 +1,4 @@
+# type: ignore
 import json
 import logging
 
@@ -7,6 +8,10 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 class EventsConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
+        if not self.user.is_authenticated:
+            logging.warning("websocketga muvofaqiyatsiz ulanish")
+            await self.close(4001)
+            return
         logging.info("user_%s" % self.user.pk)
         await self.channel_layer.group_add("user_%s" % self.user.pk, self.channel_name)
         await self.accept()
@@ -16,9 +21,11 @@ class EventsConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
+        message = text_data_json.get("message")
+        if message is None:
+            return
         await self.channel_layer.group_send("user_%s" % self.user.pk, {"type": "chat_message", "message": message})
 
     async def chat_message(self, event):
         message = event["message"]
-        await self.send(text_data=json.dumps({"message": message}))
+        await self.send(text_data=json.dumps(message))

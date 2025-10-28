@@ -1,3 +1,5 @@
+# type: ignore
+from typing import Any
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -17,6 +19,9 @@ class ProjectModel(AbstractBaseModel):
     project_members_count = models.IntegerField(default=0)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
     flow = models.JSONField(default=list)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
     def __str__(self):
         return str(self.pk)
@@ -87,6 +92,10 @@ class DebugModel(AbstractBaseModel):
     status = models.CharField(
         max_length=255, default=ContainerStatusEnum.PENDING.value, choices=ContainerStatusEnum.choices
     )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._status = self.status
 
     def __str__(self):
         return str(self.pk)
