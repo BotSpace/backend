@@ -69,7 +69,7 @@ jobs:
             -e DB_NAME=testdb \
             -e DB_USER=postgres \
             -e REDIS_URL=redis://localhost:6379 \
-            -e REDIS_HOST=localhost
+            -e REDIS_HOST=localhost \
             -e DB_PASSWORD=postgres \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
             ${{ env.PROJECT_NAME }}:test \
