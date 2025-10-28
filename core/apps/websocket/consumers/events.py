@@ -7,7 +7,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 class EventsConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
-        logging.error("user_%s" % self.user.pk)
+        logging.info("user_%s" % self.user.pk)
         await self.channel_layer.group_add("user_%s" % self.user.pk, self.channel_name)
         await self.accept()
 

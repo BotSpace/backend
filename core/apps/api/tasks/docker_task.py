@@ -21,7 +21,6 @@ def sync_fast_debug_service_status():
     services = DebugModel.objects.filter(
         service_id__isnull=False, status__in=[ContainerStatusEnum.INIT.value, ContainerStatusEnum.STOPPING.value]
     ).all()
-    print("=============== SYNC FAST DEBUG ==============")
     for service in services:
         try:
             service.status = get_service_status(service.service_id)
@@ -46,7 +45,6 @@ def sync_fast_release_service_status():
     services = RelaseModel.objects.filter(
         service_id__isnull=False, status__in=[ContainerStatusEnum.INIT.value, ContainerStatusEnum.STOPPING.value]
     ).all()
-    print("=============== SYNC FAST RELEASE ==============")
     for service in services:
         try:
             service.status = get_service_status(service.service_id)
