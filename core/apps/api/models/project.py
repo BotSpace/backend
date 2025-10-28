@@ -72,6 +72,10 @@ class RelaseModel(AbstractBaseModel):
         max_length=255, default=ContainerStatusEnum.PENDING.value, choices=ContainerStatusEnum.choices
     )
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._status = self.status
+
     def __str__(self):
         return str(self.pk)
 

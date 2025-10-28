@@ -11,7 +11,7 @@ from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
 from core.apps.websocket.services.events import ws_publish
-from core.domain.ws import DebugContainerStatus, EventTypes
+from core.domain.ws import DebugContainerStatus, EventTypes, ReleaseContainerStatus
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -42,7 +42,7 @@ def BotSignal(sender, instance, created, **kwargs): ...
 
 
 @receiver(post_save, sender=RelaseModel)
-def RelaseSignal(sender, instance, created, **kwargs):
+def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
     if created:
         releases = RelaseModel.objects.filter(
             project=instance.project, status__in=[ContainerStatusEnum.INIT.value, ContainerStatusEnum.RUNNING.value]
@@ -61,6 +61,16 @@ def RelaseSignal(sender, instance, created, **kwargs):
         instance.service_id = service.id
         instance.status = ContainerStatusEnum.INIT.value
         instance.save()
+    if instance._status != instance.status:
+        ws_publish(
+            instance.project.owner.id,
+            ReleaseContainerStatus(
+                project=instance.project.id,
+                status=instance.status,
+                version=instance.version,
+            ),
+            EventTypes.RELEASE_STATUS,
+        )
 
 
 @receiver(post_save, sender=DebugModel)
@@ -75,7 +85,7 @@ def DebugSignal(sender, instance: DebugModel, created, **kwargs):
         ws_publish(
             instance.project.owner.id,
             DebugContainerStatus(project=instance.project.id, status=instance.status),
-            EventTypes.DEBUG_CONTAINER_STATUS,
+            EventTypes.DEBUG_STATUS,
         )
 
 

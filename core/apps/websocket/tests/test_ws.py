@@ -7,5 +7,5 @@ def test_ws_publish():
     ws_publish(
         user_id="1",
         schema=DebugContainerStatus(project=1, status=ContainerStatusEnum.RUNNING),
-        event=EventTypes.DEBUG_CONTAINER_STATUS,
+        event=EventTypes.DEBUG_STATUS,
     )

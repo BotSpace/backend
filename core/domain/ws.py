@@ -5,8 +5,8 @@ from core.apps.api.enums import ContainerStatusEnum
 
 
 class EventTypes(Enum):
-    DEBUG_CONTAINER_STATUS = "debug_container_status"
-    RELEASE_CONTAINER_STATUS = "release_container_status"
+    DEBUG_STATUS = "debug_status"
+    RELEASE_STATUS = "release_status"
 
 
 class DebugContainerStatus(BaseModel):
@@ -19,7 +19,7 @@ class DebugContainerStatus(BaseModel):
 class ReleaseContainerStatus(BaseModel):
     project: int
     status: ContainerStatusEnum
-    version: str
+    version: int
 
     model_config = ConfigDict(use_enum_values=True)
 
