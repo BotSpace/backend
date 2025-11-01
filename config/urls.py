@@ -1,3 +1,4 @@
+# type: ignore
 """
 All urls configurations tree
 """
@@ -36,7 +37,7 @@ urlpatterns += [
     path("ckeditor5/", include("django_ckeditor_5.urls"), name="ck_editor_5_upload_file"),
 ]
 
-if env.bool("SILK_ENEBLED", False):
+if env.bool("SILK_ENiABLED", False):
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 if env.str("PROJECT_ENV") == "debug":
     urlpatterns += [

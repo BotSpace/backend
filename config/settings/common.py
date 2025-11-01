@@ -69,7 +69,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
-if env.bool("SILK_ENEBLED", False):
+if env.bool("SILK_ENABLED", False):
     MIDDLEWARE += [
         "silk.middleware.SilkyMiddleware",
     ]
