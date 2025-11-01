@@ -158,4 +158,5 @@ jobs:
               "API_URL=https://botlarnionasi.jscorp.uz" \
               "PORT=${{ vars.PORT }}"
 
+            export PORT=8084
             docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} 
