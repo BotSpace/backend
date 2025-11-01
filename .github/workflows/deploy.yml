@@ -156,7 +156,8 @@ jobs:
               "CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz" \
               "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
               "API_URL=https://botlarnionasi.jscorp.uz" \
+              "DB_HOST=postgres" \
               "PORT=${{ vars.PORT }}"
 
-            export PORT=8084
+            export PORT=${{ vars.PORT }}
             docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} 
