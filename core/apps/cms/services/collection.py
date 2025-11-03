@@ -13,10 +13,21 @@ def is_int(s: str) -> bool:
         return False
 
 
-def is_bool(s: str) -> bool:
-    if s is None:
+def is_bool(x) -> bool:
+    """
+    Args:
+        x (any): turi nomalum malumot
+
+    Returns:
+        bool
+    """
+    if x is None:
         return True
-    return s.lower() in ["true", "false", "1", "0", "yes", "no"]
+    if isinstance(x, bool):
+        return True
+    if type(x) in [int, float]:
+        return False
+    return x.lower() in ["true", "false", "1", "0", "yes", "no"]
 
 
 def collection_validate_data(collection, data):
