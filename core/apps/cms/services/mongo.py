@@ -28,7 +28,9 @@ def delete(collection, where: dict = {}):
     return collection.delete_many(where)
 
 
-def find(collection, where: dict = {}, limit=None, _sort=None, skip: int = None):
+def find(collection, where=None, limit=None, _sort=None, skip: int = None):
+    if where is None:
+        where = dict()
     collection = db[collection]
     cursor = collection.find(where)
     if limit is not None and limit > 0:

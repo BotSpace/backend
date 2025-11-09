@@ -9,6 +9,10 @@ from core.apps.api.serializers.project.relase import ListRelaseSerializer
 
 class BaseProjectSerializer(serializers.ModelSerializer):
     release = ListRelaseSerializer()
+    users = serializers.SerializerMethodField()
+
+    def get_users(self, obj) -> int:
+        return 0
 
     class Meta:
         model = ProjectModel

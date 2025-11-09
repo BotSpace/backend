@@ -3,3 +3,4 @@ from .debug import *  # noqa
 from .enviroment import *  # noqa
 from .project import *  # noqa
 from .relase import *  # noqa
+from .message import * # noqa

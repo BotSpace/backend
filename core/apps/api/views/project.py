@@ -1,6 +1,3 @@
-import hashlib
-import json
-
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
@@ -103,11 +100,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             return Response(data={"detail": _("debug uchun enviroment to'liq emas")}, status=400)
         instance = self.get_object()
         debug = instance.debug
-        # hash = hashlib.md5(json.dumps(instance.flow).encode()).hexdigest()
-        # if debug.flow_hash == hash:
-        #     return Response(data={"detail": _("No changes")})
-        # debug.flow_hash = hash
-        # debug.save()
         if debug.service_id:
             remove_service(debug.service_id)
         service = deploy_service(
@@ -122,9 +114,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug.save()
         return Response(data={"detail": _("Updated")})
 
-
 @extend_schema(tags=["relase"])
-class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
+class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
     serializer_class = ListRelaseSerializer
     permission_classes = [AllowAny]
 

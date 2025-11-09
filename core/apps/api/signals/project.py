@@ -1,11 +1,10 @@
 import logging
-import os
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import BotModel, DebugModel, EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import DebugModel, ProjectModel, RelaseModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
@@ -35,11 +34,6 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.name,
             instance.owner,
         )
-
-
-@receiver(post_save, sender=BotModel)
-def BotSignal(sender, instance, created, **kwargs): ...
-
 
 @receiver(post_save, sender=RelaseModel)
 def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
@@ -87,7 +81,3 @@ def DebugSignal(sender, instance: DebugModel, created, **kwargs):
             DebugContainerStatus(project=instance.project.id, status=instance.status),
             EventTypes.DEBUG_STATUS,
         )
-
-
-@receiver(post_save, sender=EnviromentModel)
-def EnviromentSignal(sender, instance, created, **kwargs): ...
