@@ -89,6 +89,7 @@ services:
     networks:
       - botmother
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - logs:/code/resources/logs/:rw
       - media:/code/resources/media/:rw
       - static:/code/resources/staticfiles/:rw
