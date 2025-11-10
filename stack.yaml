@@ -107,7 +107,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.labels.name == my
+          - node.labels.name == worker 
       update_config:
         parallelism: 1
         order: start-first
