@@ -8,6 +8,7 @@ class ButtonSerializer(serializers.Serializer):
     callback_data = serializers.CharField(required=False, allow_null=True)
     request_contact = serializers.BooleanField(default=False)
     request_location = serializers.BooleanField(default=False)
+    link = serializers.CharField(required=False)
 
 
 class SendMessageSerializer(serializers.ModelSerializer):

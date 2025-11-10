@@ -3,6 +3,7 @@ import logging
 from celery import shared_task
 
 from core.apps.api.models.message import MessageModel
+from core.apps.api.services.enviroment import release_bot_token
 from core.apps.cms.models import CollectionModel
 from core.apps.cms.services import find, get_collection_name
 
@@ -19,7 +20,11 @@ def send_message(message_id: int):
     except CollectionModel.DoesNotExist:
         logging.error("Collection does not exist")
         return
-    users: dict = find(get_collection_name(collection))
+    token = release_bot_token(message.project.pk)
+    if token is None:
+        logging.info("Bot token not found")
+        return
+    users: list = find(get_collection_name(collection))
     done: int = 0
     fail: int = 0
     for user in users:
