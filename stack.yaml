@@ -18,7 +18,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == worker 
+          - node.labels.name == my 
       restart_policy:
         condition: any
         max_attempts: 0
@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == worker 
+          - node.labels.name == my 
       restart_policy:
         condition: any
       update_config:
@@ -67,10 +67,6 @@ services:
         monitor: 30s
         delay: 30s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 256M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -107,7 +103,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.labels.name == worker 
+          - node.labels.name == my 
       update_config:
         parallelism: 1
         order: start-first
@@ -150,10 +146,6 @@ services:
         monitor: 10s
         delay: 10s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 256M
     tmpfs:
       - /var/cache/nginx
       - /var/run
