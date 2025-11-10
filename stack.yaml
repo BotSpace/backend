@@ -114,8 +114,8 @@ services:
         max_failure_ratio: 0.2
       resources:
         limits:
-          cpus: '4'
-          memory: 2048M
+          cpus: '8'
+          memory: 4096M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 15s
