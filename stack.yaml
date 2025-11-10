@@ -115,10 +115,6 @@ services:
         monitor: 30s
         delay: 30s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '6'
-          memory: 4096M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 15s
