@@ -136,10 +136,6 @@ services:
         published: ${PORT:?enviromentda PORT topilmadi} 
         protocol: tcp
     volumes:
-      - type: bind
-        source: ./resources/layout/nginx.conf
-        target: /etc/nginx/nginx.conf
-        read_only: true
       - media:/usr/share/nginx/html/resources/media/:ro
       - static:/usr/share/nginx/html/resources/staticfiles/:ro
     networks:
