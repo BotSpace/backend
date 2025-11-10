@@ -15,7 +15,7 @@ from core.apps.api.views.project import logs
 
 
 def home(request):
-    return HttpResponse("OK: #3556f9e032f178006d885346200bc34549ff2935")
+    return HttpResponse("OK: #ea2cf50607a8b67eb1d802f4d523751826568206")
 
 
 urlpatterns = [
