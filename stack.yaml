@@ -18,7 +18,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == my
+          - node.labels.name == worker 
       restart_policy:
         condition: any
         max_attempts: 0
@@ -34,7 +34,7 @@ services:
           cpus: '2'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d botmother"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d django"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == my
+          - node.labels.name == worker 
       restart_policy:
         condition: any
       update_config:
@@ -105,6 +105,9 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+      placement:
+        constraints:
+          - node.labels.name == my
       update_config:
         parallelism: 1
         order: start-first
