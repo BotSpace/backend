@@ -18,7 +18,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == my 
+          - node.labels.name == flx 
       restart_policy:
         condition: any
         max_attempts: 0
@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == my 
+          - node.labels.name == worker 
       restart_policy:
         condition: any
       update_config:
@@ -104,7 +104,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.labels.name == my 
+          - node.labels.name == worker 
       update_config:
         parallelism: 1
         order: start-first
