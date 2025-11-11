@@ -18,7 +18,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == flx 
+          - node.labels.name == my 
       restart_policy:
         condition: any
         max_attempts: 0
@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.name == flx 
+          - node.labels.name == my 
       restart_policy:
         condition: any
       update_config:
@@ -104,7 +104,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.labels.name == flx 
+          - node.labels.name == my 
       update_config:
         parallelism: 1
         order: start-first
@@ -129,7 +129,7 @@ services:
     ports:
       - mode: ingress
         target: 80
-        published: ${PORT:?enviromentda PORT topilmadi} 
+        published: ${PORT:?enviromentda PORT topilmadi}
         protocol: tcp
     volumes:
       - media:/usr/share/nginx/html/resources/media/:ro
@@ -137,7 +137,10 @@ services:
     networks:
       - botmother
     deploy:
-      mode: global
+      mode: replicated
+      placement:
+        constraints:
+          - node.labels.name == my
       restart_policy:
         condition: any
       update_config:
@@ -167,6 +170,7 @@ networks:
   botmother:
     driver: overlay
     attachable: true
+    external: true
 
 volumes:
   media:
@@ -184,4 +188,4 @@ volumes:
 
 secrets:
   botmother_postgres_password:
-    external: true 
+    external: true
