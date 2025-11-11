@@ -102,9 +102,6 @@ services:
       replicas: 1
       restart_policy:
         condition: any
-      placement:
-        constraints:
-          - node.labels.name == my 
       update_config:
         parallelism: 1
         order: start-first
