@@ -11,7 +11,7 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from config.env import env
-from core.apps.api.views.project import logs
+from core.apps.api.views.docker import logs
 
 
 def home(request):

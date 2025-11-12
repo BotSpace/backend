@@ -1,2 +1,3 @@
 from .project import *  # noqa
-from .message import *
+from .message import *  # noqa
+from .docker import *  # noqa

@@ -1,4 +1,4 @@
-from django.http import StreamingHttpResponse
+# type: ignore
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
@@ -24,46 +24,16 @@ from core.apps.api.serializers.project import (
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
-from core.apps.api.services.docker_service import deploy_service, remove_service, service_logs_async
+from core.apps.api.services.dashboard import DashboardService
+from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
-
-
-async def logs(request, service_id):
-    async def stream():
-        async for line in service_logs_async(service_id):
-            if line[-1] == "\n":
-                line = line[:-1]
-            if line is None or line == "":
-                continue
-            yield f"data: {line}\n\n"
-
-        yield "data: Container is not running\n\n"
-
-    response = StreamingHttpResponse(stream(), content_type="text/event-stream")
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-
-    response["Access-Control-Allow-Origin"] = "*"
-    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-    response["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    response["Access-Control-Allow-Credentials"] = "false"
-    return response
+from core.apps.cms.models.cms import CollectionModel
 
 
 @extend_schema(tags=["project"])
 class ProjectView(BaseViewSetMixin, ModelViewSet):
     serializer_class = ListProjectSerializer
     permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = ProjectModel.objects.order_by("-id").all()
-        if self.request.user.is_authenticated:
-            return queryset.filter(owner=self.request.user)
-        return queryset.none()
-
-    def get_object(self):
-        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
-
     action_permission_classes = {}
     action_serializer_class = {
         "list": ListProjectSerializer,
@@ -75,10 +45,37 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "info": ListDebugSerializer,
     }
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.dashboardService = DashboardService()
+
+    def get_queryset(self):
+        queryset = ProjectModel.objects.order_by("-id").all()
+        if self.request.user.is_authenticated:
+            return queryset.filter(owner=self.request.user)
+        return queryset.none()
+
+    def get_object(self):
+        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
+
     def perform_create(self, serializer):
         serializer.save(
             owner=self.request.user,
             flow={"nodes": [], "edges": []},
+        )
+
+    @action(methods=["GET"], detail=True, url_name="dashboard", url_path="dashboard")
+    def dashboard(self, request, pk):
+        project = self.get_object()
+        collection = get_object_or_404(CollectionModel, project=project, name="users")
+        self.dashboardService.set_collection(collection)
+        return Response(
+            data={
+                "chart": {
+                    "new_users": self.dashboardService.get_user_chart(),
+                },
+                "total_users": self.dashboardService.users_count(),
+            }
         )
 
     @action(methods=["GET"], detail=True, url_name="info", url_path="info")
@@ -113,6 +110,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug.status = "initializing"
         debug.save()
         return Response(data={"detail": _("Updated")})
+
 
 @extend_schema(tags=["relase"])
 class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):

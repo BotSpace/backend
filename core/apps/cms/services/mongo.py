@@ -42,5 +42,9 @@ def find(collection, where=None, limit=None, _sort=None, skip: int = None):
     return list(cursor)
 
 
+def aggregate(collection, query: list):
+    return db[collection].aggregate(query)
+
+
 def get_collection_name(collection: CollectionModel) -> str:
     return "collection_%s_%s_%s" % (collection.user.pk, collection.project.pk, collection.name)
