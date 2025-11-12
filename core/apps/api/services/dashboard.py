@@ -29,42 +29,36 @@ class DashboardService:
             0
         ]["total"]
 
-    def get_user_chart(self) -> dict:
+    def get_user_chart(self) -> list:
         """new user chart
 
         Args:
             collection ([TODO:type]): [TODO:description]
         """
         self.check_collection_name()
-        data = list(
-            aggregate(
-                self.collection,
-                [
-                    {
-                        "$project": {
-                            "day": {
-                                "$dateToString": {
-                                    "format": "%Y-%m-%d",
-                                    "date": "$created_at",
-                                }
+        data = aggregate(
+            self.collection,
+            [
+                {
+                    "$project": {
+                        "day": {
+                            "$dateToString": {
+                                "format": "%Y-%m-%d",
+                                "date": "$created_at",
                             }
                         }
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$day",
+                        "total": {"$sum": 1},
                     },
-                    {
-                        "$group": {
-                            "_id": "$day",
-                            "total": {"$sum": 1},
-                        },
-                    },
-                    {
-                        "$sort": {"_id": 1},
-                    },
-                ],
-            )
+                },
+                {
+                    "$sort": {"_id": 1},
+                },
+            ],
         )
-        dates = map(lambda x: x.get("_id"), data)
-        values = map(lambda x: x.get("total"), data)
-        return {
-            "dates": list(dates),
-            "values": list(values),
-        }
+
+        return list(map(lambda x: {"date": x.get("_id"), "value": x.get("total")}, data))
