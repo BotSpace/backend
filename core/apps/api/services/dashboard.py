@@ -20,14 +20,15 @@ class DashboardService:
             int: users count
         """
         self.check_collection_name()
-        return list(
+        users = list(
             aggregate(
                 self.collection,
                 [{"$group": {"_id": None, "total": {"$sum": 1}}}],
             )
-        )[
-            0
-        ]["total"]
+        )
+        if len(users) <= 0:
+            return 0
+        return users[0].get("total")
 
     def get_user_chart(self) -> list:
         """new user chart
