@@ -5,4 +5,5 @@ MODULES = [
     "core.apps.websocket",
     "core.apps.cms",
     "core.apps.payment",
+    "core.apps.template",
 ]

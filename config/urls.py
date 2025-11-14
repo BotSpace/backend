@@ -27,6 +27,7 @@ urlpatterns = [
     path("api/", include("core.apps.cms.urls")),
     path("", include("django_prometheus.urls")),
     path("api/", include("core.apps.payment.urls")),
+    path("api/", include("core.apps.template.urls")),
 ]
 urlpatterns += [
     path("admin/", admin.site.urls),
