@@ -34,6 +34,7 @@ def send_message(message_id: int):
             continue
         print("xabar yuborildi %s %s" % (chat_id, message.caption))
         done += 1
+    message.total = len(users)
     message.done = done
     message.fail = fail
     message.save()

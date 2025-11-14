@@ -12,6 +12,7 @@ done
 python3 manage.py collectstatic --noinput
 python3 manage.py migrate --noinput
 
+celery -A config worker -l info &
 python manage.py authbot &
 python manage.py sync_docker &
 
