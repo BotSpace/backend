@@ -85,7 +85,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append(f"API_TOKEN={str(tokens.AccessToken.for_user(project.owner))}")
     _env.append(f"PROJECT_ID={project.id}")
     return create_service(
-        "jscorptech/engine:latest",
+        "jscorptech/golang-engine:latest",
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,
