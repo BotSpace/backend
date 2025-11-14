@@ -27,7 +27,6 @@ class Command(BaseCommand):
                         status = event.get("status", None)
                     elif "Action" in event:
                         status = event.get("Action", None)
-                    status = event.get("status", None)
                     if status is None:
                         continue
                     name = attr.get("com.docker.swarm.service.name", None)
