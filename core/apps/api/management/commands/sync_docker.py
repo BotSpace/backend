@@ -22,15 +22,12 @@ class Command(BaseCommand):
                     attr = event.get("Actor", {}).get("Attributes", {})
                     service_id = attr.get("com.docker.swarm.service.id", None)
                     if service_id is None:
-                        logging.warning("service id not found")
                         continue
                     status = event.get("status", None)
                     if status is None:
-                        logging.info("status not found event=%s", event)
                         continue
                     name = attr.get("com.docker.swarm.service.name", None)
                     if name is None:
-                        logging.info("name not found")
                         continue
                     service_type = "debug" if name.startswith("debug") else "release"
                     service = None

@@ -4,9 +4,8 @@ import logging
 import pathlib
 
 import aiodocker
-from docker.types import Mount
+from docker.types import Mount, RestartPolicy
 from rest_framework_simplejwt import tokens
-from config.env import env
 import os
 
 import docker
@@ -59,7 +58,16 @@ def get_service_status(service_id):
 
 def create_service(image, name, command=None, **kwargs):
     kwargs["name"] = name
-    return client.services.create(image=image, command=command, **kwargs)
+    return client.services.create(
+        image=image,
+        command=command,
+        constraints=["node.labels.name==my"],
+        restart_policy=RestartPolicy(
+            condition="on-failure",
+            max_attempts=5,
+        )
+        ** kwargs,
+    )
 
 
 def remove_service(service_id):
