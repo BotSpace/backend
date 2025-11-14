@@ -35,6 +35,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.owner,
         )
 
+
 @receiver(post_save, sender=RelaseModel)
 def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
     if created:
@@ -50,34 +51,8 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
             "release",
             instance.flow,
             "%s_%s" % (instance.project.pk, instance.version),
-            list(project_enviroment(instance.project.id)),
+            [*list(project_enviroment(instance.project.id)), "IS_RELEASE=true"],
         )
         instance.service_id = service.id
         instance.status = ContainerStatusEnum.INIT.value
         instance.save()
-    if instance._status != instance.status:
-        ws_publish(
-            instance.project.owner.id,
-            ReleaseContainerStatus(
-                project=instance.project.id,
-                status=instance.status,
-                version=instance.version,
-            ),
-            EventTypes.RELEASE_STATUS,
-        )
-
-
-@receiver(post_save, sender=DebugModel)
-def DebugSignal(sender, instance: DebugModel, created, **kwargs):
-    if instance._status != instance.status:
-        logging.info(
-            "Debug container status o'zgardi instance=%s old_status=%s new_status=%s",
-            instance.pk,
-            instance._status,
-            instance.status,
-        )
-        ws_publish(
-            instance.project.owner.id,
-            DebugContainerStatus(project=instance.project.id, status=instance.status),
-            EventTypes.DEBUG_STATUS,
-        )

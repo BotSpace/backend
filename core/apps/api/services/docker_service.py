@@ -25,17 +25,31 @@ async def service_logs_async(service_id):
         yield line
 
 
+def convert_status(status):
+    match status:
+        case "create":
+            return ContainerStatusEnum.INIT.value
+        case "start":
+            return ContainerStatusEnum.RUNNING.value
+        case "die" | "destroy":
+            return ContainerStatusEnum.FAILED.value
+        case "kill" | "stop":
+            return ContainerStatusEnum.STOPPED.value
+        case _:
+            return ContainerStatusEnum.STOPPED.value
+
+
 def get_service_status(service_id):
     try:
         state = client.services.get(service_id).tasks()[0]["Status"]["State"]
     except Exception as _:
         return ContainerStatusEnum.STOPPED.value
     match state:
-        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting" | "create" | "start":
+        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting":
             return ContainerStatusEnum.INIT.value
         case "running":
             return ContainerStatusEnum.RUNNING.value
-        case "complete" | "shutdown" | "remove" | "die" | "destroy":
+        case "complete" | "shutdown" | "remove":
             return ContainerStatusEnum.STOPPED.value
         case "failed" | "rejected" | "orphaned":
             return ContainerStatusEnum.FAILED.value
