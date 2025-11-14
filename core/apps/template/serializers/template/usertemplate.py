@@ -8,7 +8,6 @@ class BaseUsertemplateSerializer(serializers.ModelSerializer):
         model = UserTemplateModel
         fields = [
             "id",
-            "name",
         ]
 
 
@@ -24,5 +23,4 @@ class CreateUsertemplateSerializer(BaseUsertemplateSerializer):
     class Meta(BaseUsertemplateSerializer.Meta):
         fields = [
             "id",
-            "name",
         ]
