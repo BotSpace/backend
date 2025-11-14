@@ -28,6 +28,7 @@ def sync_fast_debug_service_status():
         except Exception as e:
             print(e)
 
+
 @shared_task
 def sync_release_service_status():
     services = RelaseModel.objects.filter(service_id__isnull=False).all()

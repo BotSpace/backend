@@ -31,11 +31,11 @@ def get_service_status(service_id):
     except Exception as _:
         return ContainerStatusEnum.STOPPED.value
     match state:
-        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting":
+        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting" | "create" | "start":
             return ContainerStatusEnum.INIT.value
         case "running":
             return ContainerStatusEnum.RUNNING.value
-        case "complete" | "shutdown" | "remove":
+        case "complete" | "shutdown" | "remove" | "die" | "destroy":
             return ContainerStatusEnum.STOPPED.value
         case "failed" | "rejected" | "orphaned":
             return ContainerStatusEnum.FAILED.value

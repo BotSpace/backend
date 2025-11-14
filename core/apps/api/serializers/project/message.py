@@ -1,3 +1,4 @@
+# type: ignore
 from rest_framework import serializers
 
 from core.apps.api.models.message import MessageModel
@@ -12,7 +13,7 @@ class ButtonSerializer(serializers.Serializer):
 
 
 class SendMessageSerializer(serializers.ModelSerializer):
-    buttons = serializers.ListSerializer(child=ButtonSerializer())
+    buttons = serializers.ListSerializer(child=ButtonSerializer(), required=False)
 
     class Meta:
         model = MessageModel
