@@ -65,8 +65,8 @@ def create_service(image, name, command=None, **kwargs):
         restart_policy=RestartPolicy(
             condition="on-failure",
             max_attempts=5,
-        )
-        ** kwargs,
+        ),
+        **kwargs,
     )
 
 
