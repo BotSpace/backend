@@ -26,7 +26,7 @@ class Command(BaseCommand):
                         continue
                     status = event.get("status", None)
                     if status is None:
-                        logging.info("status not found")
+                        logging.info("status not found event=%s", event)
                         continue
                     name = attr.get("com.docker.swarm.service.name", None)
                     if name is None:
