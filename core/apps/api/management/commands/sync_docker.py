@@ -21,6 +21,7 @@ class Command(BaseCommand):
                         continue
                     attr = event.get("Actor", {}).get("Attributes", {})
                     service_id = attr.get("com.docker.swarm.service.id", None)
+                    logging.info("new docker event event=%s", event)
                     if service_id is None:
                         continue
                     status = event.get("status", None)
