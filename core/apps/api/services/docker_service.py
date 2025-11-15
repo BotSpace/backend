@@ -99,11 +99,12 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     with open(path + "flow.json", "w") as file:
         file.write(json.dumps(flow, indent=4))
     mount = Mount(
-        target="/code/assets/",
+        target="/app/assets/",
         source=path,
         type="bind",
     )
     _env.extend(get_default_env())
+    _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
     _env.append(f"API_TOKEN={str(tokens.AccessToken.for_user(project.owner))}")
     _env.append(f"PROJECT_ID={project.id}")
     return create_service(
