@@ -78,15 +78,16 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
+          registry: registry.jscorp.uz
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Tag and push to Docker Hub
         run: |
-          docker tag ${{ env.PROJECT_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest
-          docker tag ${{ env.PROJECT_NAME }}:test ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker tag ${{ env.PROJECT_NAME }}:test ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
+          docker tag ${{ env.PROJECT_NAME }}:test ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
+          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
           echo "SUCCESS TAGS: latest, ${{ github.run_number }}"
 
       - name: stack.yaml updated
@@ -159,5 +160,6 @@ jobs:
               "DB_HOST=postgres" \
               "PORT=${{ vars.PORT }}"
 
+            echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
             docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} 
