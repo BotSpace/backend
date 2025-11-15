@@ -51,4 +51,6 @@ def collection_validate_data(collection, data):
         elif field.type == FieldType.TEXT.value and not isinstance(value, str) and value is not None:
             errors[field.name] = [_("Field is not string")]
             continue
+        elif field.type == FieldType.DATETIME.value:
+            continue
     return errors, len(errors) == 0
