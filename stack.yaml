@@ -80,7 +80,7 @@ services:
         max-file: "5"
 
   web:
-    image: jscorptech/botmother:71
+    image: jscorptech/botmother:72
     env_file:
       - .env
     environment:
