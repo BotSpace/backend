@@ -80,7 +80,7 @@ services:
         max-file: "5"
 
   web:
-    image: registry.jscorp.uz/botmother:75
+    image: registry.jscorp.uz/botmother:76
     env_file:
       - .env
     environment:
