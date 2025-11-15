@@ -158,7 +158,10 @@ jobs:
               "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
               "API_URL=https://botlarnionasi.jscorp.uz" \
               "DB_HOST=postgres" \
-              "PORT=${{ vars.PORT }}"
+              "PORT=${{ vars.PORT }}" \
+              "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" \
+              "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
+              "DOCKER_REGISTRY=${{ secrets.DOCKER_REGISTRY }}"
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}

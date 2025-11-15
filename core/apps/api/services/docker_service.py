@@ -7,12 +7,18 @@ import aiodocker
 from docker.types import Mount, RestartPolicy
 from rest_framework_simplejwt import tokens
 import os
+from config.env import env
 
 import docker
 from core.apps.api.enums.container import ContainerStatusEnum
 
 try:
     client = docker.from_env()
+    client.login(
+        username=env.str("DOCKER_USERNAME"),
+        password=env.str("DOCKER_PASSWORD"),
+        registry=env.str("DOCKER_REGISTRY"),
+    )
 except Exception as e:
     print(e)
     client = None
