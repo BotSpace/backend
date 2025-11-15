@@ -11,7 +11,7 @@ while ! nc -z redis 6379; do
 done
 python3 manage.py collectstatic --noinput
 python3 manage.py migrate --noinput
-python3 manage.py set_webhook --url=https://botmother.uz/authbot/webhook/
+python3 manage.py set_webhook --url=https://api.botmother.uz/authbot/webhook/
 
 celery -A config worker -l info &
 python manage.py sync_docker &
