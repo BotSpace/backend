@@ -15,8 +15,8 @@ class ProjectModel(AbstractBaseModel):
     name = models.CharField(verbose_name=_("name"), max_length=255)
     description = models.TextField(null=True, blank=True)
     username = models.CharField(max_length=255, null=True, blank=True)
-    avatar = models.URLField(null=True, blank=True)
-    project_members_count = models.IntegerField(default=0)
+    avatar = models.FileField(upload_to="avatar/", null=True, blank=True)
+    avatar_file_id = models.CharField(max_length=200, null=True, blank=True)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
     flow = models.JSONField(default=list)
 

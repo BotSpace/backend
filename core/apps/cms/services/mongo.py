@@ -1,6 +1,8 @@
 # type: ignore
+from django.db.models.expressions import Col
 import pymongo
 from config.env import env
+from core.apps.api.models.project import ProjectModel
 from core.apps.cms.models.cms import CollectionModel
 
 
@@ -48,3 +50,10 @@ def aggregate(collection, query: list):
 
 def get_collection_name(collection: CollectionModel) -> str:
     return "collection_%s_%s_%s" % (collection.user.pk, collection.project.pk, collection.name)
+
+
+def get_project_collection(project: ProjectModel):
+    try:
+        return CollectionModel.objects.get(project=project, name="users")
+    except CollectionModel.DoesNotExist:
+        return None

@@ -1,0 +1,2 @@
+class ReleaseBotTokenNotFound(Exception):
+    pass
