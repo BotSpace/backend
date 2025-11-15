@@ -162,4 +162,4 @@ jobs:
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
-            docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} 
+            docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} --with-registry-auth
