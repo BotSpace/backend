@@ -4,13 +4,11 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import DebugModel, ProjectModel, RelaseModel
+from core.apps.api.models import ProjectModel, RelaseModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
-from core.apps.websocket.services.events import ws_publish
-from core.domain.ws import DebugContainerStatus, EventTypes, ReleaseContainerStatus
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -26,6 +24,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
                 FieldModel(collection=collection, name="chat_id", type=FieldType.NUMBER.value, required=True),
                 FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
+                FieldModel(collection=collection, name="created_at", type=FieldType.TEXT.value, required=True),
             ]
         )
         logging.info(
