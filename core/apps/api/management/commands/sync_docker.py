@@ -1,7 +1,7 @@
 # type: ignore
 from typing import Any
 from core.apps.api.models.project import DebugModel, RelaseModel
-from core.apps.api.services.docker_service import client, convert_status, get_service_status
+from core.apps.api.services.docker_service import get_client, convert_status
 import logging
 
 from django.core.management.base import BaseCommand
@@ -14,6 +14,10 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> str | None:
         try:
+            client = get_client()
+            if client is None:
+                logging.critical("Client is None")
+                return
             for event in client.events(decode=True):
                 try:
                     if event.get("Type") != "container":

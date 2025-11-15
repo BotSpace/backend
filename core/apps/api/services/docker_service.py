@@ -2,6 +2,7 @@
 import json
 import logging
 import pathlib
+from typing import Optional
 
 import aiodocker
 from docker.types import Mount, RestartPolicy
@@ -12,16 +13,26 @@ from config.env import env
 import docker
 from core.apps.api.enums.container import ContainerStatusEnum
 
-try:
-    client = docker.from_env()
-    client.login(
-        username=env.str("DOCKER_USERNAME"),
-        password=env.str("DOCKER_PASSWORD"),
-        registry=env.str("DOCKER_REGISTRY"),
-    )
-except Exception as e:
-    print(e)
-    client = None
+
+client = None
+
+
+def get_client():
+    global client
+    if client is not None:
+        return client
+    try:
+        _client = docker.from_env()
+        _client.login(
+            username=env.str("DOCKER_USERNAME"),
+            password=env.str("DOCKER_PASSWORD"),
+            registry=env.str("DOCKER_REGISTRY"),
+        )
+        client = _client
+        return _client
+    except Exception as e:
+        logging.error("docker client error error=%s", e)
+        raise Exception("docker client error")
 
 
 async def service_logs_async(service_id):
@@ -46,7 +57,7 @@ def convert_status(status):
 
 def get_service_status(service_id):
     try:
-        state = client.services.get(service_id).tasks()[0]["Status"]["State"]
+        state = get_client().services.get(service_id).tasks()[0]["Status"]["State"]
     except Exception as _:
         return ContainerStatusEnum.STOPPED.value
     match state:
@@ -64,7 +75,7 @@ def get_service_status(service_id):
 
 def create_service(image, name, command=None, **kwargs):
     kwargs["name"] = name
-    return client.services.create(
+    return get_client().services.create(
         image=image,
         command=command,
         constraints=["node.labels.name==my"],
@@ -78,7 +89,7 @@ def create_service(image, name, command=None, **kwargs):
 
 def remove_service(service_id):
     try:
-        return client.services.get(service_id).remove()
+        return get_client().services.get(service_id).remove()
     except Exception as e:
         logging.error(e)
         print("container must be removed", e)
@@ -86,7 +97,7 @@ def remove_service(service_id):
 
 
 def create_volume(name):
-    return client.volumes.create(name=name)
+    return get_client().volumes.create(name=name)
 
 
 def get_default_env():
