@@ -134,6 +134,13 @@ def test_insert(data):
                     required=True,
                     default="Olim",
                 ),
+                FieldModel(
+                    collection=instance,
+                    name="created_at",
+                    type=FieldType.DATETIME.value,
+                    required=True,
+                    default="2025-11-15T10:54:34.738311928Z",
+                ),
             ]
         )
         response = client.post(

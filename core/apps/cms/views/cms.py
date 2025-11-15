@@ -68,7 +68,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
             "delete": DeleteDataCollectionSerializer,
         }
         action = request.query_params.get("action")
-        context = {"request": request}
+        context = {"request": request, "collection": instance}
         collection_name = get_collection_name(instance)
         if action is None:
             raise ValidationError(detail={"action": ["action query_params is required"]})
