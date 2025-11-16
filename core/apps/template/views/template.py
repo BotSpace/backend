@@ -8,6 +8,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from core.apps.template.filters.template import TemplateFilter
 from core.apps.template.models import TemplateModel, UserTemplateModel
+from core.apps.template.models.template import TemplateCategoryModel, TemplateFeatureModel
 from core.apps.template.serializers.template import (
     CreateTemplateSerializer,
     CreateUsertemplateSerializer,
@@ -15,6 +16,16 @@ from core.apps.template.serializers.template import (
     ListUsertemplateSerializer,
     RetrieveTemplateSerializer,
     RetrieveUsertemplateSerializer,
+)
+from core.apps.template.serializers.template.category import (
+    CreateTemplateCategorySerializer,
+    ListTemplateCategorySerializer,
+    RetrieveTemplateCategorySerializer,
+)
+from core.apps.template.serializers.template.feature import (
+    CreateTemplateFeatureSerializer,
+    ListTemplateFeatureSerializer,
+    RetrieveTemplateFeatureSerializer,
 )
 
 
@@ -41,6 +52,38 @@ class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
         instance.save()
         serializer = self.get_serializer(instance=instance)
         return Response(data=serializer.data)
+
+
+@extend_schema(tags=["template"])
+class TemplateCategoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
+    serializer_class = ListTemplateCategorySerializer
+    permission_classes = [AllowAny]
+
+    action_permission_classes = {}
+    action_serializer_class = {
+        "list": ListTemplateCategorySerializer,
+        "retrieve": RetrieveTemplateCategorySerializer,
+        "create": CreateTemplateCategorySerializer,
+    }
+
+    def get_queryset(self):
+        return TemplateCategoryModel.objects.all()
+
+
+@extend_schema(tags=["template"])
+class TemplateFeatureView(BaseViewSetMixin, ReadOnlyModelViewSet):
+    serializer_class = ListTemplateFeatureSerializer
+    permission_classes = [AllowAny]
+
+    action_permission_classes = {}
+    action_serializer_class = {
+        "list": ListTemplateFeatureSerializer,
+        "retrieve": RetrieveTemplateFeatureSerializer,
+        "create": CreateTemplateFeatureSerializer,
+    }
+
+    def get_queryset(self):
+        return TemplateFeatureModel.objects.all()
 
 
 @extend_schema(tags=["usertemplate"])
