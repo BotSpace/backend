@@ -86,7 +86,7 @@ class TemplateFeatureView(BaseViewSetMixin, ReadOnlyModelViewSet):
         return TemplateFeatureModel.objects.all()
 
 
-@extend_schema(tags=["usertemplate"])
+@extend_schema(tags=["template"])
 class UsertemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
     queryset = UserTemplateModel.objects.all()
     serializer_class = ListUsertemplateSerializer
