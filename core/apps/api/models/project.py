@@ -120,6 +120,10 @@ class EnviromentModel(AbstractBaseModel):
     key = models.CharField(verbose_name=_("name"), max_length=255)
     value = models.CharField(_("value"), max_length=255)
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._key = self.key
+
     def __str__(self):
         return str(self.pk)
 

@@ -5,10 +5,12 @@ from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import ProjectModel, RelaseModel
+from core.apps.api.models.project import EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
+from core.apps.api.tasks.bot import sync_bot
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -55,3 +57,9 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
         instance.service_id = service.id
         instance.status = ContainerStatusEnum.INIT.value
         instance.save()
+
+
+@receiver(post_save, sender=EnviromentModel)
+def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
+    if instance.key == "RELEASE_BOT_TOKEN" and instance._value != instance.value:
+        sync_bot.delay()
