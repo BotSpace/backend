@@ -1,10 +1,11 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 
-from core.apps.template.models import TemplateModel, UserTemplateModel
+from core.apps.template.models import TemplateModel
 
 
 class TemplateFilter(filters.FilterSet):
-    name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    search = filters.CharFilter(method="filter_search")
     price = filters.RangeFilter(field_name="original_price")
 
     class Meta:
@@ -12,6 +13,9 @@ class TemplateFilter(filters.FilterSet):
         fields = [
             "categories",
             "features",
-            "short_description",
-            "description",
         ]
+
+    def filter_search(self, queryset, name, value):
+        return queryset.filter(
+            Q(description=value) | Q(short_description=value | Q(name=value)),
+        )
