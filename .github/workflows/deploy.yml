@@ -161,7 +161,8 @@ jobs:
               "PORT=${{ vars.PORT }}" \
               "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" \
               "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
-              "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}"
+              "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}" \
+              "PROTOCOL_HTTPS=true"
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
