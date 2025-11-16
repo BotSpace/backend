@@ -24,3 +24,4 @@ class RetrieveDebugSerializer(BaseDebugSerializer):
 
 class CreateDebugSerializer(BaseDebugSerializer):
     class Meta(BaseDebugSerializer.Meta): ...
+

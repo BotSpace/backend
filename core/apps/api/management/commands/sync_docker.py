@@ -69,7 +69,11 @@ class Command(BaseCommand):
                         logging.info("debug status change status=%s service=%s", status, service.pk)
                         ws_publish(
                             service.project.owner.id,
-                            DebugContainerStatus(project=service.project.id, status=service.status),
+                            DebugContainerStatus(
+                                project=service.project.id,
+                                status=service.status,
+                                service_id=service.service_id,
+                            ),
                             EventTypes.DEBUG_STATUS,
                         )
                     if service_type == "release":
@@ -77,7 +81,10 @@ class Command(BaseCommand):
                         ws_publish(
                             service.project.owner.id,
                             ReleaseContainerStatus(
-                                project=service.project.id, status=service.status, version=service.version
+                                project=service.project.id,
+                                status=service.status,
+                                version=service.version,
+                                service_id=service.service_id,
                             ),
                             EventTypes.RELEASE_STATUS,
                         )

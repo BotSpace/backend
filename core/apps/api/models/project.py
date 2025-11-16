@@ -94,7 +94,7 @@ class DebugModel(AbstractBaseModel):
     flow_hash = models.CharField(max_length=255, null=True, blank=True)
     service_id = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(
-        max_length=255, default=ContainerStatusEnum.PENDING.value, choices=ContainerStatusEnum.choices
+        max_length=255, default=ContainerStatusEnum.STOPPED.value, choices=ContainerStatusEnum.choices
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

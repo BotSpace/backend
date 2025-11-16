@@ -68,6 +68,11 @@ PAGES = [
                 "icon": "group",
                 "link": reverse_lazy("admin:template_templatecategorymodel_changelist"),
             },
+            {
+                "title": _("Orders"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templateordermodel_changelist"),
+            },
         ],
     },
 ]

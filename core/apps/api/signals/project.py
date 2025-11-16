@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import ProjectModel, RelaseModel
-from core.apps.api.models.project import EnviromentModel
+from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.cms.enums.cms import FieldType
@@ -16,6 +16,7 @@ from core.apps.api.tasks.bot import sync_bot
 @receiver(post_save, sender=ProjectModel)
 def ProjectSignal(sender, instance, created, **kwargs):
     if created:
+        DebugModel.objects.create(project=instance)
         collection = CollectionModel.objects.create(
             name="users",
             user=instance.owner,

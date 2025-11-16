@@ -8,5 +8,8 @@ from core.apps.template.models import TemplateOrderModel
 class TemplateOrderAdmin(ModelAdmin):
     list_display = (
         "id",
-        "__str__",
+        "user__first_name",
+        "template__name",
+        "status",
+        "payment_status",
     )

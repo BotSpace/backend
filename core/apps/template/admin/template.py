@@ -30,6 +30,7 @@ class TemplateAdmin(ModelAdmin):
         "discount_type",
         "views",
         "likes",
+        "is_verify",
         "created_at",
     )
 

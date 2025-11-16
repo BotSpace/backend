@@ -21,7 +21,9 @@ class TemplateModel(AbstractBaseModel):
     video = models.FileField(upload_to="template-video/", null=True, blank=True)
     short_description = models.TextField(_("short description"))
     description = models.TextField(_("description"))
-    flow = models.JSONField(verbose_name=_("flow"), default=list, null=True, blank=True, encoder=PrettyJSONEncoder)
+    flow = models.JSONField(
+        verbose_name=_("flow"), default={"nodes": [], "edges": []}, null=True, blank=True, encoder=PrettyJSONEncoder
+    )
     original_price = models.DecimalField(verbose_name=_("price"), max_digits=20, decimal_places=2)
     discount = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0.00"))
     features = models.ManyToManyField("TemplateFeatureModel", null=True, blank=True)

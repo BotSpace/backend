@@ -6,6 +6,7 @@ from core.apps.api.serializers.project.debug import CreateDebugSerializer, Retri
 from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.cms.services.mongo import get_project_collection
+from core.apps.template.models import TemplateModel
 
 
 class BaseProjectSerializer(serializers.ModelSerializer):
@@ -73,11 +74,8 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "flow",
         ]
 
-    def create(self, validated_data: dict):
-        if "debug" in validated_data:
-            debug = validated_data.pop("debug")
-        else:
-            debug = {}
-        instance = super().create(validated_data)
-        DebugModel.objects.create(project=instance, **debug)
-        return instance
+
+class CreateProjectFromTemplate(serializers.Serializer):
+    template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all())
+    name = serializers.CharField(max_length=255)
+    token = serializers.CharField(max_length=255)

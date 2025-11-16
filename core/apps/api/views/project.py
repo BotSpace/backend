@@ -24,10 +24,12 @@ from core.apps.api.serializers.project import (
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
+from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
 from core.apps.cms.models.cms import CollectionModel
+from core.apps.template.models.order import TemplateOrderModel
 
 
 @extend_schema(tags=["project"])
@@ -43,6 +45,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "update": CreateProjectSerializer,
         "debug": CreateDebugSerializer,
         "info": ListDebugSerializer,
+        "create_from_template": CreateProjectFromTemplate,
     }
 
     def __init__(self, **kwargs) -> None:
@@ -63,6 +66,26 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             owner=self.request.user,
             flow={"nodes": [], "edges": []},
         )
+
+    @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
+    def create_from_template(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        template = data.get("template")
+        order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
+        if order is None or not order.payment_status:
+            return Response(data={"detail": _("template not purchased")})
+        instance = ProjectModel.objects.create(
+            name=data.get("name"),
+            flow=template.flow,
+            owner=request.user,
+        )
+        EnviromentModel.objects.create(
+            key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
+        )
+        RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+        return Response(data=ListProjectSerializer(instance=instance).data)
 
     @action(methods=["GET"], detail=True, url_name="dashboard", url_path="dashboard")
     def dashboard(self, request, pk):
