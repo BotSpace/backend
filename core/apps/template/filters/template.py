@@ -17,5 +17,5 @@ class TemplateFilter(filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
-            Q(description=value) | Q(short_description=value | Q(name=value)),
+            Q(description__icontains=value) | Q(short_description__icontains=value) | Q(name__icontains=value),
         )
