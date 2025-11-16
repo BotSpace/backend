@@ -4,20 +4,14 @@ from core.apps.template.models import TemplateModel, UserTemplateModel
 
 
 class TemplateFilter(filters.FilterSet):
-    # name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    price = filters.RangeFilter(field_name="original_price")
 
     class Meta:
         model = TemplateModel
         fields = [
-            "name",
-        ]
-
-
-class UsertemplateFilter(filters.FilterSet):
-    # name = filters.CharFilter(field_name="name", lookup_expr="icontains")
-
-    class Meta:
-        model = UserTemplateModel
-        fields = [
-            "name",
+            "categories",
+            "features",
+            "short_description",
+            "description",
         ]

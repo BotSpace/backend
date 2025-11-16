@@ -1,6 +1,6 @@
 from django.db import models
 
 
-class TemplateTypeEnum(models.TextChoices):
+class DiscountTypeEnum(models.TextChoices):
     PERCENT = "percent"
     AMOUNT = "amount"
