@@ -6,6 +6,7 @@ from django.db import models
 from unfold.contrib.forms.widgets import WysiwygWidget
 
 from core.apps.template.models.template import TemplateCategoryModel, TemplateFeatureModel, TemplateLikeModel
+from unfold.decorators import display
 
 
 @admin.register(TemplateModel)
@@ -22,9 +23,19 @@ class TemplateAdmin(ModelAdmin):
         }
     }
     list_display = (
-        "id",
-        "__str__",
+        "name",
+        "author",
+        "original_price",
+        "discount",
+        "discount_type",
+        "views",
+        "likes",
+        "created_at",
     )
+
+    @display()
+    def likes(self, obj) -> int:
+        return obj.likes.count()
 
 
 @admin.register(UserTemplateModel)
@@ -45,7 +56,7 @@ class TemplateFeatureAdmin(ModelAdmin):
     }
     list_display = (
         "id",
-        "__str__",
+        "name",
     )
 
 
@@ -54,7 +65,8 @@ class TemplateCategoryAdmin(ModelAdmin):
     search_fields = ["name"]
     list_display = (
         "id",
-        "__str__",
+        "name",
+        "created_at",
     )
 
 

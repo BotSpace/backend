@@ -30,7 +30,7 @@ PAGES = [
     },
     {
         "title": _("Dashboard"),
-        "separator": True,  # Top border
+        "separator": True,
         "items": [
             {
                 "title": _("Projects"),
@@ -46,6 +46,27 @@ PAGES = [
                 "title": _("Collection"),
                 "icon": "group",
                 "link": reverse_lazy("admin:cms_collectionmodel_changelist"),
+            },
+        ],
+    },
+    {
+        "title": _("Templates"),
+        "separator": True,
+        "items": [
+            {
+                "title": _("Templates"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatemodel_changelist"),
+            },
+            {
+                "title": _("Features"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatefeaturemodel_changelist"),
+            },
+            {
+                "title": _("Categories"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatecategorymodel_changelist"),
             },
         ],
     },

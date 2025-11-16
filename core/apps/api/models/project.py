@@ -122,7 +122,7 @@ class EnviromentModel(AbstractBaseModel):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._key = self.key
+        self._value = self.value
 
     def __str__(self):
         return str(self.pk)
