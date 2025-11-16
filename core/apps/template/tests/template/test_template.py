@@ -3,6 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from core.apps.template.models import TemplateModel
+import logging
 
 
 @pytest.fixture

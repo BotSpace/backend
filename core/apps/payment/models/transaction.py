@@ -5,7 +5,6 @@ from model_bakery import baker
 
 
 class TransactionModel(AbstractBaseModel):
-
     name = models.CharField(verbose_name=_("name"), max_length=255)
 
     def __str__(self):

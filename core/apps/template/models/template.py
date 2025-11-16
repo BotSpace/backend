@@ -22,11 +22,12 @@ class TemplateModel(AbstractBaseModel):
     short_description = models.TextField(_("short description"))
     description = models.TextField(_("description"))
     flow = models.JSONField(verbose_name=_("flow"), default=list, null=True, blank=True, encoder=PrettyJSONEncoder)
-    original_price = models.DecimalField(max_digits=20, decimal_places=2)
+    original_price = models.DecimalField(verbose_name=_("price"), max_digits=20, decimal_places=2)
     discount = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0.00"))
     features = models.ManyToManyField("TemplateFeatureModel", null=True, blank=True)
     categories = models.ManyToManyField("TemplateCategoryModel", null=True, blank=True)
     views = models.BigIntegerField(default=0)
+    is_verify = models.BooleanField(verbose_name=_("is verify"), default=False)
     discount_type = models.CharField(
         max_length=255,
         choices=DiscountTypeEnum.choices,
@@ -34,7 +35,7 @@ class TemplateModel(AbstractBaseModel):
     )
 
     def __str__(self):
-        return "%s - %s" % (self.name, self.author.first_name)
+        return self.name
 
     @property
     def price(self):
@@ -46,7 +47,7 @@ class TemplateModel(AbstractBaseModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls)
+        return baker.make(cls, is_verify=True)
 
     class Meta:
         db_table = "template"

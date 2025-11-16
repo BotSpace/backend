@@ -20,7 +20,6 @@ from core.apps.template.serializers.template import (
 
 @extend_schema(tags=["template"])
 class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
-    queryset = TemplateModel.objects.all()
     serializer_class = ListTemplateSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
@@ -32,6 +31,9 @@ class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
         "retrieve": RetrieveTemplateSerializer,
         "create": CreateTemplateSerializer,
     }
+
+    def get_queryset(self):
+        return TemplateModel.objects.filter(is_verify=True)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
