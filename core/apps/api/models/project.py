@@ -29,7 +29,6 @@ class ProjectModel(AbstractBaseModel):
     @classmethod
     def _create_fake(cls, owner=None):
         instance = baker.make(cls, owner=owner or User._create_fake())
-        baker.make(DebugModel, project=instance)
         return instance
 
     @property

@@ -16,7 +16,12 @@ from core.apps.api.tasks.bot import sync_bot
 @receiver(post_save, sender=ProjectModel)
 def ProjectSignal(sender, instance, created, **kwargs):
     if created:
-        DebugModel.objects.create(project=instance)
+        try:
+            if not DebugModel.objects.filter(project=instance).exists():
+                DebugModel.objects.create(project=instance)
+        except Exception as e:
+            logging.error(e)
+            pass
         collection = CollectionModel.objects.create(
             name="users",
             user=instance.owner,

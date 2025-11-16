@@ -6,6 +6,6 @@ from core.domain.ws import DebugContainerStatus, EventTypes
 def test_ws_publish():
     ws_publish(
         user_id="1",
-        schema=DebugContainerStatus(project=1, status=ContainerStatusEnum.RUNNING),
+        schema=DebugContainerStatus(project=1, status=ContainerStatusEnum.RUNNING, service_id="1111"),
         event=EventTypes.DEBUG_STATUS,
     )
