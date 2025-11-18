@@ -1,5 +1,5 @@
 # type: ignore
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiRequest, OpenApiResponse, extend_schema
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -9,6 +9,14 @@ from core.domain.ws import ResponseSchema
 
 @extend_schema(
     tags=["order"],
+    request=CreatePaymentLinkSerializer,
+    examples=[
+        OpenApiExample(
+            name="create",
+            value={"method": "click", "order": 10},
+            request_only=True,
+        )
+    ],
     responses={
         200: OpenApiResponse(
             response={
@@ -23,7 +31,7 @@ from core.domain.ws import ResponseSchema
         ),
     },
 )
-@api_view(["GET"])
+@api_view(["POST"])
 def payment_link(request):
     serializer = CreatePaymentLinkSerializer(data=request.data)
     if not serializer.is_valid():
