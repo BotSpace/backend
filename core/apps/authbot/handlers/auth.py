@@ -1,3 +1,4 @@
+import logging
 from telebot import types
 from ..management.commands.base import bot
 from django.utils.translation import gettext as _
@@ -14,16 +15,16 @@ def start_handler(message: types.Message):
 
 
 def phone_handler(message: types.Message):
-    phone = str(message.contact.phone_number).replace("+", "")
-    user, _ = BotUser.objects.get_or_create(
-        user_id=message.from_user.id,
-        phone=phone,
-        defaults={
-            "first_name": message.from_user.first_name,
-            "last_name": message.from_user.last_name,
-        },
-    )
     try:
+        phone = str(message.contact.phone_number).replace("+", "")
+        user, _ = BotUser.objects.get_or_create(
+            user_id=message.from_user.id,
+            phone=phone,
+            defaults={
+                "first_name": message.from_user.first_name,
+                "last_name": message.from_user.last_name,
+            },
+        )
         code = Code.objects.get_or_create_code(user.id)
         message = bot.send_message(
             message.chat.id,
@@ -33,4 +34,5 @@ def phone_handler(message: types.Message):
         code.message_id = message.id
         code.save()
     except Exception as e:
+        logging.critical("send confirm code error error=%s", e)
         bot.send_message(message.chat.id, str(e))
