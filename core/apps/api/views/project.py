@@ -75,7 +75,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         template = data.get("template")
         order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
         if order is None or not order.payment_status:
-            return Response(data={"detail": _("template not purchased")})
+            raise exceptions.ValidationError(detail=_("template not purchased"))
         instance = ProjectModel.objects.create(
             name=data.get("name"),
             flow=template.flow,
