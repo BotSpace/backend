@@ -57,3 +57,16 @@ def get_project_collection(project: ProjectModel):
         return CollectionModel.objects.get(project=project, name="users")
     except CollectionModel.DoesNotExist:
         return None
+
+
+def count_document(collection, query) -> int:
+    """count data count
+
+    Args:
+        collection (collection name): [TODO:description]
+        query (where query): [TODO:description]
+
+    Returns:
+        int
+    """
+    return db[collection].count_documents(query)

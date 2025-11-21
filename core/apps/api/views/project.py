@@ -2,7 +2,7 @@
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
@@ -87,6 +87,35 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
         return Response(data=ListProjectSerializer(instance=instance).data)
 
+    @extend_schema(
+        summary="Dashboard api",
+        responses={
+            200: OpenApiResponse(
+                response={
+                    "type": "object",
+                    "properties": {
+                        "total_users": {"type": "integer", "example": 100},
+                        "daily_users": {"type": "integer", "example": 50},
+                        "chart": {
+                            "type": "object",
+                            "properties": {
+                                "new_users": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "date": {"type": "string", "example": "2025-11-22"},
+                                            "value": {"type": "integer", "example": 100},
+                                        },
+                                    },
+                                }
+                            },
+                        },
+                    },
+                },
+            ),
+        },
+    )
     @action(methods=["GET"], detail=True, url_name="dashboard", url_path="dashboard")
     def dashboard(self, request, pk):
         project = self.get_object()
@@ -98,6 +127,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
                     "new_users": self.dashboardService.get_user_chart(),
                 },
                 "total_users": self.dashboardService.users_count(),
+                "daily_users": self.dashboardService.daily_users(),
             }
         )
 

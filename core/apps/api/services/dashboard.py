@@ -1,4 +1,5 @@
-from core.apps.cms.services.mongo import aggregate, get_collection_name
+from core.apps.cms.services.mongo import aggregate, count_document, get_collection_name
+from datetime import datetime, timedelta, timezone
 
 
 class DashboardService:
@@ -29,6 +30,22 @@ class DashboardService:
         if len(users) <= 0:
             return 0
         return users[0].get("total")
+
+    def daily_users(self) -> int:
+        utc5 = timezone(timedelta(hours=5))
+        today_local = datetime.now(utc5).replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_local = today_local + timedelta(days=1)
+        today = today_local.astimezone(timezone.utc)
+        tomorrow = tomorrow_local.astimezone(timezone.utc)
+        return count_document(
+            self.collection,
+            {
+                "created_at": {
+                    "$gte": today,
+                    "$lt": tomorrow,
+                }
+            },
+        )
 
     def get_user_chart(self) -> list:
         """new user chart
