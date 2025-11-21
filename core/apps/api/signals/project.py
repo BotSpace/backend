@@ -32,7 +32,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
                 FieldModel(collection=collection, name="chat_id", type=FieldType.NUMBER.value, required=True),
                 FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
-                FieldModel(collection=collection, name="created_at", type=FieldType.TEXT.value, required=True),
+                FieldModel(collection=collection, name="created_at", type=FieldType.DATETIME.value, required=True),
             ]
         )
         logging.info(
