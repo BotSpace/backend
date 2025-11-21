@@ -1,4 +1,5 @@
 # type: ignore
+from datetime import timedelta
 import json
 import logging
 import pathlib
@@ -113,6 +114,8 @@ def get_default_env():
 def deploy_service(project, prefix, flow, key, _env: list = []):
     path = "/var/lib/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+    access = tokens.AccessToken.for_user(project.owner)
+    del access["exp"]  # supper katta risk lekin bizga baribir 😂
     with open(path + "flow.json", "w") as file:
         file.write(json.dumps(flow, indent=4))
     mount = Mount(
@@ -122,7 +125,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     )
     _env.extend(get_default_env())
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
-    _env.append(f"API_TOKEN={str(tokens.AccessToken.for_user(project.owner))}")
+    _env.append(f"API_TOKEN={str(access)}")
     _env.append(f"PROJECT_ID={project.id}")
     return create_service(
         "registry.jscorp.uz/golang-engine:1.0.1",
