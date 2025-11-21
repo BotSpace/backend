@@ -1,9 +1,12 @@
 from rest_framework import serializers
 
 from core.apps.template.models import TemplateOrderModel
+from core.apps.template.serializers.template.template import RetrieveTemplateSerializer
 
 
 class BaseTemplateOrderSerializer(serializers.ModelSerializer):
+    template = RetrieveTemplateSerializer()
+
     class Meta:
         model = TemplateOrderModel
         fields = [
@@ -26,6 +29,8 @@ class RetrieveTemplateOrderSerializer(BaseTemplateOrderSerializer):
 
 
 class CreateTemplateOrderSerializer(BaseTemplateOrderSerializer):
+    template = None
+
     class Meta(BaseTemplateOrderSerializer.Meta):
         fields = [
             "id",
