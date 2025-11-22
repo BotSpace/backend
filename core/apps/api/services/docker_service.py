@@ -129,6 +129,9 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append(f"PROJECT_ID={project.id}")
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
+    _env.append("REDIS_ENABLED=true")
+    _env.append("REDIS_ADDR=redis:6379")
+    _env.append(f"REDIS_PREFIX={prefix}_{key}")
     return create_service(
         "registry.jscorp.uz/golang-engine:1.0.3",
         "%s_%s" % (prefix, key),
