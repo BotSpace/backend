@@ -4,11 +4,6 @@ from pydantic import BaseModel, ConfigDict
 from core.apps.api.enums import ContainerStatusEnum
 
 
-class ResponseSchema(BaseModel):
-    status: bool = True
-    data: Any
-
-
 class EventTypes(Enum):
     DEBUG_STATUS = "debug_status"
     RELEASE_STATUS = "release_status"

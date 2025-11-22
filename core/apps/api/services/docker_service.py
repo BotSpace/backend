@@ -3,7 +3,6 @@ from datetime import timedelta
 import json
 import logging
 import pathlib
-from typing import Optional
 
 import aiodocker
 from docker.types import Mount, RestartPolicy
@@ -80,6 +79,7 @@ def create_service(image, name, command=None, **kwargs):
         image=image,
         command=command,
         constraints=["node.labels.name==my"],
+        networks=["botmother"],
         restart_policy=RestartPolicy(
             condition="on-failure",
             max_attempts=5,
@@ -115,7 +115,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     path = "/var/lib/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
     access = tokens.AccessToken.for_user(project.owner)
-    del access["exp"]  # supper katta risk lekin bizga baribir 😂
+    access.set_exp(lifetime=timedelta(days=365 * 100))  # supper katta risk lekin bizga baribir 😂
     with open(path + "flow.json", "w") as file:
         file.write(json.dumps(flow, indent=4))
     mount = Mount(
@@ -127,8 +127,10 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
     _env.append(f"API_TOKEN={str(access)}")
     _env.append(f"PROJECT_ID={project.id}")
+    _env.append("WEBHOOK_ENABLED=true")
+    _env.append("WEBHOOK_PORT=8000")
     return create_service(
-        "registry.jscorp.uz/golang-engine:1.0.1",
+        "registry.jscorp.uz/golang-engine:1.0.2",
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,

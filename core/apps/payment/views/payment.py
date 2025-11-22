@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from core.apps.payment.serializers.payment.payment import CreatePaymentLinkSerializer
-from core.domain.ws import ResponseSchema
+from core.domain import ResponseSchema
 
 
 @extend_schema(

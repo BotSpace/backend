@@ -28,6 +28,7 @@ from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
+from core.apps.api.services.webhook import set_webhook
 from core.apps.cms.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
 
@@ -152,6 +153,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug = instance.debug
         if debug.service_id:
             remove_service(debug.service_id)
+        set_webhook(instance, "debug")
         service = deploy_service(
             instance,
             "debug",
@@ -196,6 +198,7 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get("project")
+        set_webhook(project, "release")
         relase = RelaseModel.objects.filter(
             project=project,
         ).last()

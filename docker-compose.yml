@@ -1,6 +1,9 @@
 networks:
   django:
     driver: bridge
+  botmother:
+    driver: overlay
+    external: true
 
 volumes:
   pg_data: null
@@ -23,6 +26,7 @@ services:
   web:
     networks:
       - django
+      - botmother
     build:
       context: .
       dockerfile: ./docker/Dockerfile.web

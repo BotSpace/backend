@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_core.models import AbstractBaseModel
 from model_bakery import baker
+import uuid
 
 from core.apps.api.enums.container import ContainerStatusEnum
 
@@ -19,6 +20,9 @@ class ProjectModel(AbstractBaseModel):
     avatar_file_id = models.CharField(max_length=200, null=True, blank=True)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
     flow = models.JSONField(default=list)
+
+    release_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    debug_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
