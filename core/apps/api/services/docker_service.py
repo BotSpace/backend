@@ -130,7 +130,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
     return create_service(
-        "registry.jscorp.uz/golang-engine:1.0.2",
+        "registry.jscorp.uz/golang-engine:1.0.3",
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,
