@@ -133,7 +133,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append("REDIS_ADDR=redis:6379")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
     return create_service(
-        "registry.jscorp.uz/golang-engine:1.0.3",
+        "registry.jscorp.uz/golang-engine:1.0.4",
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,
