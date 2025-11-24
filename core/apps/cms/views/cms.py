@@ -102,7 +102,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
                 return Response(data=json.loads(json_util.dumps(data)))
             elif action == "count":
                 count = count_document(collection_name, ser.validated_data.get("where", {}))
-                return Response(data={"status": True, "count": count})
+                return Response(data={"count": count})
             elif action == "update":
                 res = update(collection_name, ser.validated_data.get("where", {}), ser.validated_data.get("data"))
                 return Response(data={"modified_count": res.modified_count})
