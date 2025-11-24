@@ -159,6 +159,11 @@ class FindOneDataCollectionSerializer(BaseDataCollectionSerializer):
         return attrs
 
 
+class CountDataCollectionSerializer(BaseDataCollectionSerializer):
+    """Serializer for counting documents in collection"""
+    where = serializers.DictField(required=False)
+
+
 class DeleteDataCollectionSerializer(BaseDataCollectionSerializer):
     where = serializers.DictField(required=True)
 

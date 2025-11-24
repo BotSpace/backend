@@ -63,6 +63,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         action_seriazlier = {
             "find": FindDataCollectionSerializer,
             "find_one": FindOneDataCollectionSerializer,
+            "count": CountDataCollectionSerializer,
             "update": UpdateDataCollectionSerializer,
             "insert": AddDataCollectionSerializer,
             "delete": DeleteDataCollectionSerializer,
@@ -98,6 +99,9 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
                 if data is None:
                     return Response(data={"detail": "Not found"}, status=404)
                 return Response(data=json.loads(json_util.dumps(data)))
+            elif action == "count":
+                count = count_document(collection_name, ser.validated_data.get("where", {}))
+                return Response(data={"status": True, "count": count})
             elif action == "update":
                 res = update(collection_name, ser.validated_data.get("where", {}), ser.validated_data.get("data"))
                 return Response(data={"modified_count": res.modified_count})
