@@ -120,6 +120,9 @@ class BaseDataCollectionSerializer(serializers.Serializer):
             raise ValidationError(detail={"where": ["where is not dict"]})
         for field, _value in value.items():
             if field == "_id":
+                if isinstance(_value, dict) and "$oid" in _value:
+                    value[field] = ObjectId(_value["$oid"])
+                    break
                 value[field] = ObjectId(_value)
                 break
         return value
@@ -161,6 +164,7 @@ class FindOneDataCollectionSerializer(BaseDataCollectionSerializer):
 
 class CountDataCollectionSerializer(BaseDataCollectionSerializer):
     """Serializer for counting documents in collection"""
+
     where = serializers.DictField(required=False)
 
 
