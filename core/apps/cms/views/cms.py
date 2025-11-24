@@ -19,6 +19,7 @@ from core.apps.cms.serializers.cms import (
 )
 from core.apps.cms.serializers.cms.collection import (
     AddDataCollectionSerializer,
+    CountDataCollectionSerializer,
     DeleteDataCollectionSerializer,
     FindDataCollectionSerializer,
     FindOneDataCollectionSerializer,
@@ -26,7 +27,7 @@ from core.apps.cms.serializers.cms.collection import (
     UpdateDataCollectionSerializer,
 )
 from core.apps.cms.services.collection import collection_validate_data
-from core.apps.cms.services.mongo import delete, find, find_one, get_collection_name, insert_one, update
+from core.apps.cms.services.mongo import count_document, delete, find, find_one, get_collection_name, insert_one, update
 
 
 @extend_schema(tags=["collection"])
