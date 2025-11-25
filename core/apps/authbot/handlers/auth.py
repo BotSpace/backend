@@ -15,6 +15,7 @@ def start_handler(message: types.Message):
 
 
 def phone_handler(message: types.Message):
+    from django.db import connection
     try:
         phone = str(message.contact.phone_number).replace("+", "")
         user, _ = BotUser.objects.get_or_create(
@@ -26,13 +27,15 @@ def phone_handler(message: types.Message):
             },
         )
         code = Code.objects.get_or_create_code(user.id)
-        message = bot.send_message(
+        sent_message = bot.send_message(
             message.chat.id,
             messages.you_otp.format(code.code),
             parse_mode="markdown",
         )
-        code.message_id = message.id
+        code.message_id = sent_message.id
         code.save()
+        connection.close()
     except Exception as e:
         logging.critical("send confirm code error error=%s", e)
         bot.send_message(message.chat.id, str(e))
+        connection.close()
