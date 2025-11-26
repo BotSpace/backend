@@ -23,8 +23,8 @@ class LoginView(APIView):
             phone=user.phone,
             defaults={
                 "phone": user.phone,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
+                "first_name": user.first_name if user.first_name is not None else "",
+                "last_name": user.last_name if user.last_name is not None else "",
             },
         )
         service = UserService()
@@ -32,9 +32,7 @@ class LoginView(APIView):
         bot.edit_message_text(
             chat_id=code.user.user_id,
             message_id=code.message_id,
-            text="Tasdiqlash ko'di foydalanildi 🫡 ```{}```".format(
-                datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-            ),
+            text="Tasdiqlash ko'di foydalanildi 🫡 ```{}```".format(datetime.now().strftime("%d-%m-%Y %H:%M:%S")),
             parse_mode="markdown",
         )
         code.delete()
