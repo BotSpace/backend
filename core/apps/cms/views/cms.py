@@ -23,11 +23,21 @@ from core.apps.cms.serializers.cms.collection import (
     DeleteDataCollectionSerializer,
     FindDataCollectionSerializer,
     FindOneDataCollectionSerializer,
+    InsertIfNotExists,
     UpdateCollectionSerializer,
     UpdateDataCollectionSerializer,
 )
 from core.apps.cms.services.collection import collection_validate_data
-from core.apps.cms.services.mongo import count_document, delete, find, find_one, get_collection_name, insert_one, update
+from core.apps.cms.services.mongo import (
+    count_document,
+    delete,
+    find,
+    find_one,
+    get_collection_name,
+    insert_if_not_exists,
+    insert_one,
+    update,
+)
 
 
 @extend_schema(tags=["collection"])
@@ -67,6 +77,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
             "count": CountDataCollectionSerializer,
             "update": UpdateDataCollectionSerializer,
             "insert": AddDataCollectionSerializer,
+            "insert_if_not_exists": InsertIfNotExists,
             "delete": DeleteDataCollectionSerializer,
         }
         action = request.query_params.get("action")
@@ -86,6 +97,17 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
                     return Response(data=errors, status=400)
                 inserted_id = insert_one(collection_name, ser.validated_data)
                 return Response(data={"inserted_id": str(inserted_id)})
+            elif action == "insert_if_not_exists":
+                errors, success = collection_validate_data(instance, ser.validated_data.get("data"))
+                if not success:
+                    return Response(data=errors, status=400)
+                inserted_id, created = insert_if_not_exists(collection_name, ser.validated_data)
+                return Response(
+                    data={
+                        "inserted_id": str(inserted_id),
+                        "created": created,
+                    }
+                )
             elif action == "find":
                 data = find(
                     collection_name,

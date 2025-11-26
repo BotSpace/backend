@@ -15,6 +15,15 @@ def insert_one(collection, data: dict):
     return collection.insert_one(data).inserted_id
 
 
+def insert_if_not_exists(collection, validated_data: dict) -> (str, bool):
+    data = validated_data.get("data")
+    where = validated_data.get("where")
+    collection = db[collection]
+    if collection.count_documents(where) != 0:
+        return None, False
+    return collection.insert_one(data).inserted_id, True
+
+
 def find_one(collection, where: dict):
     collection = db[collection]
     return collection.find_one(where)

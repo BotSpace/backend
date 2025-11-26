@@ -146,6 +146,11 @@ class AddDataCollectionSerializer(BaseDataCollectionSerializer):
         return validated
 
 
+class InsertIfNotExists(BaseDataCollectionSerializer):
+    where = serializers.DictField(required=True)
+    data = AddDataCollectionSerializer()
+
+
 class FindDataCollectionSerializer(BaseDataCollectionSerializer):
     limit = serializers.IntegerField(required=False)
     skip = serializers.IntegerField(required=False)
