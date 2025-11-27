@@ -8,3 +8,6 @@ class FieldType(TextChoices):
     BOOL = "bool", _("bool")
     DATETIME = "datetime", _("datetime")
     FILE = "file", _("file")
+    AUDIO = "audio", _("audio")
+    VIDEO = "video", _("video")
+    PHOTO = "photo", _("photo")
