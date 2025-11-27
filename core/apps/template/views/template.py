@@ -35,6 +35,8 @@ class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TemplateFilter
+    lookup_field = "slug"
+    lookup_url_kwarg = "slug"
 
     action_permission_classes = {}
     action_serializer_class = {
