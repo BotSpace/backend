@@ -59,7 +59,7 @@ class TemplateModel(AbstractBaseModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls, is_verify=True)
+        return baker.make(cls, is_verify=True, slug="slug")
 
     class Meta:
         db_table = "template"
