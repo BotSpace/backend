@@ -7,3 +7,4 @@ class FieldType(TextChoices):
     NUMBER = "number", _("Number")
     BOOL = "bool", _("bool")
     DATETIME = "datetime", _("datetime")
+    FILE = "file", _("file")
