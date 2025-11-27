@@ -30,6 +30,7 @@ from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
 from core.apps.api.services.webhook import set_webhook
 from core.apps.cms.models.cms import CollectionModel
+from core.apps.cms.services.mongo import get_collection_name
 from core.apps.template.models.order import TemplateOrderModel
 
 
