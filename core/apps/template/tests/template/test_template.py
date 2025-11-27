@@ -24,8 +24,8 @@ def data(api_client):
     return (
         {
             "list": reverse("template-list"),
-            "retrieve": reverse("template-detail", kwargs={"pk": instance.pk}),
-            "retrieve-not-found": reverse("template-detail", kwargs={"pk": 1000}),
+            "retrieve": reverse("template-detail", kwargs={"slug": instance.slug}),
+            "retrieve-not-found": reverse("template-detail", kwargs={"slug": 1000}),
         },
         client,
         instance,

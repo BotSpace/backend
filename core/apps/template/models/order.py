@@ -5,6 +5,7 @@ from django_core.models import AbstractBaseModel
 from model_bakery import baker
 
 from core.apps.template.enums.order import TemplateOrderStatusEnum
+from core.apps.template.models.template import TemplateModel
 
 User = get_user_model()
 
@@ -23,7 +24,7 @@ class TemplateOrderModel(AbstractBaseModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls, _fill_optional=True)
+        return baker.make(cls, _fill_optional=True, template=TemplateModel._baker())
 
     class Meta:
         db_table = "templae_order"
