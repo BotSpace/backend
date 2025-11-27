@@ -18,6 +18,7 @@ class BaseTemplateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "slug",
             "image",
             "price",
             "views",
@@ -41,6 +42,7 @@ class RetrieveTemplateSerializer(BaseTemplateSerializer):
         fields = [
             "id",
             "name",
+            "slug",
             "image",
             "video",
             "short_description",
