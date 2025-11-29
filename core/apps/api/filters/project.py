@@ -1,6 +1,6 @@
 from django_filters import rest_framework as filters
 
-from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel, ResourceModel
 
 
 class ProjectFilter(filters.FilterSet):
@@ -38,6 +38,16 @@ class EnviromentFilter(filters.FilterSet):
 
     class Meta:
         model = EnviromentModel
+        fields = [
+            "name",
+        ]
+
+
+class ResourceFilter(filters.FilterSet):
+    # name = filters.CharFilter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = ResourceModel
         fields = [
             "name",
         ]

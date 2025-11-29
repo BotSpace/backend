@@ -1,6 +1,6 @@
 from modeltranslation.translator import TranslationOptions, register
 
-from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import BotModel, EnviromentModel, ProjectModel, RelaseModel, ResourceModel
 
 
 @register(ProjectModel)
@@ -20,4 +20,9 @@ class RelaseTranslation(TranslationOptions):
 
 @register(EnviromentModel)
 class EnviromentTranslation(TranslationOptions):
+    fields = []
+
+
+@register(ResourceModel)
+class ResourceTranslation(TranslationOptions):
     fields = []

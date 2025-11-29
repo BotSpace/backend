@@ -3,9 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.webhook import BotWebhookView
 
-from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView
+from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
 router = DefaultRouter()
+router.register("resource", ResourceView, basename="resource")
 router.register("file", FileView, basename="file")
 router.register("enviroment", EnviromentView, basename="enviroment")
 router.register("relase", ReleaseView, basename="relase")
