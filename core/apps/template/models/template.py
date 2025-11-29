@@ -4,11 +4,10 @@ from django_core.models import AbstractBaseModel
 from model_bakery import baker
 from django.contrib.auth import get_user_model
 from decimal import Decimal
-from django.contrib.postgres.indexes import GinIndex
+from django.utils.text import slugify
 
 from core.apps.template.enums.template import DiscountTypeEnum
 from core.utils.encoder import PrettyJSONEncoder
-from django.contrib.postgres.search import SearchVector
 
 
 User = get_user_model()
@@ -17,6 +16,7 @@ User = get_user_model()
 class TemplateModel(AbstractBaseModel):
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(verbose_name=_("name"), max_length=255)
+    slug = models.SlugField(unique=True, null=True, blank=True)
     image = models.ImageField(_("image"), upload_to="template/")
     video = models.FileField(upload_to="template-video/", null=True, blank=True)
     short_description = models.TextField(_("short description"))
@@ -39,6 +39,16 @@ class TemplateModel(AbstractBaseModel):
     def __str__(self):
         return self.name
 
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None) -> None:
+        if self.slug is None:
+            self.slug = slugify(self.name)
+        return super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
+
     @property
     def price(self):
         if self.discount == Decimal("0.00"):
@@ -49,7 +59,7 @@ class TemplateModel(AbstractBaseModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls, is_verify=True)
+        return baker.make(cls, is_verify=True, slug="slug")
 
     class Meta:
         db_table = "template"

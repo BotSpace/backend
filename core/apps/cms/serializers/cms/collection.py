@@ -5,6 +5,7 @@ from bson import ObjectId
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from core.apps.api.services.file import file_exists
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models import CollectionModel
 from core.apps.cms.models.cms import FieldModel
@@ -148,8 +149,8 @@ class AddDataCollectionSerializer(BaseDataCollectionSerializer):
                 FieldType.FILE.value,
                 FieldType.PHOTO.value,
             ]:
-                if value.size > 20:
-                    ValidationError(detail={field: "File size is larger than 20 MB."})
+                if not file_exists(value):
+                    raise ValidationError(detail={field: "invalid file uuid"})
             validated[field] = value
         return validated
 
