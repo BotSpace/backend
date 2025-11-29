@@ -5,6 +5,8 @@ from model_bakery import baker
 import uuid
 from django.contrib.auth import get_user_model
 
+from core.apps.api.enums.file import FileTypeEnum
+
 
 UserModel = get_user_model()
 
@@ -14,6 +16,7 @@ class FileModel(AbstractBaseModel):
     file = models.FileField(upload_to="media/")
     uuid = models.UUIDField(default=uuid.uuid4)
     filesize = models.BigIntegerField(blank=True, null=True)
+    filetype = models.CharField(choices=FileTypeEnum.choices, default=FileTypeEnum.FILE.value)
 
     def __str__(self):
         return str(self.pk)

@@ -2,6 +2,7 @@ from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.mixins import (
     CreateModelMixin,
     ListModelMixin,
@@ -28,6 +29,10 @@ class FileView(
     permission_classes = [IsAuthenticated]
     lookup_field = "uuid"
     lookup_url_kwarg = "uuid"
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = [
+        "filetype",
+    ]
 
     action_permission_classes = {}
     action_serializer_class = {
