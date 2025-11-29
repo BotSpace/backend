@@ -13,7 +13,7 @@ def instance(db):
 @pytest.fixture
 def api_client(instance):
     client = APIClient()
-    ##client.force_authenticate(user=instance.user)
+    client.force_authenticate(user=instance.user)
     return client, instance
 
 
@@ -23,8 +23,8 @@ def data(api_client):
     return (
         {
             "list": reverse("file-list"),
-            "retrieve": reverse("file-detail", kwargs={"pk": instance.pk}),
-            "retrieve-not-found": reverse("file-detail", kwargs={"pk": 1000}),
+            "retrieve": reverse("file-detail", kwargs={"uuid": instance.uuid}),
+            "retrieve-not-found": reverse("file-detail", kwargs={"uuid": 1000}),
         },
         client,
         instance,
