@@ -6,8 +6,8 @@ from .logs import *  # noqa
 from .rest_framework import *  # noqa
 from .unfold import *  # noqa
 from .spectacular import *  # noqa
+from .engine import *  # noqa
 
 from .ckeditor import *  # noqa
 from .storage import *  # noqa
 from .channels import *  # noqa
-

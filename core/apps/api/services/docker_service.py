@@ -5,6 +5,7 @@ import logging
 import pathlib
 
 import aiodocker
+from django.conf import settings
 from docker.types import Mount, RestartPolicy
 from rest_framework_simplejwt import tokens
 import os
@@ -133,7 +134,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append("REDIS_ADDR=redis:6379")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
     return create_service(
-        "registry.jscorp.uz/golang-engine:1.0.6",
+        "registry.jscorp.uz/golang-engine:%s" % settings.ENGINE_VERSION,
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,
