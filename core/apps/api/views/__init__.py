@@ -1,4 +1,5 @@
+from .docker import *  # noqa
+from .file import *  # noqa
+from .message import *  # noqa
 from .project import *  # noqa
 from .webhook import *  # noqa
-from .message import *  # noqa
-from .docker import *  # noqa

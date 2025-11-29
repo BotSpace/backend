@@ -13,8 +13,6 @@ from core.apps.cms.services.mongo import (
     update,
 )
 from typing import Tuple
-from django.core.files.uploadedfile import UploadedFile
-from django.core.files.storage import default_storage
 
 
 class ActionService:
@@ -28,7 +26,6 @@ class ActionService:
         errors, success = collection_validate_data(self.instance, self.data)
         if not success:
             return errors, 400
-        self._upload_file()
         inserted_id = insert_one(self.collection_name, self.data)
         return {"inserted_id": str(inserted_id)}, 200
 
@@ -69,9 +66,3 @@ class ActionService:
             "inserted_id": str(inserted_id),
             "created": created,
         }, 200
-
-    def _upload_file(self):
-        for field, value in self.data.items():
-            if isinstance(value, UploadedFile):
-                file_path = default_storage.save(value.name, value)
-                self.data[field] = file_path
