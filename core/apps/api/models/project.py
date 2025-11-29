@@ -19,7 +19,7 @@ class ProjectModel(AbstractBaseModel):
     username = models.CharField(max_length=255, null=True, blank=True)
     avatar = models.FileField(upload_to="avatar/", null=True, blank=True)
     avatar_file_id = models.CharField(max_length=200, null=True, blank=True)
-    owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects", null=True, blank=True)
+    owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects")
     flow = models.JSONField(default=list)
 
     release_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
