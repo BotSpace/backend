@@ -14,6 +14,7 @@ python3 manage.py migrate --noinput
 python3 manage.py set_webhook --url=https://api.botmother.uz/authbot/webhook/
 
 celery -A config worker -l info &
+celery -A config beat -l info &
 python manage.py sync_docker &
 
 gunicorn config.asgi:application -b 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker --workers 4 # $(($(nproc) * 2 + 1))
