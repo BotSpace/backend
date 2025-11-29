@@ -68,6 +68,10 @@ def get_project_collection(project: ProjectModel):
         return None
 
 
+def delete_collection(collection):
+    return db[collection].drop()
+
+
 def count_document(collection, query) -> int:
     """count data count
 

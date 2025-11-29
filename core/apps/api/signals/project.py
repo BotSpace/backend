@@ -1,6 +1,6 @@
 import logging
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
@@ -69,3 +69,13 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
 def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
     if instance.key == "RELEASE_BOT_TOKEN" and instance._value != instance.value:
         sync_bot.delay()
+
+
+@receiver(post_delete, sender=RelaseModel)
+def delete_release(sender, instance, **kwargs):
+    remove_service(instance.service_id)
+
+
+@receiver(post_delete, sender=DebugModel)
+def delete_debug(sender, instance, **kwargs):
+    remove_service(instance.service_id)
