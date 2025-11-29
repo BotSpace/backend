@@ -11,6 +11,7 @@ class BaseFileSerializer(serializers.ModelSerializer):
             "uuid",
             "filesize",
             "filetype",
+            "project",
         ]
 
 
@@ -29,6 +30,7 @@ class CreateFileSerializer(BaseFileSerializer):
             "uuid",
             "filesize",
             "filetype",
+            "project",
         ]
         extra_kwargs = {
             "uuid": {"read_only": True},

@@ -6,6 +6,7 @@ import uuid
 from django.contrib.auth import get_user_model
 
 from core.apps.api.enums.file import FileTypeEnum
+from core.apps.api.models.project import ProjectModel
 
 
 UserModel = get_user_model()
@@ -17,6 +18,7 @@ class FileModel(AbstractBaseModel):
     uuid = models.UUIDField(default=uuid.uuid4)
     filesize = models.BigIntegerField(blank=True, null=True)
     filetype = models.CharField(choices=FileTypeEnum.choices, default=FileTypeEnum.FILE.value)
+    project = models.ForeignKey(ProjectModel, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return str(self.pk)
