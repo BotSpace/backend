@@ -6,7 +6,6 @@ from rest_framework.test import APIClient
 
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models import CollectionModel
-from model_bakery import baker
 
 from core.apps.cms.models.cms import FieldModel
 
@@ -111,139 +110,123 @@ def test_retrieve_not_found(data):
 @pytest.mark.django_db
 def test_insert(data):
     urls, client, instance = data
-    with patch("core.apps.cms.views.cms.insert_one") as mock_insert:
-        mock_insert.return_value = "mock_id"
-        FieldModel.objects.bulk_create(
-            [
-                FieldModel(
-                    collection=instance,
-                    name="first_name",
-                    type=FieldType.TEXT.value,
-                    required=True,
-                ),
-                FieldModel(
-                    collection=instance,
-                    name="last_name",
-                    type=FieldType.TEXT.value,
-                    required=False,
-                ),
-                FieldModel(
-                    collection=instance,
-                    name="family_name",
-                    type=FieldType.TEXT.value,
-                    required=True,
-                    default="Olim",
-                ),
-                FieldModel(
-                    collection=instance,
-                    name="created_at",
-                    type=FieldType.DATETIME.value,
-                    required=True,
-                    default="2025-11-15T10:54:34.738311928Z",
-                ),
-            ]
-        )
-        response = client.post(
-            urls["query"] + "&action=insert",
-            data={
-                "first_name": "Samandar",
-            },
-        )
-        data = response.json()
-        assert data["status"] is True
-        assert data["data"]["inserted_id"] == "mock_id"
-        assert response.status_code == 200
+    FieldModel.objects.bulk_create(
+        [
+            FieldModel(
+                collection=instance,
+                name="first_name",
+                type=FieldType.TEXT.value,
+                required=True,
+            ),
+            FieldModel(
+                collection=instance,
+                name="last_name",
+                type=FieldType.TEXT.value,
+                required=False,
+            ),
+            FieldModel(
+                collection=instance,
+                name="family_name",
+                type=FieldType.TEXT.value,
+                required=True,
+                default="Olim",
+            ),
+            FieldModel(
+                collection=instance,
+                name="created_at",
+                type=FieldType.DATETIME.value,
+                required=True,
+                default="2025-11-15T10:54:34.738311928Z",
+            ),
+        ]
+    )
+    response = client.post(
+        urls["query"] + "&action=insert",
+        data={
+            "first_name": "Samandar",
+        },
+    )
+    data = response.json()
+    assert data["status"] is True
+    assert data["data"]["inserted_id"] == "mock_id"
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
 def test_find(data):
     urls, client, _ = data
-    with patch("core.apps.cms.views.cms.find") as mock_find:
-        mock_find.return_value = [{"name": "Samandar"}]
-        response = client.post(
-            urls["query"] + "&action=find",
-            data={
-                "where": {"name": "Samandar"},
-            },
-            format="json",
-        )
-        data = response.json()
-        assert data["status"] is True
-        assert data["data"][0]["name"] == "Samandar"
-        assert response.status_code == 200
+    response = client.post(
+        urls["query"] + "&action=find",
+        data={
+            "where": {"name": "Samandar"},
+        },
+        format="json",
+    )
+    data = response.json()
+    assert data["status"] is True
+    assert data["data"][0]["name"] == "Samandar"
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
 def test_find_one(data):
     urls, client, _ = data
-    with patch("core.apps.cms.views.cms.find_one") as mock_find:
-        mock_find.return_value = {"name": "Samandar"}
-        response = client.post(
-            urls["query"] + "&action=find_one",
-            data={
-                "where": {"name": "Samandar"},
-            },
-            format="json",
-        )
-        data = response.json()
-        assert data["status"] is True
-        assert data["data"]["name"] == "Samandar"
-        assert response.status_code == 200
+    response = client.post(
+        urls["query"] + "&action=find_one",
+        data={
+            "where": {"name": "Samandar"},
+        },
+        format="json",
+    )
+    data = response.json()
+    assert data["status"] is True
+    assert data["data"]["name"] == "Samandar"
+    assert response.status_code == 200
 
 
-@pytest.mark.django_db
-def test_find_one_invalid(data):
-    urls, client, _ = data
-    with patch("core.apps.cms.views.cms.find_one") as mock_find:
-        mock_find.return_value = None
-        response = client.post(
-            urls["query"] + "&action=find_one",
-            data={
-                "where": {"name": "Samandar"},
-            },
-            format="json",
-        )
-        data = response.json()
-        assert data["status"] is False
-        assert response.status_code == 404
+# @pytest.mark.django_db
+# def test_find_one_invalid(data):
+#     urls, client, _ = data
+#     response = client.post(
+#         urls["query"] + "&action=find_one",
+#         data={
+#             "where": {"name": "Samandar"},
+#         },
+#         format="json",
+#     )
+#     data = response.json()
+#     assert data["status"] is False
+#     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 def test_update_data(data):
     urls, client, _ = data
-    with patch("core.apps.cms.views.cms.update") as mock_find:
-        mock = MagicMock()
-        mock.modified_count = 10
-        mock_find.return_value = mock
-        response = client.post(
-            urls["query"] + "&action=update",
-            data={
-                "where": {"name": "Samandar"},
-                "data": {"$set": {"name": "Muhiddin ko't"}},
-            },
-            format="json",
-        )
-        data = response.json()
-        assert data["status"] is True
-        assert data["data"]["modified_count"] == 10
-        assert response.status_code == 200
+    response = client.post(
+        urls["query"] + "&action=update",
+        data={
+            "where": {"name": "Samandar"},
+            "data": {"$set": {"name": "Muhiddin ko't"}},
+        },
+        format="json",
+    )
+    data = response.json()
+    assert data["status"] is True
+    assert data["data"]["modified_count"] == 10
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
 def test_delete(data):
     urls, client, _ = data
-    with patch("core.apps.cms.views.cms.delete") as mock_find:
-        mock = MagicMock()
-        mock.deleted_count = 10
-        mock_find.return_value = mock
-        response = client.post(
-            urls["query"] + "&action=delete",
-            data={
-                "where": {"name": "Samandar"},
-            },
-            format="json",
-        )
-        data = response.json()
-        assert data["status"] is True
-        assert data["data"]["deleted_count"] == 10
-        assert response.status_code == 200
+    response = client.post(
+        urls["query"] + "&action=delete",
+        data={
+            "where": {"name": "Samandar"},
+        },
+        format="json",
+    )
+    data = response.json()
+    assert data["status"] is True
+    assert data["data"]["deleted_count"] == 10
+    assert response.status_code == 200

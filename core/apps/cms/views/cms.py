@@ -27,6 +27,7 @@ from core.apps.cms.serializers.cms.collection import (
     UpdateCollectionSerializer,
     UpdateDataCollectionSerializer,
 )
+from core.apps.cms.services.action import ActionService
 from core.apps.cms.services.collection import collection_validate_data
 from core.apps.cms.services.mongo import (
     count_document,
@@ -82,7 +83,6 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         }
         action = request.query_params.get("action")
         context = {"request": request, "collection": instance}
-        collection_name = get_collection_name(instance)
         if action is None:
             raise ValidationError(detail={"action": ["action query_params is required"]})
         if action not in action_seriazlier:
@@ -90,54 +90,24 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
 
         ser = action_seriazlier.get(action)(context=context, data=request.data)
         ser.is_valid(raise_exception=True)
+        action_service = ActionService(instance, ser.validated_data)
+        actions = {
+            "insert": action_service.insert,
+            "delete": action_service.delete,
+            "insert_if_not_exists": action_service.insert_if_not_exists,
+            "update": action_service.update,
+            "find": action_service.find,
+            "find_one": action_service.find_one,
+            "count": action_service.count,
+        }
         try:
-            if action == "insert":
-                errors, success = collection_validate_data(instance, ser.validated_data)
-                if not success:
-                    return Response(data=errors, status=400)
-                inserted_id = insert_one(collection_name, ser.validated_data)
-                return Response(data={"inserted_id": str(inserted_id)})
-            elif action == "insert_if_not_exists":
-                errors, success = collection_validate_data(instance, ser.validated_data.get("data"))
-                if not success:
-                    return Response(data=errors, status=400)
-                inserted_id, created = insert_if_not_exists(collection_name, ser.validated_data)
-                return Response(
-                    data={
-                        "inserted_id": str(inserted_id),
-                        "created": created,
-                    }
-                )
-            elif action == "find":
-                data = find(
-                    collection_name,
-                    where=ser.validated_data.get("where", {}),
-                    limit=ser.validated_data.get("limit", None),
-                    _sort=ser.validated_data.get("sort", None),
-                    skip=ser.validated_data.get("skip", None),
-                )
-                return Response(data=json.loads(json_util.dumps(data)))
-            elif action == "find_one":
-                data = find_one(collection_name, where=ser.validated_data.get("where", {}))
-                if data is None:
-                    return Response(data={"detail": "Not found"}, status=404)
-                return Response(data=json.loads(json_util.dumps(data)))
-            elif action == "count":
-                count = count_document(collection_name, ser.validated_data.get("where", {}))
-                return Response(data={"count": count})
-            elif action == "update":
-                res = update(collection_name, ser.validated_data.get("where", {}), ser.validated_data.get("data"))
-                return Response(data={"modified_count": res.modified_count})
-            elif action == "delete":
-                res = delete(collection_name, ser.validated_data.get("where", {}))
-                return Response(data={"deleted_count": res.deleted_count})
-            raise ValidationError(detail={"action": ["Invalid action"]})
+            action_handler = actions.get(action, None)
+            if action_handler is None:
+                raise ValidationError(detail={"action": ["Invalid action"]})
+            response, status_code = action_handler()
+            return Response(data=response, status=status_code)
         except Exception as e:
             logging.exception(
                 "Collection data %s error: %s" % (action, str(e)),
             )
-            return Response(
-                data={
-                    "detail": str(e),
-                }
-            )
+            return Response(data={"detail": str(e)}, status=500)

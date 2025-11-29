@@ -142,6 +142,14 @@ class AddDataCollectionSerializer(BaseDataCollectionSerializer):
             if instance.type == FieldType.DATETIME.value:
                 validated[field] = to_datetime_safe(value)
                 continue
+            elif instance.type in [
+                FieldType.AUDIO.value,
+                FieldType.VIDEO.value,
+                FieldType.FILE.value,
+                FieldType.PHOTO.value,
+            ]:
+                if value.size > 20:
+                    ValidationError(detail={field: "File size is larger than 20 MB."})
             validated[field] = value
         return validated
 
