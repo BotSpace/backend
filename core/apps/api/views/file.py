@@ -24,7 +24,6 @@ class FileView(
     DestroyModelMixin,
     GenericViewSet,
 ):
-    queryset = FileModel.objects.all()
     serializer_class = ListFileSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = "uuid"
@@ -36,6 +35,9 @@ class FileView(
         "retrieve": RetrieveFileSerializer,
         "create": CreateFileSerializer,
     }
+
+    def get_queryset(self):
+        return FileModel.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
