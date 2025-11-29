@@ -9,6 +9,7 @@ class BaseFileSerializer(serializers.ModelSerializer):
         fields = [
             "file",
             "uuid",
+            "filesize",
         ]
 
 
