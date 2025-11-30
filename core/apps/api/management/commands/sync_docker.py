@@ -52,7 +52,7 @@ class Command(BaseCommand):
                     elif service_type == "release":
                         try:
                             service = RelaseModel.objects.get(service_id=service_id)
-                        except DebugModel.DoesNotExist:
+                        except RelaseModel.DoesNotExist:
                             logging.info(
                                 "release model instance not found service=%s event=%s status=%s",
                                 service_id,

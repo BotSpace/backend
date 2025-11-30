@@ -10,7 +10,7 @@ from core.apps.payment.models.history import HistoryModel
 
 @shared_task
 def proccess_payment():
-    for project in ProjectModel.objects.filter(pk=16):
+    for project in ProjectModel.objects.all():
         try:
             uresource = project_uresources(project, time=timedelta(hours=1))
             storage = get_project_storage(project)
