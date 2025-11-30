@@ -4,13 +4,14 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import ProjectModel, RelaseModel, ResourceModel, StorageResourceModel
+from core.apps.api.models import ProjectModel, RelaseModel
 from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
+from core.services.redis_service import client as redis_client
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -64,6 +65,9 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
         instance.status = ContainerStatusEnum.INIT.value
         instance.save()
 
+        # Invalidate webhook cache for this release
+        invalidate_webhook_cache(instance.project, "release")
+
 
 @receiver(post_save, sender=EnviromentModel)
 def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
@@ -79,3 +83,24 @@ def delete_release(sender, instance, **kwargs):
 @receiver(post_delete, sender=DebugModel)
 def delete_debug(sender, instance, **kwargs):
     remove_service(instance.service_id)
+
+
+def invalidate_webhook_cache(project: ProjectModel, mode: str):
+    """Invalidate webhook cache in Redis when release is updated
+
+    Args:
+        project: ProjectModel instance
+        mode: 'release' or 'debug'
+    """
+    try:
+        if mode == "release":
+            cache_key = f"webhook:service:release:{project.release_webhook_uuid}"
+            redis_client.delete(cache_key)
+            logging.info(
+                "Webhook cache invalidated for release project=%s uuid=%s",
+                project.id,
+                project.release_webhook_uuid,
+            )
+        # Debug mode doesn't use cache, so no need to invalidate
+    except Exception as e:
+        logging.error("Failed to invalidate webhook cache: %s", e)

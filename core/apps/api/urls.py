@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
+from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -17,4 +18,7 @@ urlpatterns = [
     path("", include(router.urls)),
     path("bot-webhook/<str:method>/<str:uuid>/", BotWebhookView.as_view(), name="bot-webhook"),
     re_path(r"^used(?:/(?P<project_id>[0-9]+))?/$", UsedView.as_view(), name="project-used"),
+    # Internal endpoints for Golang webhook service
+    path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
+    path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
 ]
