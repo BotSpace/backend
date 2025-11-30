@@ -80,13 +80,21 @@ def delete_release(sender, instance, **kwargs):
     remove_service(instance.service_id)
 
 
+@receiver(post_save, sender=DebugModel)
+def DebugSignal(sender, instance: DebugModel, created, **kwargs):
+    """Signal for DebugModel changes - invalidate cache when debug is updated"""
+    # Invalidate webhook cache for debug mode
+    # Even though debug doesn't use cache, we invalidate to ensure consistency
+    invalidate_webhook_cache(instance.project, "debug")
+
+
 @receiver(post_delete, sender=DebugModel)
 def delete_debug(sender, instance, **kwargs):
     remove_service(instance.service_id)
 
 
 def invalidate_webhook_cache(project: ProjectModel, mode: str):
-    """Invalidate webhook cache in Redis when release is updated
+    """Invalidate webhook cache in Redis when release or debug is updated
 
     Args:
         project: ProjectModel instance
@@ -101,6 +109,15 @@ def invalidate_webhook_cache(project: ProjectModel, mode: str):
                 project.id,
                 project.release_webhook_uuid,
             )
-        # Debug mode doesn't use cache, so no need to invalidate
+        elif mode == "debug":
+            # Debug mode doesn't use cache, but we invalidate for consistency
+            # In case webhook service implementation changes in the future
+            cache_key = f"webhook:service:debug:{project.debug_webhook_uuid}"
+            redis_client.delete(cache_key)
+            logging.info(
+                "Webhook cache invalidated for debug project=%s uuid=%s",
+                project.id,
+                project.debug_webhook_uuid,
+            )
     except Exception as e:
         logging.error("Failed to invalidate webhook cache: %s", e)
