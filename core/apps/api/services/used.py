@@ -6,8 +6,8 @@ from core.apps.api.models.resource import ResourceModel, StorageResourceModel
 from core.apps.api.services.resource import (
     get_project_storage,
     get_user_storage,
-    project_used_resources,
-    user_used_resources,
+    lproject_uresources,
+    user_uresources,
 )
 from django.db.models.functions import TruncHour
 from django.utils import timezone
@@ -100,10 +100,10 @@ class UsedService:
         uresource = {}
         if self._mode == "project":
             used_storage = get_project_storage(self._project)
-            uresource = project_used_resources(self._project)
+            uresource = lproject_uresources(self._project)
         else:
             used_storage = get_user_storage(self._user)
-            uresource = user_used_resources(self._user)
+            uresource = user_uresources(self._user)
         return {
             "used_storage": used_storage,
             "used_ram": uresource.get("ram", 0),

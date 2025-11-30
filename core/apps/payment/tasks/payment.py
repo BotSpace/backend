@@ -1,0 +1,36 @@
+from datetime import timedelta
+import logging
+from celery import shared_task
+from django.conf import settings
+
+from core.apps.api.models.project import ProjectModel
+from core.apps.api.services.resource import get_project_storage, project_uresources
+from core.apps.payment.models.history import HistoryModel
+
+
+@shared_task
+def proccess_payment():
+    for project in ProjectModel.objects.filter(pk=16):
+        try:
+            uresource = project_uresources(project, time=timedelta(hours=1))
+            storage = get_project_storage(project)
+            ram_price = uresource.get("total_ram") * settings.RAM_PRICE
+            cpu_price = uresource.get("total_cpu") * settings.CPU_PRICE
+            net_tx_price = uresource.get("total_net_tx") * settings.NET_TX_PRICE
+            net_rx_price = uresource.get("total_net_rx") * settings.NET_RX_PRICE
+            storage_price = storage * settings.STORAGE_PRICE
+            total_price = ram_price + cpu_price + net_rx_price + net_tx_price + storage_price
+
+            histories = [
+                HistoryModel(type="ram", amount=ram_price, project=project),
+                HistoryModel(type="cpu", amount=cpu_price, project=project),
+                HistoryModel(type="net_tx", amount=net_tx_price, project=project),
+                HistoryModel(type="net_rx", amount=net_rx_price, project=project),
+                HistoryModel(type="storage", amount=storage_price, project=project),
+            ]
+            HistoryModel.objects.bulk_create(histories)
+            user = project.owner
+            user.balance -= total_price
+            user.save()
+        except Exception as err:
+            logging.critical("pul yechishda xato err=%s", err)
