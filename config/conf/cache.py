@@ -29,6 +29,14 @@ CACHEOPS = {
         "ops": "all",  # Barcha turdagi so'rovlarni keshga olish
         "timeout": 60 * 5,  # 5 daqiqa davomida saqlash
     },
+    "cms.*": {
+        "ops": "all",
+        "timeout": 60 * 5,
+    },
+    "template.*": {
+        "ops": "all",
+        "timeout": 60 * 5,
+    },
 }
 CACHEOPS_DEGRADE_ON_FAILURE = True
 CACHEOPS_ENABLED = env.bool("CACHE_ENABLED", False)

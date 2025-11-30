@@ -28,17 +28,6 @@ from core.apps.cms.serializers.cms.collection import (
     UpdateDataCollectionSerializer,
 )
 from core.apps.cms.services.action import ActionService
-from core.apps.cms.services.collection import collection_validate_data
-from core.apps.cms.services.mongo import (
-    count_document,
-    delete,
-    find,
-    find_one,
-    get_collection_name,
-    insert_if_not_exists,
-    insert_one,
-    update,
-)
 
 
 @extend_schema(tags=["collection"])
