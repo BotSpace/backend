@@ -4,4 +4,3 @@ from .enviroment import *  # noqa
 from .message import *  # noqa
 from .project import *  # noqa
 from .relase import *  # noqa
-from .resource import *  # noqa

@@ -21,8 +21,3 @@ class RelaseTranslation(TranslationOptions):
 @register(EnviromentModel)
 class EnviromentTranslation(TranslationOptions):
     fields = []
-
-
-@register(ResourceModel)
-class ResourceTranslation(TranslationOptions):
-    fields = []

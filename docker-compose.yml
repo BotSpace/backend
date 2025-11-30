@@ -31,6 +31,7 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile.web
     restart: always
+    command: "sh ./resources/scripts/entrypoint.sh"
     env_file:
       - .env
     environment:

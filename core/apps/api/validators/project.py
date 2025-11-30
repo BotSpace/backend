@@ -27,10 +27,3 @@ class EnviromentValidator:
 
     def __call__(self):
         return True
-
-
-class ResourceValidator:
-    def __init__(self): ...
-
-    def __call__(self):
-        return True

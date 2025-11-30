@@ -147,27 +147,3 @@ class EnviromentModel(AbstractBaseModel):
         verbose_name = _("EnviromentModel")
         verbose_name_plural = _("EnviromentModels")
         constraints = [models.UniqueConstraint(fields=["key", "project"], name="unique_project_key_project")]
-
-
-class ResourceModel(AbstractBaseModel):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE)
-    hostname = models.CharField()
-
-    ram = models.IntegerField()
-    cpu = models.IntegerField()
-    net_rx = models.BigIntegerField()
-    net_tx = models.BigIntegerField()
-
-    def __str__(self):
-        return str(self.pk)
-
-    @classmethod
-    def _baker(cls):
-        return baker.make(cls)
-
-    class Meta:
-        db_table = "resource"
-        verbose_name = _("ResourceModel")
-        verbose_name_plural = _("ResourceModels")

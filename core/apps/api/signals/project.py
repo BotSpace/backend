@@ -4,7 +4,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import ProjectModel, RelaseModel, ResourceModel
+from core.apps.api.models import ProjectModel, RelaseModel, ResourceModel, StorageResourceModel
 from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
@@ -79,7 +79,3 @@ def delete_release(sender, instance, **kwargs):
 @receiver(post_delete, sender=DebugModel)
 def delete_debug(sender, instance, **kwargs):
     remove_service(instance.service_id)
-
-
-@receiver(post_save, sender=ResourceModel)
-def ResourceSignal(sender, instance, created, **kwargs): ...

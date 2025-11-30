@@ -1,7 +1,12 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 
-from core.apps.api.models import DebugModel, EnviromentModel, ProjectModel, RelaseModel, ResourceModel
+from core.apps.api.models import (
+    DebugModel,
+    EnviromentModel,
+    ProjectModel,
+    RelaseModel,
+)
 
 
 class DebugInline(TabularInline):
@@ -43,11 +48,3 @@ class ReleaseAdmin(ModelAdmin):
         "service_id",
         "status",
     ]
-
-
-@admin.register(ResourceModel)
-class ResourceAdmin(ModelAdmin):
-    list_display = (
-        "id",
-        "__str__",
-    )

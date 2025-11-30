@@ -11,20 +11,17 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, ResourceModel
+from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
 from core.apps.api.serializers.project import (
     CreateEnviromentSerializer,
     CreateProjectSerializer,
     CreateRelaseSerializer,
-    CreateResourceSerializer,
     ListEnviromentSerializer,
     ListProjectSerializer,
     ListRelaseSerializer,
-    ListResourceSerializer,
     RetrieveEnviromentSerializer,
     RetrieveProjectSerializer,
     RetrieveRelaseSerializer,
-    RetrieveResourceSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 from core.apps.api.serializers.project.project import CreateProjectFromTemplate
@@ -240,22 +237,3 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
             raise exceptions.ValidationError(detail={"project": [_("project is required")]})
         queryset = EnviromentModel.objects.filter(project=project, user=self.request.user)
         return queryset
-
-
-@extend_schema(tags=["resource"])
-class ResourceView(BaseViewSetMixin, ModelViewSet):
-    serializer_class = ListResourceSerializer
-    permission_classes = [IsAuthenticated]
-
-    action_permission_classes = {}
-    action_serializer_class = {
-        "list": ListResourceSerializer,
-        "retrieve": RetrieveResourceSerializer,
-        "create": CreateResourceSerializer,
-    }
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    def get_queryset(self):
-        return ResourceModel.objects.filter(user=self.request.user)

@@ -18,7 +18,7 @@ class FileModel(AbstractBaseModel):
     uuid = models.UUIDField(default=uuid.uuid4)
     filesize = models.BigIntegerField(blank=True, null=True)
     filetype = models.CharField(choices=FileTypeEnum.choices, default=FileTypeEnum.FILE.value)
-    project = models.ForeignKey(ProjectModel, on_delete=models.SET_NULL, null=True, blank=True)
+    project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE, null=False, blank=False)
 
     def __str__(self):
         return str(self.pk)
