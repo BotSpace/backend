@@ -14,11 +14,18 @@ def proccess_payment():
         try:
             uresource = project_uresources(project, time=timedelta(hours=1))
             storage = get_project_storage(project)
-            ram_price = uresource.get("total_ram") * settings.RAM_PRICE
-            cpu_price = uresource.get("total_cpu") * settings.CPU_PRICE
-            net_tx_price = uresource.get("total_net_tx") * settings.NET_TX_PRICE
-            net_rx_price = uresource.get("total_net_rx") * settings.NET_RX_PRICE
+            ram = uresource.get("total_ram") or 0
+            cpu = uresource.get("total_cpu") or 0
+            net_tx = uresource.get("total_net_tx") or 0
+            net_rx = uresource.get("total_net_rx") or 0
+            storage = storage or 0
+
+            ram_price = ram * settings.RAM_PRICE
+            cpu_price = cpu * settings.CPU_PRICE
+            net_tx_price = net_tx * settings.NET_TX_PRICE
+            net_rx_price = net_rx * settings.NET_RX_PRICE
             storage_price = storage * settings.STORAGE_PRICE
+
             total_price = ram_price + cpu_price + net_rx_price + net_tx_price + storage_price
 
             histories = [
