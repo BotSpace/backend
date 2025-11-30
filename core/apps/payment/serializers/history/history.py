@@ -8,7 +8,10 @@ class BaseHistorySerializer(serializers.ModelSerializer):
         model = HistoryModel
         fields = [
             "id",
-            "name",
+            "amount",
+            "type",
+            "comment",
+            "project",
         ]
 
 
@@ -24,5 +27,8 @@ class CreateHistorySerializer(BaseHistorySerializer):
     class Meta(BaseHistorySerializer.Meta):
         fields = [
             "id",
-            "name",
+            "amount",
+            "type",
+            "comment",
+            "project",
         ]
