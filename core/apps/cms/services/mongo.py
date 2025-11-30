@@ -58,7 +58,7 @@ def aggregate(collection, query: list):
 
 
 def get_collection_name(collection: CollectionModel) -> str:
-    return "collection_%s_%s_%s" % (collection.user.pk, collection.project.pk, collection.name)
+    return "collection_%s_%s_%s" % (collection.user_id, collection.project_id, collection.name)
 
 
 def get_project_collection(project: ProjectModel):

@@ -13,3 +13,5 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+CACHEOPS_ENABLED = False
