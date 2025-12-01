@@ -54,6 +54,7 @@ class ProjectModel(AbstractBaseModel):
             Dict with connection_string, database, username, and password
         """
         from core.apps.cms.services.mongo import MongoDBClient
+        from django.db import transaction
         
         # If credentials already exist, return them
         if self.mongo_username and self.mongo_password and self.mongo_database:
@@ -79,11 +80,18 @@ class ProjectModel(AbstractBaseModel):
         try:
             credentials = mongo_client.create_project_user(self.id)
             
-            # Save credentials to project
+            # Save credentials to project using update to avoid triggering signals again
+            # Use update() instead of save() to avoid transaction conflicts
+            type(self).objects.filter(pk=self.pk).update(
+                mongo_username=credentials["username"],
+                mongo_password=credentials["password"],
+                mongo_database=credentials["database"]
+            )
+            
+            # Refresh instance to get updated values
             self.mongo_username = credentials["username"]
             self.mongo_password = credentials["password"]
             self.mongo_database = credentials["database"]
-            self.save(update_fields=["mongo_username", "mongo_password", "mongo_database"])
             
             return credentials
         finally:
