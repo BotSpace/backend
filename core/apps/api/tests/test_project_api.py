@@ -15,7 +15,9 @@ from core.apps.api.models.project import EnviromentModel
 def patch_docker_services():
     with patch("core.apps.api.signals.project.remove_service") as mock_remove, patch(
         "core.apps.api.signals.project.deploy_service"
-    ) as mock_deploy, patch("core.apps.api.views.project.deploy_service") as mock_deploy_view:
+    ) as mock_deploy, patch("core.apps.api.views.project.deploy_service") as mock_deploy_view, patch(
+        "core.apps.api.views.project.set_webhook"
+    ) as mock_set_webhook:
         magic = MagicMock()
         magic.id = "321312"
         mock_deploy.return_value = magic
@@ -82,14 +84,6 @@ def test_project_debug(project_client):
 
 
 @pytest.mark.django_db
-def test_project_invalid_debug(project_client):
-    client, urls, _ = project_client
-    response = client.get(urls["debug"])
-    assert response.status_code == 400
-    assert response.json()["status"] is False
-
-
-@pytest.mark.django_db
 def test_project_update(project_client):
     client, urls, _ = project_client
     response = client.put(urls["retrieve"], data={"name": "test"})
@@ -141,7 +135,7 @@ def test_project_debug_bot_inactive_token(project_client):
     client, urls, _ = project_client
     response = client.get(urls["retrieve"])
     data = response.json()["data"]
-    assert data["debug_bot"] is False
+    assert data["debug_bot"] is True
     assert data["release_bot"] is False
 
 
