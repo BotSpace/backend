@@ -1,6 +1,6 @@
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.mixins import (
@@ -34,7 +34,9 @@ class FileView(
         "filetype",
     ]
 
-    action_permission_classes = {}
+    action_permission_classes = {
+        "retrieve": [AllowAny],
+    }
     action_serializer_class = {
         "list": ListFileSerializer,
         "retrieve": RetrieveFileSerializer,
@@ -42,6 +44,8 @@ class FileView(
     }
 
     def get_queryset(self):
+        if self.action == "retrieve":
+            return FileModel.objects.all()
         return FileModel.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
