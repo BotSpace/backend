@@ -62,7 +62,11 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     debug = RetrieveDebugSerializer()
     debug_bot = serializers.SerializerMethodField()
     release_bot = serializers.SerializerMethodField()
+    debug_uuid = serializers.SerializerMethodField()
     plan = serializers.SerializerMethodField()
+
+    def get_debug_uuid(self, obj) -> str:
+        return obj.debug_webhook_uuid
 
     def get_debug_bot(self, obj) -> bool:
         return True
@@ -96,6 +100,7 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
             "release",
             "debug_bot",
             "release_bot",
+            "debug_uuid",
             "flow",
             "plan",
         ]
