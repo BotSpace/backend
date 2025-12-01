@@ -60,6 +60,6 @@ aiodocker
 #INFO: Monitoring
 django-prometheus
 
-# INFO: payment
-click-pkg
 
+click-pkg
+payme-pkg

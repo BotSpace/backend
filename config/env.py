@@ -26,4 +26,7 @@ env = environ.Env(
     OTP_SERVICE="EskizService",
     PROJECT_ENV=(str, "prod"),
     SILK_ENABLED=(bool, False),
+    PAYME_ID=(str, ""),
+    PAYME_KEY=(str, ""),
+    PAYTECH_API_KEY=(str, ""),
 )
