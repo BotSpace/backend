@@ -10,6 +10,8 @@ from config.env import env
 from django.utils.translation import gettext_lazy as _
 from rich.traceback import install
 
+
+
 install(show_locals=True)
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
 
@@ -94,17 +96,6 @@ TEMPLATES = [
 ]
 # fmt: off
 
-
-
-PAYTECH_API_KEY=env("PAYTECH_API_KEY")
-PAYME_ID=env("PAYME_ID")
-PAYME_KEY=env("PAYME_KEY")
-PAYME_ACCOUNT_FIELD = "order_id"
-PAYME_AMOUNT_FIELD = "amount"
-PAYME_ACCOUNT_MODEL = ""
-PAYME_ONE_TIME_PAYMENT = True
-
-PAYME_DISABLE_ADMIN = False
 
 
 
