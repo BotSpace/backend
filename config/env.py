@@ -28,4 +28,5 @@ env = environ.Env(
     SILK_ENABLED=(bool, False),
     PAYME_ID=(str, ""),
     PAYME_KEY=(str, ""),
+    PAYTECH_API_KEY=(str, ""),
 )
