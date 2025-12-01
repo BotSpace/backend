@@ -24,6 +24,11 @@ class ProjectModel(AbstractBaseModel):
 
     release_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     debug_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    
+    # MongoDB credentials - created once per project
+    mongo_username = models.CharField(max_length=255, null=True, blank=True)
+    mongo_password = models.CharField(max_length=255, null=True, blank=True)
+    mongo_database = models.CharField(max_length=255, null=True, blank=True)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -39,6 +44,50 @@ class ProjectModel(AbstractBaseModel):
     @property
     def release(self):
         return RelaseModel.objects.filter(project_id=self.pk).order_by("id").last()
+    
+    def get_mongo_credentials(self):
+        """Get MongoDB credentials for this project
+        
+        Creates credentials if they don't exist yet.
+        
+        Returns:
+            Dict with connection_string, database, username, and password
+        """
+        from core.apps.cms.services.mongo import MongoDBClient
+        
+        # If credentials already exist, return them
+        if self.mongo_username and self.mongo_password and self.mongo_database:
+            mongo_client = MongoDBClient()
+            try:
+                connection_string = mongo_client._build_connection_string(
+                    self.mongo_username,
+                    self.mongo_password,
+                    self.mongo_database
+                )
+            finally:
+                mongo_client.close()
+            
+            return {
+                "username": self.mongo_username,
+                "password": self.mongo_password,
+                "database": self.mongo_database,
+                "connection_string": connection_string,
+            }
+        
+        # Create new credentials
+        mongo_client = MongoDBClient()
+        try:
+            credentials = mongo_client.create_project_user(self.id)
+            
+            # Save credentials to project
+            self.mongo_username = credentials["username"]
+            self.mongo_password = credentials["password"]
+            self.mongo_database = credentials["database"]
+            self.save(update_fields=["mongo_username", "mongo_password", "mongo_database"])
+            
+            return credentials
+        finally:
+            mongo_client.close()
 
     class Meta:
         db_table = "project"

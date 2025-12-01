@@ -25,6 +25,22 @@ def ProjectSignal(sender, instance, created, **kwargs):
             logging.error(e)
             pass
         
+        # Create MongoDB credentials for this project
+        try:
+            credentials = instance.get_mongo_credentials()
+            logging.info(
+                "MongoDB credentials created for project project_id=%s username=%s database=%s",
+                instance.id,
+                credentials['username'],
+                credentials['database']
+            )
+        except Exception as e:
+            logging.error(
+                "Failed to create MongoDB credentials for project project_id=%s error=%s",
+                instance.id,
+                e
+            )
+        
         # Create default "users" collection
         collection = CollectionModel.objects.create(
             name="users",

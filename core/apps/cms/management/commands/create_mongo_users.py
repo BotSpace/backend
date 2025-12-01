@@ -1,6 +1,7 @@
 # type: ignore
 """
-Management command to create MongoDB users for existing projects
+Management command to create MongoDB credentials for existing projects.
+The credentials are saved to ProjectModel and reused for all services.
 """
 from django.core.management.base import BaseCommand
 from core.apps.api.models import ProjectModel
@@ -12,7 +13,7 @@ console = Console()
 
 
 class Command(BaseCommand):
-    help = "Create MongoDB users for all existing projects"
+    help = "Create MongoDB credentials for all existing projects and save them to ProjectModel"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -45,54 +46,49 @@ class Command(BaseCommand):
 
         console.print(f"\n[cyan]Jami {projects.count()} ta project topildi[/cyan]\n")
 
-        mongo_client = MongoDBClient()
         created_count = 0
         updated_count = 0
         error_count = 0
 
-        try:
-            for project in track(list(projects), description="MongoDB userlar yaratilmoqda..."):
-                try:
-                    # Check if user already exists
-                    username = f"project_{project.id}_user"
-                    admin_db = mongo_client.admin_client.admin
-                    existing_users = admin_db.command("usersInfo", username)
-                    
-                    user_exists = len(existing_users.get("users", [])) > 0
-                    
-                    if user_exists and not recreate:
-                        console.print(
-                            f"[yellow]Skip: Project {project.id} ({project.name}) - user allaqachon mavjud[/yellow]"
-                        )
-                        continue
-                    
-                    # Create or update user
-                    credentials = mongo_client.create_project_user(project.id)
-                    
-                    if user_exists:
-                        console.print(
-                            f"[green]✓ Updated: Project {project.id} ({project.name})[/green]"
-                        )
-                        console.print(f"  Username: {credentials['username']}")
-                        console.print(f"  Database: {credentials['database']}")
-                        updated_count += 1
-                    else:
-                        console.print(
-                            f"[green]✓ Created: Project {project.id} ({project.name})[/green]"
-                        )
-                        console.print(f"  Username: {credentials['username']}")
-                        console.print(f"  Database: {credentials['database']}")
-                        console.print(f"  Password: {credentials['password']}")
-                        created_count += 1
-
-                except Exception as e:
-                    error_count += 1
+        for project in track(list(projects), description="MongoDB credentials yaratilmoqda..."):
+            try:
+                # Check if credentials already exist
+                has_credentials = bool(
+                    project.mongo_username and 
+                    project.mongo_password and 
+                    project.mongo_database
+                )
+                
+                if has_credentials and not recreate:
                     console.print(
-                        f"[red]✗ Error: Project {project.id} ({project.name}) - {e}[/red]"
+                        f"[yellow]Skip: Project {project.id} ({project.name}) - credentials allaqachon mavjud[/yellow]"
                     )
+                    continue
+                
+                # Get or create credentials (saves to project automatically)
+                credentials = project.get_mongo_credentials()
+                
+                if has_credentials:
+                    console.print(
+                        f"[green]✓ Updated: Project {project.id} ({project.name})[/green]"
+                    )
+                    console.print(f"  Username: {credentials['username']}")
+                    console.print(f"  Database: {credentials['database']}")
+                    updated_count += 1
+                else:
+                    console.print(
+                        f"[green]✓ Created: Project {project.id} ({project.name})[/green]"
+                    )
+                    console.print(f"  Username: {credentials['username']}")
+                    console.print(f"  Database: {credentials['database']}")
+                    console.print(f"  Password: {credentials['password']}")
+                    created_count += 1
 
-        finally:
-            mongo_client.close()
+            except Exception as e:
+                error_count += 1
+                console.print(
+                    f"[red]✗ Error: Project {project.id} ({project.name}) - {e}[/red]"
+                )
 
         # Summary
         console.print("\n[bold cyan]Natija:[/bold cyan]")
@@ -101,5 +97,5 @@ class Command(BaseCommand):
         console.print(f"  ✗ Xatolar: {error_count}")
         
         if created_count + updated_count > 0:
-            console.print("\n[green]MongoDB userlar muvaffaqiyatli yaratildi![/green]")
-            console.print("[yellow]Eslatma: Parollar faqat yaratilganda ko'rsatiladi. Ularni xavfsiz saqlang![/yellow]")
+            console.print("\n[green]MongoDB credentials muvaffaqiyatli yaratildi va saqlandi![/green]")
+            console.print("[yellow]Eslatma: Parollar ProjectModel ichida saqlanadi va barcha servicelarda qayta ishlatiladi.[/yellow]")

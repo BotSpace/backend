@@ -128,9 +128,8 @@ class TestDockerServiceCPULimit:
         assert isinstance(resources, Resources)
 
     @patch('core.apps.api.services.docker_service.get_client')
-    @patch('core.apps.cms.services.mongo.MongoDBClient')
-    def test_deploy_service_with_mongo_credentials(self, mock_mongo_client_class, mock_get_client):
-        """Test that deploy_service adds MongoDB credentials to environment"""
+    def test_deploy_service_with_mongo_credentials(self, mock_get_client):
+        """Test that deploy_service uses project's MongoDB credentials"""
         from core.apps.api.services.docker_service import deploy_service
         
         # Setup mocks
@@ -139,36 +138,36 @@ class TestDockerServiceCPULimit:
         mock_client.services.create.return_value = mock_service
         mock_get_client.return_value = mock_client
         
-        mock_mongo = MagicMock()
-        mock_mongo.create_project_user.return_value = {
-            "username": "project_5_user",
-            "password": "test_pass",
-            "database": "project_5",
-            "connection_string": "mongodb://project_5_user:test_pass@localhost:27017/project_5"
-        }
-        mock_mongo_client_class.return_value = mock_mongo
-        
-        # Create project and deploy
+        # Create project
         user = User._create_fake()
         project = ProjectModel._create_fake(owner=user)
         
-        service = deploy_service(
-            project=project,
-            prefix="test",
-            flow={"nodes": [], "edges": []},
-            key=f"{project.id}_1"
-        )
-        
-        # Verify MongoDB user was created
-        mock_mongo.create_project_user.assert_called_once_with(project.id)
-        
-        # Verify environment variables include MongoDB credentials
-        call_kwargs = mock_client.services.create.call_args[1]
-        env_vars = call_kwargs.get("env", [])
-        
-        # Check for MONGO_ADDR and MONGO_DB_NAME
-        mongo_addr_found = any("MONGO_ADDR=" in var for var in env_vars)
-        mongo_db_found = any("MONGO_DB_NAME=" in var for var in env_vars)
-        
-        assert mongo_addr_found, "MONGO_ADDR not found in environment variables"
-        assert mongo_db_found, "MONGO_DB_NAME not found in environment variables"
+        # Mock project's get_mongo_credentials
+        with patch.object(project, 'get_mongo_credentials') as mock_get_creds:
+            mock_get_creds.return_value = {
+                "username": "project_5_user",
+                "password": "test_pass",
+                "database": "project_5",
+                "connection_string": "mongodb://project_5_user:test_pass@localhost:27017/project_5"
+            }
+            
+            service = deploy_service(
+                project=project,
+                prefix="test",
+                flow={"nodes": [], "edges": []},
+                key=f"{project.id}_1"
+            )
+            
+            # Verify credentials were fetched from project
+            mock_get_creds.assert_called_once()
+            
+            # Verify environment variables include MongoDB credentials
+            call_kwargs = mock_client.services.create.call_args[1]
+            env_vars = call_kwargs.get("env", [])
+            
+            # Check for MONGO_ADDR and MONGO_DB_NAME
+            mongo_addr_found = any("MONGO_ADDR=" in var for var in env_vars)
+            mongo_db_found = any("MONGO_DB_NAME=" in var for var in env_vars)
+            
+            assert mongo_addr_found, "MONGO_ADDR not found in environment variables"
+            assert mongo_db_found, "MONGO_DB_NAME not found in environment variables"

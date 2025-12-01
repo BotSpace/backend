@@ -146,7 +146,6 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     Returns:
         Created Docker service
     """
-    from core.apps.cms.services.mongo import MongoDBClient
     import logging
     
     path = "/var/lib/engine/%s_%s/" % (prefix, key)
@@ -167,22 +166,19 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
         type="bind",
     )
     
-    # Create MongoDB user for this project
-    mongo_client = MongoDBClient()
+    # Get MongoDB credentials from project (creates once, reuses for all services)
     try:
-        mongo_credentials = mongo_client.create_project_user(project.id)
+        mongo_credentials = project.get_mongo_credentials()
         logging.info(
-            f"MongoDB user created for project {project.id}: {mongo_credentials['username']}"
+            f"Using MongoDB credentials for project {project.id}: {mongo_credentials['username']}"
         )
     except Exception as e:
-        logging.error(f"Failed to create MongoDB user for project {project.id}: {e}")
+        logging.error(f"Failed to get MongoDB credentials for project {project.id}: {e}")
         # Fallback to default MongoDB connection
         mongo_credentials = {
             "connection_string": env.str("MONGO_URL"),
             "database": f"project_{project.id}"
         }
-    finally:
-        mongo_client.close()
     
     # Build environment variables
     _env.extend(get_default_env())
