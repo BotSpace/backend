@@ -2,6 +2,8 @@
 """
 Plan API Views
 """
+import logging
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -10,6 +12,7 @@ from core.apps.api.models import PlanModel, ProjectPlanModel, ProjectModel
 from core.apps.api.serializers.plan import PlanSerializer, ProjectPlanSerializer, ProjectPlanUpgradeSerializer
 from core.apps.api.enums.plan import PlanStatus
 from django_core.mixins import BaseViewSetMixin
+from core.apps.payment.services.balance import subtract_balance
 from core.services.response import error_response, success_response
 
 
@@ -79,6 +82,9 @@ class ProjectPlanViewSet(viewsets.ViewSet):
         new_plan = serializer.validated_data["plan"]
         old_plan = project_plan.plan
 
+        if request.user.balance < new_plan:
+            return error_response({"detail": "balanceda yetarli mablag' mavjud emas"}, 403)
+
         project_plan.plan = new_plan
 
         # Reset status if upgrading from suspended/grace period
@@ -89,17 +95,15 @@ class ProjectPlanViewSet(viewsets.ViewSet):
                 project_plan.limit_exceeded_at = None
                 project_plan.grace_period_notified = False
 
+        project_plan.started_at = timezone.now()
         project_plan.save()
-
-        # Log upgrade
-        import logging
 
         logging.info(
             f"Project {project.id} plan upgraded: " f"{old_plan.get_name_display()} → {new_plan.get_name_display()}"
         )
 
-        # Return updated plan
         response_serializer = ProjectPlanSerializer(project_plan)
+        subtract_balance(request.user, new_plan.price, "Tarif yangilandi")
         return success_response(
             {
                 "message": "Plan successfully upgraded",
