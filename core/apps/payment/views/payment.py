@@ -1,4 +1,6 @@
 # type: ignore
+from django.conf import settings
+from payme import Payme
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from config.env import env
 from rest_framework.decorators import api_view
@@ -52,5 +54,12 @@ def payment_link(request):
             return_url="https://botmother.uz",
         )
     elif method == "payme":
-        paylink = "https://payme.uz"
+        payme = Payme(
+            payme_id=settings.PAYME_ID,
+            is_test_mode=False,
+            license_api_key=settings.PAYTECH_API_KEY,
+        )
+        paylink = payme.generate_fallback_link(
+            form_fields={"order_id": transaction.pk, "amount": amount},
+        )
     return Response(data=ResponseSchema(data={"link": paylink}).model_dump())

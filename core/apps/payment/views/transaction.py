@@ -1,6 +1,6 @@
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from core.apps.payment.models import TransactionModel
@@ -13,9 +13,8 @@ from core.apps.payment.serializers.transaction import (
 
 @extend_schema(tags=["transaction"])
 class TransactionView(BaseViewSetMixin, ReadOnlyModelViewSet):
-    queryset = TransactionModel.objects.all()
     serializer_class = ListTransactionSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     action_permission_classes = {}
     action_serializer_class = {
@@ -23,3 +22,6 @@ class TransactionView(BaseViewSetMixin, ReadOnlyModelViewSet):
         "retrieve": RetrieveTransactionSerializer,
         "create": CreateTransactionSerializer,
     }
+
+    def get_queryset(self):
+        return TransactionModel.objects.filter(user=self.request.user)

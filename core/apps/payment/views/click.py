@@ -16,6 +16,8 @@ class ClickWebhookAPIView(ClickWebhook):
         except TransactionModel.DoesNotExist:
             raise ValueError("Transaction not found")
         add_balance(transaction.user, transaction.amount, "Click orqali hisob to'ldirildi")
+        transaction.status = True
+        transaction.save()
 
     def cancelled_payment(self, params):
         """
@@ -26,3 +28,5 @@ class ClickWebhookAPIView(ClickWebhook):
         except TransactionModel.DoesNotExist:
             raise ValueError("Transaction not found")
         subtract_balance(transaction.user, transaction.amount, "Clickdan to'lov bekor qilindi")
+        transaction.status = True
+        transaction.save()

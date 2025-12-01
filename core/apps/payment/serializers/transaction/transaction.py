@@ -8,7 +8,8 @@ class BaseTransactionSerializer(serializers.ModelSerializer):
         model = TransactionModel
         fields = [
             "id",
-            "name",
+            "amount",
+            "status",
         ]
 
 
@@ -24,5 +25,6 @@ class CreateTransactionSerializer(BaseTransactionSerializer):
     class Meta(BaseTransactionSerializer.Meta):
         fields = [
             "id",
-            "name",
+            "amount",
+            "status",
         ]

@@ -1,18 +1,33 @@
 from payme.views import PaymeWebHookAPIView
 from rest_framework.permissions import AllowAny
 
+from core.apps.payment.models.transaction import TransactionModel
+from core.apps.payment.services.balance import add_balance, subtract_balance
+
+
 class PaymeCallBackAPIView(PaymeWebHookAPIView):
     permission_classes = [AllowAny]
-
 
     def handle_successfully_payment(self, params, result, *args, **kwargs):
         """
         Handle the successful payment. You can override this method
         """
-        print(f"Transaction successfully performed for this params: {params} and performed_result: {result}")
+        try:
+            transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
+        except TransactionModel.DoesNotExist:
+            raise ValueError("Transaction not found")
+        add_balance(transaction.user, transaction.amount, "Payme orqali hisob to'ldirildi")
+        transaction.status = True
+        transaction.save()
 
     def handle_cancelled_payment(self, params, result, *args, **kwargs):
         """
         Handle the cancelled payment. You can override this method
         """
-        print(f"Transaction cancelled for this params: {params} and cancelled_result: {result}")
+        try:
+            transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
+        except TransactionModel.DoesNotExist:
+            raise ValueError("Transaction not found")
+        subtract_balance(transaction.user, transaction.amount, "Clickdan to'lov bekor qilindi")
+        transaction.status = True
+        transaction.save()
