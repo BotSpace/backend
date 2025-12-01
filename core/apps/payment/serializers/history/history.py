@@ -11,7 +11,7 @@ class BaseHistorySerializer(serializers.ModelSerializer):
             "amount",
             "type",
             "comment",
-            "project",
+            "created_at",
         ]
 
 
@@ -30,5 +30,5 @@ class CreateHistorySerializer(BaseHistorySerializer):
             "amount",
             "type",
             "comment",
-            "project",
+            "created_at",
         ]

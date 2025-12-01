@@ -4,6 +4,7 @@ from config.env import env
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from core.apps.payment.models.transaction import TransactionModel
 from core.apps.payment.serializers.payment.payment import CreatePaymentLinkSerializer
 from core.domain import ResponseSchema
 from click_up import ClickUp
@@ -15,7 +16,7 @@ from click_up import ClickUp
     examples=[
         OpenApiExample(
             name="create",
-            value={"method": "click"},
+            value={"method": "click", "amount": 100000},
             request_only=True,
         )
     ],
@@ -40,14 +41,16 @@ def payment_link(request):
         return Response(data={"detail": ResponseSchema(data=serializer.errors).model_dump()})
     data = serializer.validated_data
     method = data.get("method")
+    amount = data.get("amount")
+    transaction = TransactionModel.objects.create(user=request.user, amount=amount)
     paylink = ""
     if method == "click":
         click_up = ClickUp(service_id=env.str("CLICK_SERVICE_ID"), merchant_id=env.str("CLICK_MERCHANT_ID"))
         paylink = click_up.initializer.generate_pay_link(
-            id=1,
-            amount=100,
-            return_url="https://example.com",
+            id=transaction.pk,
+            amount=amount,
+            return_url="https://botmother.uz",
         )
-        
-        
+    elif method == "payme":
+        paylink = "https://payme.uz"
     return Response(data=ResponseSchema(data={"link": paylink}).model_dump())
