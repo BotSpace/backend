@@ -24,16 +24,16 @@ def ProjectSignal(sender, instance, created, **kwargs):
         except Exception as e:
             logging.error(e)
             pass
-        
+
         # Create MongoDB credentials for this project
         # This should run after transaction commits to avoid conflicts
         # Use on_commit to defer credentials creation
         from django.db import transaction
         from django.conf import settings
-        
+
         def create_mongo_creds():
             """Deferred MongoDB credentials creation"""
-            if not getattr(settings, 'TESTING', False):
+            if not getattr(settings, "TESTING", False):
                 try:
                     # Refresh instance to ensure we have latest data
                     fresh_instance = type(instance).objects.get(pk=instance.pk)
@@ -41,20 +41,18 @@ def ProjectSignal(sender, instance, created, **kwargs):
                     logging.info(
                         "MongoDB credentials created for project project_id=%s username=%s database=%s",
                         fresh_instance.id,
-                        credentials['username'],
-                        credentials['database']
+                        credentials["username"],
+                        credentials["database"],
                     )
                 except Exception as e:
                     # Skip if MongoDB is unavailable or mocked in tests
                     logging.warning(
-                        "Skipped MongoDB credentials creation for project project_id=%s: %s",
-                        instance.id,
-                        str(e)
+                        "Skipped MongoDB credentials creation for project project_id=%s: %s", instance.id, str(e)
                     )
-        
+
         # Defer credentials creation until after transaction commits
         transaction.on_commit(create_mongo_creds)
-        
+
         # Create default "users" collection
         collection = CollectionModel.objects.create(
             name="users",
@@ -75,58 +73,46 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.name,
             instance.owner,
         )
-        
+
         # Assign default FREE plan to new project
         try:
             from core.apps.api.models import PlanModel, ProjectPlanModel
             from core.apps.api.enums.plan import PlanType, PlanStatus
-            
+
             # Get or create FREE plan
             free_plan, _ = PlanModel.objects.get_or_create(
                 name=PlanType.FREE,
                 defaults={
-                    'price': 0,
-                    'max_users': 100,
-                    'powered_by_botmother': True,
-                    'description': 'Bepul tarif - 100 tagacha foydalanuvchi',
-                }
+                    "price": 0,
+                    "max_users": 100,
+                    "powered_by_botmother": True,
+                    "description": "Bepul tarif - 100 tagacha foydalanuvchi",
+                },
             )
-            
+
             # Assign plan to project
-            ProjectPlanModel.objects.create(
-                project=instance,
-                plan=free_plan,
-                status=PlanStatus.ACTIVE,
-                current_users=0
-            )
-            
-            logging.info(
-                "Project ga FREE plan biriktirildi project_id=%s",
-                instance.id
-            )
+            ProjectPlanModel.objects.create(project=instance, plan=free_plan, status=PlanStatus.ACTIVE, current_users=0)
+
+            logging.info("Project ga FREE plan biriktirildi project_id=%s", instance.id)
         except Exception as e:
-            logging.error(
-                "Project ga plan biriktirishda xatolik: project_id=%s error=%s",
-                instance.id,
-                e
-            )
+            logging.error("Project ga plan biriktirishda xatolik: project_id=%s error=%s", instance.id, e)
 
 
 @receiver(post_delete, sender=ProjectModel)
 def ProjectDeleteSignal(sender, instance, **kwargs):
     """Delete MongoDB database and user when project is deleted"""
     from core.apps.cms.services.mongo import MongoDBClient
-    
+
     try:
         # Delete MongoDB database
         mongo_client = MongoDBClient()
         mongo_client.client.drop_database(f"project_{instance.id}")
-        
+
         # Delete MongoDB user
         mongo_client.delete_project_user(instance.id)
-        
+
         mongo_client.close()
-        
+
         logging.info(
             "Project MongoDB database va user o'chirildi project_id=%s project_name=%s",
             instance.id,

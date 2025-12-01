@@ -162,6 +162,7 @@ jobs:
               "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" \
               "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
               "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}" \
+              "TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }}" \
               "PROTOCOL_HTTPS=true"
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin

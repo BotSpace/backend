@@ -1,13 +1,11 @@
 # type: ignore
-from datetime import timedelta
-import json
 import logging
+import json
 import pathlib
 
 import aiodocker
 from django.conf import settings
 from docker.types import Mount, RestartPolicy
-from rest_framework_simplejwt import tokens
 import os
 from config.env import env
 
@@ -76,26 +74,25 @@ def get_service_status(service_id):
 
 def create_service(image, name, command=None, **kwargs):
     """Create Docker service with resource limits
-    
+
     Args:
         image: Docker image
         name: Service name
         command: Command to run
         **kwargs: Additional service creation parameters
-        
+
     Returns:
         Created service
     """
     from docker.types import Resources
-    
+
     kwargs["name"] = name
-    
-    # Set CPU limit to 1 core (1 billion nanoseconds)
+
     resources = Resources(
         cpu_limit=int(1e9),  # 1 CPU core
         cpu_reservation=int(5e8),  # Reserve 0.5 CPU
     )
-    
+
     return get_client().services.create(
         image=image,
         command=command,
@@ -135,66 +132,45 @@ def get_default_env():
 
 def deploy_service(project, prefix, flow, key, _env: list = []):
     """Deploy Docker service for project with MongoDB credentials
-    
+
     Args:
         project: ProjectModel instance
         prefix: Service prefix (debug/release)
         flow: Bot flow configuration
         key: Unique service key
         _env: Additional environment variables
-        
+
     Returns:
         Created Docker service
     """
-    import logging
-    
     path = "/var/lib/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-    
-    # Create JWT token for API access
-    access = tokens.AccessToken.for_user(project.owner)
-    access.set_exp(lifetime=timedelta(days=365 * 100))  # supper katta risk lekin bizga baribir 😂
-    
-    # Save flow to file
+
     with open(path + "flow.json", "w") as file:
         file.write(json.dumps(flow, indent=4))
-    
-    # Create volume mount
-    mount = Mount(
-        target="/app/assets/",
-        source=path,
-        type="bind",
-    )
-    
-    # Get MongoDB credentials from project (creates once, reuses for all services)
+
+    mount = Mount(target="/app/assets/", source=path, type="bind")
     try:
         mongo_credentials = project.get_mongo_credentials()
-        logging.info(
-            f"Using MongoDB credentials for project {project.id}: {mongo_credentials['username']}"
-        )
+        logging.info(f"Using MongoDB credentials for project {project.id}: {mongo_credentials['username']}")
     except Exception as e:
         logging.error(f"Failed to get MongoDB credentials for project {project.id}: {e}")
-        # Fallback to default MongoDB connection
-        mongo_credentials = {
-            "connection_string": env.str("MONGO_URL"),
-            "database": f"project_{project.id}"
-        }
-    
+        mongo_credentials = {"connection_string": env.str("MONGO_URL"), "database": f"project_{project.id}"}
+
     # Build environment variables
     _env.extend(get_default_env())
+    _env.append(
+        f"BOT_TOKEN={env.str("TEST_BOT_TOKEN")}"
+    )  # WARNING: barcha enginelar ichida birxil bot token bu xafsiz emas
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
-    _env.append(f"API_TOKEN={str(access)}")
-    _env.append(f"PROJECT_ID={project.id}")
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
     _env.append("REDIS_ENABLED=true")
     _env.append("REDIS_ADDR=redis:6379")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
-    
-    # Add MongoDB connection info
     _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
     _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
-    
+
     return create_service(
         "registry.jscorp.uz/golang-engine:%s" % settings.ENGINE_VERSION,
         "%s_%s" % (prefix, key),
