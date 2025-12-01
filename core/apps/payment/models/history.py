@@ -23,7 +23,7 @@ class HistoryModel(AbstractBaseModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls)
+        return baker.make(cls, _fill_optional=True)
 
     class Meta:
         db_table = "history"
