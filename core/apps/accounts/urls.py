@@ -4,7 +4,7 @@ Accounts app urls
 
 from django.urls import path, include
 from rest_framework_simplejwt import views as jwt_views
-from .views import RegisterView, ResetPasswordView, MeView, ChangePasswordView
+from .views import RegisterView, ResetPasswordView, MeView, ChangePasswordView, BalanceView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -16,6 +16,7 @@ router.register("auth", ChangePasswordView, basename="change-password")
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("api/user/balance/", BalanceView.as_view({"get": "get_balance"}), name="get-balance"),
     path("auth/token/", jwt_views.TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/verify/", jwt_views.TokenVerifyView.as_view(), name="token_verify"),
     path(
