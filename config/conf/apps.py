@@ -6,7 +6,6 @@ APPS = [
     "cacheops",
     "rosetta",
     "django_ckeditor_5",
-    "parler",
     "drf_spectacular",
     "rest_framework",
     "corsheaders",

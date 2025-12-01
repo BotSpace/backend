@@ -13,6 +13,14 @@ from core.utils.encoder import PrettyJSONEncoder
 User = get_user_model()
 
 
+def default_flow():
+    """Default flow with nodes and edges"""
+    return {
+        "nodes": [],
+        "edges": []
+    }
+
+
 class TemplateModel(AbstractBaseModel):
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(verbose_name=_("name"), max_length=255)
@@ -22,12 +30,12 @@ class TemplateModel(AbstractBaseModel):
     short_description = models.TextField(_("short description"))
     description = models.TextField(_("description"))
     flow = models.JSONField(
-        verbose_name=_("flow"), default={"nodes": [], "edges": []}, null=True, blank=True, encoder=PrettyJSONEncoder
+        verbose_name=_("flow"), default=default_flow, null=True, blank=True, encoder=PrettyJSONEncoder
     )
     original_price = models.DecimalField(verbose_name=_("price"), max_digits=20, decimal_places=2)
     discount = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0.00"))
-    features = models.ManyToManyField("TemplateFeatureModel", null=True, blank=True)
-    categories = models.ManyToManyField("TemplateCategoryModel", null=True, blank=True)
+    features = models.ManyToManyField("TemplateFeatureModel", blank=True)
+    categories = models.ManyToManyField("TemplateCategoryModel", blank=True)
     views = models.BigIntegerField(default=0)
     is_verify = models.BooleanField(verbose_name=_("is verify"), default=False)
     discount_type = models.CharField(

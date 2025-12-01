@@ -8,6 +8,7 @@ networks:
 volumes:
   pg_data: null
   pycache: null
+  mongo_data: null
 
 services:
   nginx:
@@ -61,3 +62,21 @@ services:
       - django
     restart: always
     image: redis
+  mongo:
+    networks:
+      - django
+    image: mongo:7
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+    volumes:
+      - mongo_data:/data/db
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
