@@ -3,6 +3,7 @@ from config.env import env
 APPS = [
     "django_prometheus",
     "channels",
+    "payme",
     "cacheops",
     "rosetta",
     "django_ckeditor_5",

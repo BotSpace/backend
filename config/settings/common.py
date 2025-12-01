@@ -94,6 +94,23 @@ TEMPLATES = [
 ]
 # fmt: off
 
+
+
+
+PAYME_ID=env("PAYME_ID")
+PAYME_KEY=env("PAYME_KEY")
+PAYME_ACCOUNT_FIELD = "order_id"
+PAYME_AMOUNT_FIELD = "amount"
+PAYME_ACCOUNT_MODEL = ""
+PAYME_ONE_TIME_PAYMENT = True
+
+PAYME_DISABLE_ADMIN = False
+
+
+
+
+
+
 WSGI_APPLICATION = "config.wsgi.application"
 
 # fmt: on
