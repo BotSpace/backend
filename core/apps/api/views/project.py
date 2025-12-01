@@ -147,8 +147,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug")
     def debug(self, request, pk):
-        if not validate_debug_enviroment(pk):
-            return Response(data={"detail": _("debug uchun enviroment to'liq emas")}, status=400)
         instance = self.get_object()
         debug = instance.debug
         if debug.service_id:
