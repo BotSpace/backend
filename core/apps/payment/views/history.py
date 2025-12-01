@@ -13,7 +13,6 @@ from core.apps.payment.serializers.history import (
 
 @extend_schema(tags=["history"])
 class HistoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
-    queryset = HistoryModel.objects.all()
     serializer_class = ListHistorySerializer
     permission_classes = [AllowAny]
 
@@ -23,3 +22,6 @@ class HistoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
         "retrieve": RetrieveHistorySerializer,
         "create": CreateHistorySerializer,
     }
+
+    def get_queryset(self):
+        return HistoryModel.objects.filter(user=self.request.user).order_by("-id")
