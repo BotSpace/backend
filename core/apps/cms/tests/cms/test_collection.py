@@ -148,7 +148,7 @@ def test_insert(data):
     )
     data = response.json()
     assert data["status"] is True
-    assert data["data"]["inserted_id"] == "mock_id"
+    assert data["data"]["inserted_id"] == "mock_id_123"  # Updated to match conftest mock
     assert response.status_code == 200
 
 

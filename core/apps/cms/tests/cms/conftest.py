@@ -4,24 +4,33 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def patch_mongo():
-    with patch("core.apps.cms.services.action.insert_one") as insert_one_mock, patch(
-        "core.apps.cms.services.action.find"
-    ) as mock_find, patch("core.apps.cms.services.action.find_one") as mock_find_one, patch(
-        "core.apps.cms.services.action.update"
-    ) as mock_update, patch(
-        "core.apps.cms.services.action.delete"
-    ) as mock_delete:
+    """Patch MongoDB repository methods for testing
+    
+    This fixture mocks the MongoRepository methods that are called
+    by ActionService, allowing tests to run without actual MongoDB.
+    """
+    with patch("core.apps.cms.services.mongo.MongoRepository.insert_one") as mock_insert_one, \
+         patch("core.apps.cms.services.mongo.MongoRepository.find") as mock_find, \
+         patch("core.apps.cms.services.mongo.MongoRepository.find_one") as mock_find_one, \
+         patch("core.apps.cms.services.mongo.MongoRepository.update") as mock_update, \
+         patch("core.apps.cms.services.mongo.MongoRepository.delete") as mock_delete, \
+         patch("core.apps.cms.services.mongo.MongoRepository.count") as mock_count:
 
-        mock_delete_data = MagicMock()
-        mock_delete_data.deleted_count = 10
-        mock_delete.return_value = mock_delete_data
-
-        mock_find_one.return_value = {"name": "Samandar"}
-
-        mock_update_data = MagicMock()
-        mock_update_data.modified_count = 10
-        mock_update.return_value = mock_update_data
-
-        mock_find.return_value = [{"name": "Samandar"}]
-        insert_one_mock.return_value = "mock_id"
+        # Setup mock return values
+        mock_insert_one.return_value = "mock_id_123"
+        
+        mock_find_one.return_value = {"name": "Samandar", "_id": "mock_id"}
+        
+        mock_find.return_value = [{"name": "Samandar", "_id": "mock_id"}]
+        
+        mock_update_result = MagicMock()
+        mock_update_result.modified_count = 10
+        mock_update.return_value = mock_update_result
+        
+        mock_delete_result = MagicMock()
+        mock_delete_result.deleted_count = 10
+        mock_delete.return_value = mock_delete_result
+        
+        mock_count.return_value = 5
+        
         yield

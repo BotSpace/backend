@@ -11,6 +11,7 @@ from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
+from core.apps.cms.services.mongo import delete_project_database
 from core.services.redis_service import client as redis_client
 
 
@@ -42,6 +43,30 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.name,
             instance.owner,
         )
+
+
+@receiver(post_delete, sender=ProjectModel)
+def ProjectDeleteSignal(sender, instance, **kwargs):
+    """Delete MongoDB database and user when project is deleted"""
+    from core.apps.cms.services.mongo import MongoDBClient
+    
+    try:
+        # Delete MongoDB database
+        mongo_client = MongoDBClient()
+        mongo_client.client.drop_database(f"project_{instance.id}")
+        
+        # Delete MongoDB user
+        mongo_client.delete_project_user(instance.id)
+        
+        mongo_client.close()
+        
+        logging.info(
+            "Project MongoDB database va user o'chirildi project_id=%s project_name=%s",
+            instance.id,
+            instance.name,
+        )
+    except Exception as e:
+        logging.error("Project database va user o'chirishda xatolik: project_id=%s error=%s", instance.id, e)
 
 
 @receiver(post_save, sender=RelaseModel)
