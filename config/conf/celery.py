@@ -9,10 +9,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.project.sync_storage",
         "schedule": crontab(minute="*/10"),
     },
-    "proccess_payment": {
-        "task": "core.apps.payment.tasks.payment.proccess_payment",
-        "schedule": crontab(minute="0", hour="*/1"),
-    },
+    # "proccess_payment": {
+    #     "task": "core.apps.payment.tasks.payment.proccess_payment",
+    #     "schedule": crontab(minute="0", hour="*/1"),
+    # },
     "monitor_plan_limits": {
         "task": "monitor_plan_limits",
         "schedule": crontab(minute="0", hour="*/6"),  # Every 6 hours
