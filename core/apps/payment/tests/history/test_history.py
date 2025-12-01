@@ -13,7 +13,7 @@ def instance(db):
 @pytest.fixture
 def api_client(instance):
     client = APIClient()
-    ##client.force_authenticate(user=instance.user)
+    client.force_authenticate(user=instance.user)
     return client, instance
 
 

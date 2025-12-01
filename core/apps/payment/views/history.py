@@ -1,6 +1,6 @@
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from core.apps.payment.models import HistoryModel
@@ -13,9 +13,8 @@ from core.apps.payment.serializers.history import (
 
 @extend_schema(tags=["history"])
 class HistoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
-    queryset = HistoryModel.objects.all()
     serializer_class = ListHistorySerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     action_permission_classes = {}
     action_serializer_class = {
@@ -23,3 +22,6 @@ class HistoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
         "retrieve": RetrieveHistorySerializer,
         "create": CreateHistorySerializer,
     }
+
+    def get_queryset(self):
+        return HistoryModel.objects.filter(user=self.request.user).order_by("-id")
