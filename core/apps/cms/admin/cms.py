@@ -6,13 +6,16 @@ from core.apps.cms.models import CollectionModel, FieldModel, ExportTaskModel
 
 class FieldsInline(TabularInline):
     model = FieldModel
+    fk_name = "collection"  # Specify which FK to use for inline
     fields = [
         "name",
         "type",
         "required",
+        "relation_collection",
     ]
     extra = 1
     tab = True
+    autocomplete_fields = ["relation_collection"]
 
 
 @admin.register(CollectionModel)
@@ -22,6 +25,7 @@ class CollectionAdmin(ModelAdmin):
         "id",
         "__str__",
     )
+    search_fields = ["name"]
 
 
 @admin.register(ExportTaskModel)

@@ -60,6 +60,14 @@ class FieldModel(AbstractBaseModel):
     type = models.CharField(_("name"), max_length=255, default=FieldType.TEXT.value, choices=FieldType.choices)
     required = models.BooleanField(_("required"), default=False)
     default = models.CharField(_("default"), max_length=255, null=True, blank=True)
+    relation_collection = models.ForeignKey(
+        "CollectionModel",
+        on_delete=models.SET_NULL,
+        related_name="related_fields",
+        null=True,
+        blank=True,
+        help_text=_("Referenced collection for RELATION type fields")
+    )
 
     def __str__(self):
         return str(self.pk)

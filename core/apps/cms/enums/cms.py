@@ -11,3 +11,4 @@ class FieldType(TextChoices):
     AUDIO = "audio", _("audio")
     VIDEO = "video", _("video")
     PHOTO = "photo", _("photo")
+    RELATION = "relation", _("Relation")

@@ -53,4 +53,13 @@ def collection_validate_data(collection, data):
             continue
         elif field.type == FieldType.DATETIME.value:
             continue
+        elif field.type == FieldType.RELATION.value:
+            # Validate relation field - value should be a valid ObjectId string or dict with _id
+            if value is not None:
+                if isinstance(value, dict):
+                    if "_id" not in value:
+                        errors[field.name] = [_("Relation field must contain _id")]
+                elif not isinstance(value, str):
+                    errors[field.name] = [_("Relation field must be string ObjectId or object with _id")]
+            continue
     return errors, len(errors) == 0
