@@ -14,7 +14,7 @@ from core.apps.api.views.docker import logs
 
 
 def home(request):
-    return HttpResponse("OK: #b6591ab0b5eb0b2ed4176aefbf793e0ff2ed0006")
+    return HttpResponse("OK: #3de8b3bf6e4253723f155f952c16e1cbf0ec07ef")
 
 
 urlpatterns = [
