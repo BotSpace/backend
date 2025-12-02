@@ -14,7 +14,7 @@ CMS ilovasidagi collection ma'lumotlarini Excel formatida yuklab olish funksiyas
 
 ### 1. Export boshlash
 
-**POST** `/api/v1/cms/collection/{collection_name}/export-excel/?project={project_id}`
+**POST** `/api/collection/{collection_name}/export-excel/?project={project_id}`
 
 Export jarayonini boshlaydi va task_id qaytaradi.
 
@@ -36,7 +36,7 @@ Export jarayonini boshlaydi va task_id qaytaradi.
 
 ### 2. Status tekshirish
 
-**GET** `/api/v1/cms/collection/export-status/{task_id}/`
+**GET** `/api/collection/export-status/{task_id}/`
 
 Export jarayonining holatini ko'rsatadi.
 
@@ -85,7 +85,7 @@ Export jarayonining holatini ko'rsatadi.
 // 1. Export boshlash
 async function startExport(collectionName, projectId) {
     const response = await fetch(
-        `/api/v1/cms/collection/${collectionName}/export-excel/?project=${projectId}`,
+        `/api/collection/${collectionName}/export-excel/?project=${projectId}`,
         {
             method: 'POST',
             headers: {
@@ -102,7 +102,7 @@ async function startExport(collectionName, projectId) {
 // 2. Status polling
 async function checkExportStatus(taskId) {
     const response = await fetch(
-        `/api/v1/cms/collection/export-status/${taskId}/`,
+        `/api/collection/export-status/${taskId}/`,
         {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -226,8 +226,7 @@ celery -A config worker -l info
 # Collection export test
 def test_export_collection():
     response = client.post(
-        f'/api/v1/cms/collection/{collection_name}/export-excel/',
-        {'project': project_id}
+        f'/api/collection/{collection_name}/export-excel/?project={project_id}'
     )
     assert response.status_code == 202
     assert 'task_id' in response.data
@@ -235,7 +234,7 @@ def test_export_collection():
     # Check status
     task_id = response.data['task_id']
     status_response = client.get(
-        f'/api/v1/cms/collection/export-status/{task_id}/'
+        f'/api/collection/export-status/{task_id}/'
     )
     assert status_response.status_code == 200
 ```

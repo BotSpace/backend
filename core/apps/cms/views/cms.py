@@ -2,7 +2,7 @@
 import logging
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -139,9 +139,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
 
             # Check if user has access to this collection
             if export_task.collection.user != request.user:
-                return Response(
-                    {"detail": "You do not have permission to access this export."}, status=status.HTTP_403_FORBIDDEN
-                )
+                raise PermissionDenied("You do not have permission to access this export.")
 
             serializer = ExportTaskStatusSerializer(export_task, context={"request": request})
             return Response(serializer.data)
