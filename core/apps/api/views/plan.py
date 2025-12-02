@@ -82,7 +82,7 @@ class ProjectPlanViewSet(viewsets.ViewSet):
         new_plan = serializer.validated_data["plan"]
         old_plan = project_plan.plan
 
-        if request.user.balance < new_plan:
+        if request.user.balance < new_plan.price:
             return error_response({"detail": "balanceda yetarli mablag' mavjud emas"}, 403)
 
         project_plan.plan = new_plan
