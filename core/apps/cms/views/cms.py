@@ -1,5 +1,4 @@
 # type: ignore
-import json
 import logging
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
@@ -9,13 +8,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
-from bson import json_util
+from rest_framework import status
 
-from core.apps.cms.models import CollectionModel
+from core.apps.cms.models import CollectionModel, ExportTaskModel
 from core.apps.cms.serializers.cms import (
     CreateCollectionSerializer,
     ListCollectionSerializer,
     RetrieveCollectionSerializer,
+    ExportCollectionSerializer,
+    ExportTaskStatusSerializer,
 )
 from core.apps.cms.serializers.cms.collection import (
     AddDataCollectionSerializer,
@@ -28,6 +29,7 @@ from core.apps.cms.serializers.cms.collection import (
     UpdateDataCollectionSerializer,
 )
 from core.apps.cms.services.action import ActionService
+from core.apps.cms.tasks import export_collection_to_excel
 
 
 @extend_schema(tags=["collection"])
@@ -42,6 +44,8 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         "create": CreateCollectionSerializer,
         "update": UpdateCollectionSerializer,
         "partial_update": UpdateCollectionSerializer,
+        "export_excel": ExportCollectionSerializer,
+        "export_status": ExportTaskStatusSerializer,
     }
 
     def get_object(self):
@@ -50,6 +54,8 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
 
     def get_queryset(self):
         queryset = CollectionModel.objects.filter(user=self.request.user)
+        if self.action in ["export_excel", "export_status"]:
+            return queryset
         project = self.request.query_params.get("project")
         if project is None:
             raise ValidationError(detail={"project": ["project query_params is required"]})
@@ -100,3 +106,45 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
                 "Collection data %s error: %s" % (action, str(e)),
             )
             return Response(data={"detail": str(e)}, status=500)
+
+    @extend_schema(
+        responses={
+            202: ExportTaskStatusSerializer,
+        }
+    )
+    @action(methods=["POST"], detail=True, url_name="export-excel", url_path="export-excel")
+    def export_excel(self, request, pk):
+        """
+        Initiate Excel export for collection data.
+        Returns task_id to track export progress.
+        """
+        instance = self.get_object()
+
+        # Create export task
+        export_task = ExportTaskModel.objects.create(collection=instance, status=ExportTaskModel.Status.PENDING)
+
+        # Start Celery task
+        export_collection_to_excel.delay(str(export_task.task_id))
+
+        serializer = ExportTaskStatusSerializer(export_task, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+    @action(methods=["GET"], detail=False, url_name="export-status", url_path="export-status/(?P<task_id>[^/.]+)")
+    def export_status(self, request, task_id=None, pk=None):
+        """
+        Check status of export task by task_id.
+        """
+        try:
+            export_task = ExportTaskModel.objects.get(task_id=task_id)
+
+            # Check if user has access to this collection
+            if export_task.collection.user != request.user:
+                return Response(
+                    {"detail": "You do not have permission to access this export."}, status=status.HTTP_403_FORBIDDEN
+                )
+
+            serializer = ExportTaskStatusSerializer(export_task, context={"request": request})
+            return Response(serializer.data)
+
+        except ExportTaskModel.DoesNotExist:
+            return Response({"detail": "Export task not found."}, status=status.HTTP_404_NOT_FOUND)
