@@ -11,6 +11,7 @@ from config.env import env
 
 import docker
 from core.apps.api.enums.container import ContainerStatusEnum
+from core.apps.shared.utils.settings import engine_version
 
 
 client = None
@@ -172,7 +173,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
 
     return create_service(
-        "registry.jscorp.uz/golang-engine:%s" % settings.ENGINE_VERSION,
+        "registry.jscorp.uz/golang-engine:%s" % engine_version(),
         "%s_%s" % (prefix, key),
         mounts=[mount],
         env=_env,
