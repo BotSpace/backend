@@ -1,3 +1,4 @@
+# type: ignore
 import logging
 from telebot import types
 from ..management.commands.base import bot
@@ -16,6 +17,7 @@ def start_handler(message: types.Message):
 
 def phone_handler(message: types.Message):
     from django.db import connection
+
     try:
         phone = str(message.contact.phone_number).replace("+", "")
         user, _ = BotUser.objects.get_or_create(
@@ -24,6 +26,7 @@ def phone_handler(message: types.Message):
             defaults={
                 "first_name": message.from_user.first_name,
                 "last_name": message.from_user.last_name,
+                "username": message.from_user.username,
             },
         )
         code = Code.objects.get_or_create_code(user.id)

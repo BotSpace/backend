@@ -8,6 +8,7 @@ class BotUser(AbstractBaseModel):
     user_id = models.BigIntegerField()
     first_name = models.CharField(max_length=1000, null=True, blank=True)
     last_name = models.CharField(max_length=1000, null=True, blank=True)
+    username = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=255)
 
     def __str__(self) -> str:
@@ -18,9 +19,7 @@ class CodeManager(models.Manager):
 
     @retry(stop=stop_after_attempt(10))
     def get_or_create_code(self, user_id):
-        return self.get_or_create(
-            user_id=user_id, defaults={"code": randint(100000, 999999)}
-        )[0]
+        return self.get_or_create(user_id=user_id, defaults={"code": randint(100000, 999999)})[0]
 
 
 class Code(AbstractBaseModel):
