@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from core.apps.api.models.message import MessageModel
 from core.apps.api.services.enviroment import release_bot_token
 from core.apps.cms.models import CollectionModel
-from core.apps.cms.services import find, get_collection_name
+from core.apps.cms.services import find
 from core.apps.api.enums import MessageStatusEnum
 
 
@@ -44,8 +44,8 @@ def send_message(message_id: int):
         message.save()
         return
 
-    # Get users from collection
-    users: list = find(get_collection_name(collection))
+    # Get users from collection - FIXED: pass collection_model, not collection name
+    users: list = find(collection)  # Pass CollectionModel instance directly!
     
     # Update total count
     message.total = len(users)
