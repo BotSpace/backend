@@ -1,4 +1,5 @@
 # type: ignore
+import json
 from rest_framework import serializers
 
 from core.apps.api.models.message import MessageModel
@@ -46,11 +47,10 @@ class ButtonSerializer(serializers.Serializer):
 
 class SendMessageSerializer(serializers.ModelSerializer):
     """Serializer for sending messages to bot users"""
-    buttons = serializers.ListField(
-        child=serializers.ListField(child=ButtonSerializer()),
+    buttons = serializers.JSONField(
         required=False,
-        allow_empty=True,
-        help_text="2D array of buttons (rows and columns)"
+        allow_null=True,
+        help_text="2D array of buttons (rows and columns) - can be JSON string or array"
     )
     photo = serializers.ImageField(
         required=False,
@@ -88,10 +88,60 @@ class SendMessageSerializer(serializers.ModelSerializer):
             "fail": {"read_only": True},
         }
 
+    def validate_buttons(self, value):
+        """Parse buttons from JSON string if needed and validate structure"""
+        # If buttons is a string, parse it
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Invalid JSON format for buttons")
+        
+        # If empty or None, return empty list
+        if not value:
+            return []
+        
+        # Validate it's a list
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Buttons must be a 2D array (list of lists)")
+        
+        # Validate structure: must be list of lists
+        for i, row in enumerate(value):
+            if not isinstance(row, list):
+                raise serializers.ValidationError(
+                    f"Row {i} must be a list of button objects"
+                )
+            
+            # Validate each button in the row
+            for j, button in enumerate(row):
+                if not isinstance(button, dict):
+                    raise serializers.ValidationError(
+                        f"Button at row {i}, position {j} must be an object"
+                    )
+                
+                # Validate required field
+                if 'title' not in button:
+                    raise serializers.ValidationError(
+                        f"Button at row {i}, position {j} must have a 'title' field"
+                    )
+                
+                # Use ButtonSerializer to validate each button
+                button_serializer = ButtonSerializer(data=button)
+                if not button_serializer.is_valid():
+                    raise serializers.ValidationError(
+                        f"Button at row {i}, position {j}: {button_serializer.errors}"
+                    )
+        
+        return value
+
     def create(self, validated_data):
         """Create message and handle file uploads"""
         photo = validated_data.pop('photo', None)
         video = validated_data.pop('video', None)
+        
+        # Ensure buttons is not None
+        if validated_data.get('buttons') is None:
+            validated_data['buttons'] = []
         
         # Set file based on message type
         if photo and validated_data.get('message_type') == 'photo':
