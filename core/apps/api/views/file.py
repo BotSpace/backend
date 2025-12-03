@@ -32,6 +32,7 @@ class FileView(
     filter_backends = [DjangoFilterBackend]
     filterset_fields = [
         "filetype",
+        "project",
     ]
 
     action_permission_classes = {
