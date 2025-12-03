@@ -56,13 +56,13 @@ class SendMessageSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
         write_only=True,
-        help_text="Photo file for photo messages"
+        help_text="Photo file for photo messages (max 10 MB)"
     )
     video = serializers.FileField(
         required=False,
         allow_null=True,
         write_only=True,
-        help_text="Video file for video messages"
+        help_text="Video file for video messages (max 50 MB)"
     )
 
     class Meta:
@@ -87,6 +87,28 @@ class SendMessageSerializer(serializers.ModelSerializer):
             "done": {"read_only": True},
             "fail": {"read_only": True},
         }
+
+    def validate_photo(self, value):
+        """Validate photo file size (Telegram limit: 10 MB)"""
+        if value:
+            max_size = 10 * 1024 * 1024  # 10 MB
+            if value.size > max_size:
+                size_mb = value.size / 1024 / 1024
+                raise serializers.ValidationError(
+                    f"Photo size is {size_mb:.2f} MB. Telegram Bot API limit is 10 MB."
+                )
+        return value
+
+    def validate_video(self, value):
+        """Validate video file size (Telegram limit: 50 MB)"""
+        if value:
+            max_size = 50 * 1024 * 1024  # 50 MB
+            if value.size > max_size:
+                size_mb = value.size / 1024 / 1024
+                raise serializers.ValidationError(
+                    f"Video size is {size_mb:.2f} MB. Telegram Bot API limit is 50 MB."
+                )
+        return value
 
     def validate_buttons(self, value):
         """Parse buttons from JSON string if needed and validate structure"""
@@ -156,4 +178,7 @@ class MessageSerializer(serializers.ModelSerializer):
     """Serializer for listing messages"""
     class Meta:
         model = MessageModel
-        fields = ["id", "caption", "message_type", "status", "total", "fail", "done"]
+        fields = ["id", "caption", "message_type", "status", "total", "fail", "done", "file_id"]
+        extra_kwargs = {
+            "file_id": {"read_only": True},
+        }

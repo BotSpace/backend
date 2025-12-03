@@ -1,4 +1,5 @@
 import logging
+import time
 
 from celery import shared_task
 import telebot
@@ -44,8 +45,8 @@ def send_message(message_id: int):
         message.save()
         return
 
-    # Get users from collection - FIXED: pass collection_model, not collection name
-    users: list = find(collection)  # Pass CollectionModel instance directly!
+    # Get users from collection
+    users: list = find(collection)
     
     # Update total count
     message.total = len(users)
@@ -53,6 +54,9 @@ def send_message(message_id: int):
 
     done: int = 0
     fail: int = 0
+    
+    # File ID cache - will be set after first successful send
+    cached_file_id = message.file_id if message.file_id else None
 
     # Build keyboard if buttons exist
     keyboard = None
@@ -98,35 +102,71 @@ def send_message(message_id: int):
             continue
 
         try:
+            sent_message = None
+            
             if message.message_type == "photo":
                 # Send photo with caption
-                if message.file:
+                if cached_file_id:
+                    # Use cached file_id for faster sending
+                    sent_message = bot.send_photo(
+                        chat_id=chat_id,
+                        photo=cached_file_id,
+                        caption=message.caption if message.caption else None,
+                        reply_markup=keyboard
+                    )
+                    logging.info(f"Photo sent to {chat_id} using file_id")
+                elif message.file:
+                    # First send - upload file and cache file_id
                     with open(message.file.path, 'rb') as photo:
-                        bot.send_photo(
+                        sent_message = bot.send_photo(
                             chat_id=chat_id,
                             photo=photo,
                             caption=message.caption if message.caption else None,
                             reply_markup=keyboard
                         )
+                    # Cache file_id from first successful send
+                    if sent_message and sent_message.photo:
+                        cached_file_id = sent_message.photo[-1].file_id
+                        message.file_id = cached_file_id
+                        message.save(update_fields=['file_id'])
+                        logging.info(f"Photo file_id cached: {cached_file_id}")
                 else:
                     fail += 1
                     continue
+                    
             elif message.message_type == "video":
                 # Send video with caption
-                if message.file:
+                if cached_file_id:
+                    # Use cached file_id
+                    sent_message = bot.send_video(
+                        chat_id=chat_id,
+                        video=cached_file_id,
+                        caption=message.caption if message.caption else None,
+                        reply_markup=keyboard
+                    )
+                    logging.info(f"Video sent to {chat_id} using file_id")
+                elif message.file:
+                    # First send - upload file and cache file_id
                     with open(message.file.path, 'rb') as video:
-                        bot.send_video(
+                        sent_message = bot.send_video(
                             chat_id=chat_id,
                             video=video,
                             caption=message.caption if message.caption else None,
                             reply_markup=keyboard
                         )
+                    # Cache file_id from first successful send
+                    if sent_message and sent_message.video:
+                        cached_file_id = sent_message.video.file_id
+                        message.file_id = cached_file_id
+                        message.save(update_fields=['file_id'])
+                        logging.info(f"Video file_id cached: {cached_file_id}")
                 else:
                     fail += 1
                     continue
+                    
             else:
                 # Send text message
-                bot.send_message(
+                sent_message = bot.send_message(
                     chat_id=chat_id,
                     text=message.caption,
                     reply_markup=keyboard
@@ -134,9 +174,16 @@ def send_message(message_id: int):
             
             done += 1
             logging.info(f"Message sent to {chat_id}")
+            
+            # Rate limiting - sleep to avoid Telegram API limits
+            # Telegram allows ~30 messages per second, we'll be conservative
+            time.sleep(0.05)  # 50ms delay = ~20 messages/second
+            
         except Exception as e:
             fail += 1
             logging.error(f"Failed to send message to {chat_id}: {e}")
+            # Small delay even on error
+            time.sleep(0.02)
 
     # Update message status
     message.done = done

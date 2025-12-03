@@ -19,6 +19,12 @@ class MessageModel(models.Model):
         blank=True,
         help_text="File for photo/video messages"
     )
+    file_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Telegram file_id (cached after first send)"
+    )
     button_type = models.CharField(
         choices=ButtonTypeEnum.choices, 
         default=ButtonTypeEnum.REPLY, 
