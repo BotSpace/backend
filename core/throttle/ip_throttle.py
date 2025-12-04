@@ -16,8 +16,12 @@ class DebugContainerThrottle(SimpleRateThrottle):
     scope = "debug_container"
 
     def get_cache_key(self, request, view):
-        ip = request.META.get("REMOTE_ADDR")
-        logging.info("debug reload new client: %s", ip)
+        ip = request.META.get("HTTP_X_FORWARDED_FOR")
+        if ip:
+            ip = ip.split(",")[0].strip()
+        else:
+            ip = request.META.get("REMOTE_ADDR")
+        logging.info("debug container new client ip=%s", ip)
         if not ip:
             return None
         return f"throttle_ip_{ip}"

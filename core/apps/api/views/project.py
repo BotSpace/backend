@@ -63,8 +63,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     def get_throttles(self):
         super().get_throttles()
         if self.action == "debug":
-            # return [DebugContainerThrottle()]
-            return [IPThrottle()]
+            return [DebugContainerThrottle()]
         return [IPThrottle()]
 
     def perform_create(self, serializer):
