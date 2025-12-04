@@ -6,7 +6,7 @@ from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
@@ -27,10 +27,11 @@ from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListD
 from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
-from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
+from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.services.webhook import set_webhook
 from core.apps.cms.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
+from core.throttle.ip_throttle import DebugContainerThrottle, IPThrottle
 
 
 @extend_schema(tags=["project"])
@@ -58,6 +59,12 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     def get_object(self):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
+
+    def get_throttles(self):
+        super().get_throttles()
+        if self.action == "debug":
+            return [DebugContainerThrottle()]
+        return [IPThrottle()]
 
     def perform_create(self, serializer):
         serializer.save(
