@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_core.mixins import BaseViewSetMixin
 
@@ -144,11 +144,11 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
 
                 result.append(
                     {
-                        "user": user, 
-                        "last_message": last_message, 
-                        "unread_count": unread_count, 
+                        "user": user,
+                        "last_message": last_message,
+                        "unread_count": unread_count,
                         "total_messages": total_message_count,
-                        "last_message_time": last_message_time
+                        "last_message_time": last_message_time,
                     }
                 )
 
@@ -158,9 +158,9 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             # Remove the temporary sorting field and apply pagination
             for item in result:
                 item.pop("last_message_time", None)
-            
+
             # Apply pagination after sorting
-            paginated_result = result[skip:skip + limit] if limit > 0 else result[skip:]
+            paginated_result = result[skip : skip + limit] if limit > 0 else result[skip:]
 
             return Response({"users": paginated_result, "total": total_users, "limit": limit, "skip": skip})
 

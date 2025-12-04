@@ -1,5 +1,4 @@
 # type: ignore
-from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -12,7 +11,7 @@ from core.apps.api.models.project import ProjectModel
 @permission_classes([AllowAny])
 def project_by_release_uuid(request, uuid):
     """Get project information by release webhook UUID
-    
+
     This endpoint is used by the Golang webhook service to get project info.
     """
     try:
@@ -39,7 +38,7 @@ def project_by_release_uuid(request, uuid):
 @permission_classes([AllowAny])
 def project_by_debug_uuid(request, uuid):
     """Get project information by debug webhook UUID
-    
+
     This endpoint is used by the Golang webhook service to get project info.
     """
     try:
@@ -57,4 +56,3 @@ def project_by_debug_uuid(request, uuid):
             {"error": "Project not found"},
             status=status.HTTP_404_NOT_FOUND,
         )
-

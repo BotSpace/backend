@@ -54,10 +54,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         self.dashboardService = DashboardService()
 
     def get_queryset(self):
-        queryset = ProjectModel.objects.order_by("-id").all()
-        if self.request.user.is_authenticated:
-            return queryset.filter(owner=self.request.user)
-        return queryset.none()
+        return ProjectModel.objects.order_by("-id").filter(owner=self.request.user)
 
     def get_object(self):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
@@ -168,7 +165,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 @extend_schema(tags=["relase"])
 class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
     serializer_class = ListRelaseSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     action_permission_classes = {}
     action_serializer_class = {
@@ -178,7 +175,7 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
     }
 
     def get_queryset(self):
-        queryset = RelaseModel.objects.order_by("-id")
+        queryset = RelaseModel.objects.order_by("-id").filter(project__owner=self.request.user)
         if self.action in ["list"]:
             project_id = self.request.query_params.get("project")
             if project_id is None:
