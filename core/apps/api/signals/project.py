@@ -1,17 +1,20 @@
 import logging
 
+from django.db import transaction
+from django.conf import settings
+
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import ProjectModel, RelaseModel
+from core.apps.api.models import project
 from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
-from core.apps.cms.services.mongo import delete_project_database
 from core.services.redis_service import client as redis_client
 
 
@@ -24,12 +27,6 @@ def ProjectSignal(sender, instance, created, **kwargs):
         except Exception as e:
             logging.error(e)
             pass
-
-        # Create MongoDB credentials for this project
-        # This should run after transaction commits to avoid conflicts
-        # Use on_commit to defer credentials creation
-        from django.db import transaction
-        from django.conf import settings
 
         def create_mongo_creds():
             """Deferred MongoDB credentials creation"""
@@ -50,10 +47,8 @@ def ProjectSignal(sender, instance, created, **kwargs):
                         "Skipped MongoDB credentials creation for project project_id=%s: %s", instance.id, str(e)
                     )
 
-        # Defer credentials creation until after transaction commits
         transaction.on_commit(create_mongo_creds)
 
-        # Create default "users" collection
         collection = CollectionModel.objects.create(
             name="users",
             user=instance.owner,
@@ -61,14 +56,27 @@ def ProjectSignal(sender, instance, created, **kwargs):
         )
         FieldModel.objects.bulk_create(
             [
-                FieldModel(collection=collection, name="chat_id", type=FieldType.NUMBER.value, required=True),
+                FieldModel(collection=collection, name="chat_id", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
                 FieldModel(collection=collection, name="created_at", type=FieldType.DATETIME.value, required=True),
             ]
         )
+
+        chat_collection = CollectionModel.objects.create(
+            name="chat",
+            user=instance.owner,
+            project=instance,
+        )
+        FieldModel.objects.bulk_create(
+            [
+                FieldModel(collection=chat_collection, name="chat_id", type=FieldType.TEXT.value, required=True),
+                FieldModel(collection=chat_collection, name="text", type=FieldType.TEXT.value),
+            ]
+        )
+
         logging.info(
-            "Project uchun collection yaratildi collection=%s project=%s user=%s",
+            "Project uchun collectionlar yaratildi collection=%s,chat project=%s user=%s",
             "users",
             instance.name,
             instance.owner,

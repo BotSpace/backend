@@ -64,6 +64,11 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def perform_destroy(self, instance):
+        if not instance.can_delete:
+            raise ValidationError(detail={"detail": "bu collectionni o'chirish mumkun emas!!!"})
+        instance.delete()
+
     @action(methods=["POST"], detail=True, url_name="query", url_path="query")
     def query(self, request, pk):
         instance = self.get_object()
