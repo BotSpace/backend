@@ -6,11 +6,4 @@ REST_FRAMEWORK: Dict[str, Any] = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "django_core.paginations.CustomPagination",
     "PAGE_SIZE": 10,
-    "DEFAULT_THROTTLE_CLASSES": [
-        "core.throttle.ip_throttle.IPThrottle",
-    ],
-    "DEFAULT_THROTTLE_RATES": {
-        "ip": "60/min",
-        "debug_container": "15/min",
-    },
 }
