@@ -9,6 +9,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.project.sync_storage",
         "schedule": crontab(minute="*/10"),
     },
+    "sync_debug": {
+        "task": "core.apps.api.tasks.debug.sync_debug",
+        "schedule": crontab(minute="*/5"),
+    },
     # "proccess_payment": {
     #     "task": "core.apps.payment.tasks.payment.proccess_payment",
     #     "schedule": crontab(minute="0", hour="*/1"),

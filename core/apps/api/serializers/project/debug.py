@@ -10,6 +10,8 @@ class BaseDebugSerializer(serializers.ModelSerializer):
             "id",
             "status",
             "service_id",
+            "created_at",
+            "updated_at",
             # "flow_hash",
         ]
 
@@ -24,4 +26,3 @@ class RetrieveDebugSerializer(BaseDebugSerializer):
 
 class CreateDebugSerializer(BaseDebugSerializer):
     class Meta(BaseDebugSerializer.Meta): ...
-

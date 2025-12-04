@@ -1,0 +1,73 @@
+# type: ignore
+from rest_framework import serializers
+
+
+class UserSerializer(serializers.Serializer):
+    """User ma'lumotlari"""
+    _id = serializers.CharField(read_only=True, help_text="MongoDB ObjectId")
+    chat_id = serializers.CharField(help_text="Telegram chat ID")
+    first_name = serializers.CharField(help_text="User ismi")
+    last_name = serializers.CharField(required=False, allow_blank=True, help_text="User familiyasi")
+    created_at = serializers.DateTimeField(required=False, help_text="Yaratilgan vaqt")
+
+
+class MessageSerializer(serializers.Serializer):
+    """Chat xabari"""
+    _id = serializers.CharField(read_only=True, help_text="MongoDB ObjectId")
+    chat_id = serializers.CharField(help_text="Telegram chat ID")
+    text = serializers.CharField(required=False, allow_blank=True, help_text="Xabar matni")
+    read = serializers.BooleanField(default=False, help_text="O'qilgan/o'qilmagan")
+
+
+class UserWithMessagesSerializer(serializers.Serializer):
+    """User va uning xabarlari"""
+    user = UserSerializer(help_text="User ma'lumotlari")
+    last_message = MessageSerializer(required=False, allow_null=True, help_text="Oxirgi xabar")
+    unread_count = serializers.IntegerField(help_text="O'qilmagan xabarlar soni")
+    total_messages = serializers.IntegerField(help_text="Jami xabarlar soni")
+
+
+class UsersListResponseSerializer(serializers.Serializer):
+    """Userlar ro'yxati response"""
+    users = UserWithMessagesSerializer(many=True, help_text="Userlar va ularning xabarlari")
+    total = serializers.IntegerField(help_text="Jami userlar soni")
+    limit = serializers.IntegerField(help_text="Sahifadagi elementlar soni")
+    skip = serializers.IntegerField(help_text="O'tkazib yuborilgan elementlar soni")
+
+
+class MessagesListResponseSerializer(serializers.Serializer):
+    """Xabarlar ro'yxati response"""
+    messages = MessageSerializer(many=True, help_text="Xabarlar ro'yxati")
+    total = serializers.IntegerField(help_text="Jami xabarlar soni")
+    limit = serializers.IntegerField(help_text="Sahifadagi xabarlar soni")
+    skip = serializers.IntegerField(help_text="O'tkazib yuborilgan xabarlar soni")
+
+
+class MarkAsReadRequestSerializer(serializers.Serializer):
+    """Xabarlarni o'qilgan qilish request"""
+    chat_id = serializers.CharField(required=True, help_text="User chat ID")
+    message_ids = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_null=True,
+        help_text="O'qilgan qilish uchun xabar IDlar. Agar berilmasa, barcha xabarlar o'qilgan bo'ladi"
+    )
+
+
+class MarkAsReadResponseSerializer(serializers.Serializer):
+    """Xabarlarni o'qilgan qilish response"""
+    success = serializers.BooleanField(help_text="Muvaffaqiyatli bajarildi")
+    modified_count = serializers.IntegerField(help_text="O'zgartirilgan xabarlar soni")
+
+
+class ChatStatsResponseSerializer(serializers.Serializer):
+    """Chat statistikasi response"""
+    total_users = serializers.IntegerField(help_text="Jami userlar soni")
+    total_messages = serializers.IntegerField(help_text="Jami xabarlar soni")
+    unread_messages = serializers.IntegerField(help_text="O'qilmagan xabarlar soni")
+    read_messages = serializers.IntegerField(help_text="O'qilgan xabarlar soni")
+
+
+class ErrorResponseSerializer(serializers.Serializer):
+    """Xato response"""
+    error = serializers.CharField(help_text="Xato xabari")

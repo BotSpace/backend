@@ -1,3 +1,4 @@
+from .chat import *  # noqa
 from .docker import *  # noqa
 from .file import *  # noqa
 from .internal import *  # noqa

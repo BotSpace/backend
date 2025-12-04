@@ -5,6 +5,7 @@ from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet, ProjectPlanViewSet
+from core.apps.api.views.chat import ChatViewSet
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -16,6 +17,7 @@ router.register("relase", ReleaseView, basename="relase")
 router.register("project", ProjectView, basename="project")
 router.register("message", MessageView, basename="message")
 router.register("plans", PlanViewSet, basename="plans")
+router.register("chat", ChatViewSet, basename="chat")
 
 urlpatterns = [
     path("", include(router.urls)),
