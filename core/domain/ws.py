@@ -13,6 +13,7 @@ class DebugContainerStatus(BaseModel):
     project: int
     status: ContainerStatusEnum
     service_id: Optional[str]
+    updated_at: Optional[str] = None
 
     model_config = ConfigDict(use_enum_values=True)
 

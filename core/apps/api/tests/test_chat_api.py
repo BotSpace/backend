@@ -57,7 +57,7 @@ class TestChatAPI:
         # Check chat collection fields
         chat_fields = list(chat_collection.fields.values_list('name', flat=True))
         assert 'chat_id' in chat_fields
-        assert 'text' in chat_fields
+        assert 'message' in chat_fields  # Changed from 'text' to 'message'
 
     @patch('core.apps.api.views.chat.MongoRepository')
     @patch('core.apps.api.views.chat.MongoDBClient')
@@ -355,7 +355,7 @@ class TestChatAPI:
 
     @patch('core.apps.api.views.chat.MongoRepository')
     @patch('core.apps.api.views.chat.MongoDBClient')
-    @patch('core.apps.api.views.chat.default_storage')
+    @patch('django.core.files.storage.default_storage')
     def test_send_message_with_file(self, mock_storage, mock_mongo_client, mock_mongo_repo, chat_client):
         """Test sending message with file attachment"""
         from django.core.files.uploadedfile import SimpleUploadedFile

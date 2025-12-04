@@ -73,6 +73,7 @@ class Command(BaseCommand):
                                 project=service.project.id,
                                 status=service.status,
                                 service_id=service.service_id,
+                                updated_at=service.updated_at,
                             ),
                             EventTypes.DEBUG_STATUS,
                         )
