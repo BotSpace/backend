@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 from core.apps.api.enums import ContainerStatusEnum
-from datetime import datetime
 
 
 class EventTypes(Enum):
@@ -15,14 +14,9 @@ class DebugContainerStatus(BaseModel):
     status: ContainerStatusEnum
     service_id: Optional[str]
 
-    updated_at: Optional[datetime] = None
+    updated_at: Optional[str] = None
 
-    model_config = ConfigDict(
-        use_enum_values=True,
-        json_encoders={
-            datetime: lambda v: v.isoformat(),
-        },
-    )
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ReleaseContainerStatus(BaseModel):
