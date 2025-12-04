@@ -99,7 +99,7 @@ def check_rate_limit(bot_token, chat_id):
 
 # Celery task
 @shared_task(bind=True, max_retries=3)
-def send_telegram_message(self, bot_token, chat_id, text, file_path, file_type):
+def send_telegram_message(self, bot_token, chat_id, text, file_path, message_type):
     if not check_rate_limit(bot_token, chat_id):
         raise self.retry(countdown=1)  # Retry after 1 second
     # Send message
@@ -124,9 +124,9 @@ def send_telegram_message(self, bot_token, chat_id, text, file_path, file_type):
 {
   "_id": "507f191e810c19729de860ea",
   "chat_id": "123456789",
-  "text": "Caption",
+  "message": "Caption",
   "from_admin": true,
-  "file_type": "photo",
+  "message_type": "photo",
   "file_path": "chat/1/123456789/1701684900.123.jpg",
   "file_url": "/media/chat/1/123456789/1701684900.123.jpg",
   "file_name": "photo.jpg",
@@ -176,7 +176,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Content-Type: application/json" \
   -d '{
     "chat_id": "123456789",
-    "text": "Salom!"
+    "message": "Salom!"
   }'
 ```
 
@@ -187,7 +187,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Rasm" \
-  -F "file_type=photo" \
+  -F "message_type=photo" \
   -F "file=@image.jpg"
 ```
 
@@ -219,7 +219,7 @@ const sendFile = async (file, fileType) => {
   const formData = new FormData();
   formData.append('chat_id', '123456789');
   formData.append('file', file);
-  formData.append('file_type', fileType);
+  formData.append('message_type', fileType);
   
   const response = await fetch('/api/chat/send-message/1/', {
     method: 'POST',

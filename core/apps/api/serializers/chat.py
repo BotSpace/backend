@@ -15,14 +15,15 @@ class MessageSerializer(serializers.Serializer):
     """Chat xabari"""
     _id = serializers.CharField(read_only=True, help_text="MongoDB ObjectId")
     chat_id = serializers.CharField(help_text="Telegram chat ID")
-    text = serializers.CharField(required=False, allow_blank=True, help_text="Xabar matni yoki caption")
-    read = serializers.BooleanField(default=False, help_text="O'qilgan/o'qilmagan")
+    message = serializers.CharField(required=False, allow_blank=True, help_text="Xabar matni yoki caption")
+    message_type = serializers.CharField(required=False, allow_null=True, help_text="Xabar turi (text, photo, video, audio, document)")
+    is_read = serializers.BooleanField(default=False, help_text="O'qilgan/o'qilmagan")
     from_admin = serializers.BooleanField(default=False, required=False, help_text="Admin tomonidan yuborilganmi")
-    file_type = serializers.CharField(required=False, allow_null=True, help_text="File turi (photo, video, audio, document)")
     file_url = serializers.CharField(required=False, allow_null=True, help_text="File URL")
     file_name = serializers.CharField(required=False, allow_null=True, help_text="File nomi")
     file_size = serializers.IntegerField(required=False, allow_null=True, help_text="File hajmi (bytes)")
     created_at = serializers.DateTimeField(required=False, help_text="Yaratilgan vaqt")
+    updated_at = serializers.DateTimeField(required=False, help_text="Yangilangan vaqt")
 
 
 class UserWithMessagesSerializer(serializers.Serializer):
@@ -82,13 +83,14 @@ class ErrorResponseSerializer(serializers.Serializer):
 class SendMessageRequestSerializer(serializers.Serializer):
     """Xabar yuborish request"""
     chat_id = serializers.CharField(required=True, help_text="User chat ID (Telegram chat ID)")
-    text = serializers.CharField(required=False, allow_blank=True, help_text="Yuborilayotgan xabar matni (caption)")
+    message = serializers.CharField(required=False, allow_blank=True, help_text="Yuborilayotgan xabar matni (caption)")
     file = serializers.FileField(required=False, allow_null=True, help_text="Yuborilayotgan file (photo, video, audio, document)")
-    file_type = serializers.ChoiceField(
-        choices=['photo', 'video', 'audio', 'document'],
+    message_type = serializers.ChoiceField(
+        choices=['text', 'photo', 'video', 'audio', 'document'],
         required=False,
         allow_null=True,
-        help_text="File turi (photo, video, audio, document)"
+        default='text',
+        help_text="Xabar turi (text, photo, video, audio, document)"
     )
     
 

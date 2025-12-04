@@ -124,9 +124,9 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                     where={"chat_id": chat_id}, sort=[("_id", -1)], limit=1  # Get only last message
                 )
 
-                # Count unread messages (messages without 'read' field or read=False)
+                # Count unread messages (messages without 'is_read' field or is_read=False)
                 unread_count = chat_repo.count(
-                    {"chat_id": chat_id, "$or": [{"read": {"$exists": False}}, {"read": False}]}
+                    {"chat_id": chat_id, "$or": [{"is_read": {"$exists": False}}, {"is_read": False}]}
                 )
 
                 # Get total message count for this user
@@ -309,7 +309,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 query["_id"] = {"$in": [ObjectId(mid) for mid in message_ids]}
 
             # Update messages to mark as read
-            result = chat_repo.update(where=query, data={"$set": {"read": True}})
+            result = chat_repo.update(where=query, data={"$set": {"is_read": True, "updated_at": datetime.utcnow()}})
 
             return Response({"success": True, "modified_count": result.modified_count})
 
@@ -361,7 +361,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             total_messages = chat_repo.count({})
 
             # Get unread messages count
-            unread_messages = chat_repo.count({"$or": [{"read": {"$exists": False}}, {"read": False}]})
+            unread_messages = chat_repo.count({"$or": [{"is_read": {"$exists": False}}, {"is_read": False}]})
 
             return Response(
                 {
@@ -416,9 +416,9 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
         
         Body:
         - chat_id: User's Telegram chat ID
-        - text: Message text or caption (optional if file is provided)
+        - message: Message text or caption (optional if file is provided)
         - file: File to send (photo, video, audio, document) - optional
-        - file_type: Type of file (photo, video, audio, document) - required if file is provided
+        - message_type: Type of message (text, photo, video, audio, document) - default: text
         """
         project, users_collection, chat_collection = self.get_collections(project_id)
         
@@ -426,9 +426,9 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             return Response({"error": "Chat collection not found"}, status=status.HTTP_404_NOT_FOUND)
         
         chat_id = request.data.get("chat_id")
-        text = request.data.get("text", "")
+        message = request.data.get("message", "")
         file = request.FILES.get("file")
-        file_type = request.data.get("file_type")
+        message_type = request.data.get("message_type", "text")
         
         if not chat_id:
             return Response(
@@ -436,17 +436,17 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate that at least text or file is provided
-        if not text and not file:
+        # Validate that at least message or file is provided
+        if not message and not file:
             return Response(
-                {"error": "Either text or file must be provided"}, 
+                {"error": "Either message or file must be provided"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate file_type if file is provided
-        if file and not file_type:
+        # If file is provided, update message_type
+        if file and message_type == "text":
             return Response(
-                {"error": "file_type is required when file is provided"}, 
+                {"error": "message_type must be specified when file is provided (photo, video, audio, document)"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -454,14 +454,14 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
         if file:
             file_size_mb = file.size / (1024 * 1024)  # Convert to MB
             
-            if file_type == "photo" and file_size_mb > 10:
+            if message_type == "photo" and file_size_mb > 10:
                 return Response(
                     {"error": "Photo file size must be less than 10MB"}, 
                     status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
                 )
-            elif file_type in ["video", "audio", "document"] and file_size_mb > 50:
+            elif message_type in ["video", "audio", "document"] and file_size_mb > 50:
                 return Response(
-                    {"error": f"{file_type.capitalize()} file size must be less than 50MB"}, 
+                    {"error": f"{message_type.capitalize()} file size must be less than 50MB"}, 
                     status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
                 )
         
@@ -472,10 +472,12 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             # Create new message document
             message_data = {
                 "chat_id": chat_id,
-                "text": text,
-                "read": False,
+                "message": message,
+                "message_type": message_type,
+                "is_read": False,
                 "from_admin": True,  # Mark as admin message
                 "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
             }
             
             # Add file information if file is provided
@@ -494,7 +496,6 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 file_url = default_storage.url(file_path)
                 
                 message_data.update({
-                    "file_type": file_type,
                     "file_path": file_path,
                     "file_url": file_url,
                     "file_name": file.name,
@@ -524,9 +525,9 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                     send_telegram_message.delay(
                         bot_token=project.bot_token,
                         chat_id=chat_id,
-                        text=text,
+                        text=message,
                         file_path=message_data.get('file_path'),
-                        file_type=file_type,
+                        file_type=message_type if file else None,
                     )
                     telegram_sent = True
                 except ImportError:

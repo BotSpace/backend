@@ -80,8 +80,9 @@ class TestChatAPI:
             {
                 "_id": "507f191e810c19729de860ea",
                 "chat_id": "123456789",
-                "text": "Test message",
-                "read": False
+                "message": "Test message",
+                "message_type": "text",
+                "is_read": False
             }
         ]
         
@@ -130,14 +131,16 @@ class TestChatAPI:
             {
                 "_id": "507f191e810c19729de860ea",
                 "chat_id": "123456789",
-                "text": "Test message 1",
-                "read": False
+                "message": "Test message 1",
+                "message_type": "text",
+                "is_read": False
             },
             {
                 "_id": "507f191e810c19729de860eb",
                 "chat_id": "123456789",
-                "text": "Test message 2",
-                "read": True
+                "message": "Test message 2",
+                "message_type": "text",
+                "is_read": True
             }
         ]
         
@@ -301,7 +304,7 @@ class TestChatAPI:
         url = reverse('chat-send-message', kwargs={'project_id': project.id})
         response = client.post(url, data={
             'chat_id': '123456789',
-            'text': 'Hello, this is a test message from admin!'
+            'message': 'Hello, this is a test message from admin!'
         }, format='json')
         
         assert response.status_code == 200
@@ -316,14 +319,14 @@ class TestChatAPI:
         assert data['success'] is True
         assert data['message_id'] == mock_insert_result
         assert data['message']['chat_id'] == '123456789'
-        assert data['message']['text'] == 'Hello, this is a test message from admin!'
+        assert data['message']['message'] == 'Hello, this is a test message from admin!'
         assert data['message']['from_admin'] is True
         
         # Verify insert_one was called with correct data
         mock_repo_instance.insert_one.assert_called_once()
         call_args = mock_repo_instance.insert_one.call_args[0][0]
         assert call_args['chat_id'] == '123456789'
-        assert call_args['text'] == 'Hello, this is a test message from admin!'
+        assert call_args['message'] == 'Hello, this is a test message from admin!'
         assert call_args['from_admin'] is True
 
     @patch('core.apps.api.views.chat.MongoRepository')
@@ -348,7 +351,7 @@ class TestChatAPI:
         
         # Make request without chat_id
         response = client.post(url, data={
-            'text': 'Test message'
+            'message': 'Test message'
         }, format='json')
         
         assert response.status_code == 400
@@ -387,8 +390,8 @@ class TestChatAPI:
         url = reverse('chat-send-message', kwargs={'project_id': project.id})
         response = client.post(url, data={
             'chat_id': '123456789',
-            'text': 'Photo caption',
-            'file_type': 'photo',
+            'message': 'Photo caption',
+            'message_type': 'photo',
             'file': fake_file
         }, format='multipart')
         
@@ -402,7 +405,7 @@ class TestChatAPI:
             data = response_data
         
         assert data['success'] is True
-        assert data['message']['file_type'] == 'photo'
+        assert data['message']['message_type'] == 'photo'
         assert 'file_url' in data['message']
 
     @patch('core.apps.api.views.chat.MongoRepository')
@@ -429,8 +432,8 @@ class TestChatAPI:
         url = reverse('chat-send-message', kwargs={'project_id': project.id})
         response = client.post(url, data={
             'chat_id': '123456789',
-            'text': 'Large photo',
-            'file_type': 'photo',
+            'message': 'Large photo',
+            'message_type': 'photo',
             'file': large_file
         }, format='multipart')
         

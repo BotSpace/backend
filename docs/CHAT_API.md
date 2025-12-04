@@ -30,8 +30,8 @@ Chat API MongoDB ma'lumotlar bilan ishlash uchun yaratilgan. Har bir project uch
         {
           "_id": "507f191e810c19729de860ea",
           "chat_id": "123456789",
-          "text": "Salom",
-          "read": false
+          "message": "Salom",
+          "is_read": false
         }
       ],
       "unread_count": 5,
@@ -69,8 +69,8 @@ curl -X GET "http://localhost:8000/api/chat/users/1/?limit=20&skip=0" \
     {
       "_id": "507f191e810c19729de860ea",
       "chat_id": "123456789",
-      "text": "Salom",
-      "read": false
+      "message": "Salom",
+      "is_read": false
     }
   ],
   "total": 150,
@@ -110,7 +110,7 @@ Text xabar yuborish:
 ```json
 {
   "chat_id": "123456789",
-  "text": "Assalomu alaykum! Sizga qanday yordam bera olaman?"
+  "message": "Assalomu alaykum! Sizga qanday yordam bera olaman?"
 }
 ```
 
@@ -121,7 +121,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Bu rasm caption" \
-  -F "file_type=photo" \
+  -F "message_type=photo" \
   -F "file=@/path/to/photo.jpg"
 ```
 
@@ -131,7 +131,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Bu video caption" \
-  -F "file_type=video" \
+  -F "message_type=video" \
   -F "file=@/path/to/video.mp4"
 ```
 
@@ -144,11 +144,11 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   "message": {
     "_id": "507f191e810c19729de860ea",
     "chat_id": "123456789",
-    "text": "Assalomu alaykum! Sizga qanday yordam bera olaman?",
-    "read": false,
+    "message": "Assalomu alaykum! Sizga qanday yordam bera olaman?",
+    "is_read": false,
     "from_admin": true,
     "created_at": "2024-12-04T10:35:00Z",
-    "file_type": "photo",
+    "message_type": "photo",
     "file_url": "/media/chat/1/123456789/1701684900.123.jpg",
     "file_name": "photo.jpg",
     "file_size": 1048576
@@ -165,7 +165,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Content-Type: application/json" \
   -d '{
     "chat_id": "123456789",
-    "text": "Salom! Qanday yordam kerak?"
+    "message": "Salom! Qanday yordam kerak?"
   }'
 ```
 
@@ -175,7 +175,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Rasmni ko'ring" \
-  -F "file_type=photo" \
+  -F "message_type=photo" \
   -F "file=@image.jpg"
 ```
 
@@ -185,7 +185,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Video caption" \
-  -F "file_type=video" \
+  -F "message_type=video" \
   -F "file=@video.mp4"
 ```
 
@@ -195,7 +195,7 @@ curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "chat_id=123456789" \
   -F "text=Document" \
-  -F "file_type=document" \
+  -F "message_type=document" \
   -F "file=@document.pdf"
 ```
 
@@ -379,7 +379,7 @@ function ChatComponent({ projectId, chatId, token }) {
     const formData = new FormData();
     formData.append('chat_id', chatId);
     formData.append('file', file);
-    formData.append('file_type', fileType);
+    formData.append('message_type', fileType);
     if (caption) {
       formData.append('text', caption);
     }

@@ -19,7 +19,7 @@
 curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"chat_id": "123456789", "text": "Salom!"}'
+  -d '{"chat_id": "123456789", "message": "Salom!"}'
 
 # Photo
 curl -X POST "http://localhost:8000/api/chat/send-message/1/" \
