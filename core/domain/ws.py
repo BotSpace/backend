@@ -15,7 +15,7 @@ class DebugContainerStatus(BaseModel):
     status: ContainerStatusEnum
     service_id: Optional[str]
 
-    updated_at: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(
         use_enum_values=True,
