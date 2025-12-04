@@ -24,7 +24,7 @@ class PlanViewSet(BaseViewSetMixin, viewsets.ReadOnlyModelViewSet):
     retrieve: Bitta tarifni ko'rish
     """
 
-    queryset = PlanModel.objects.filter(is_active=True)
+    queryset = PlanModel.objects.filter(is_active=True).order_by("-id")
     serializer_class = PlanSerializer
     permission_classes = []  # Public endpoint
 
