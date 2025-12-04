@@ -1,4 +1,5 @@
 # type: ignore
+from core.apps.api.tasks.chat import send_telegram_message
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,6 +11,7 @@ from drf_spectacular.types import OpenApiTypes
 from django_core.mixins import BaseViewSetMixin
 from datetime import datetime
 
+from core.apps.api.models.file import FileModel
 from core.apps.api.models.project import ProjectModel
 from core.apps.cms.models.cms import CollectionModel
 from core.apps.cms.services.mongo import MongoRepository, MongoDBClient
@@ -413,7 +415,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
     def send_message(self, request, project_id=None):
         """
         Send a message to a user (text and/or media)
-        
+
         Body:
         - chat_id: User's Telegram chat ID
         - message: Message text or caption (optional if file is provided)
@@ -421,130 +423,89 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
         - message_type: Type of message (text, photo, video, audio, document) - default: text
         """
         project, users_collection, chat_collection = self.get_collections(project_id)
-        
+
         if not chat_collection:
             return Response({"error": "Chat collection not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+
         chat_id = request.data.get("chat_id")
         message = request.data.get("message", "")
         file = request.FILES.get("file")
         message_type = request.data.get("message_type", "text")
-        
+
         if not chat_id:
-            return Response(
-                {"error": "chat_id is required"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Validate that at least message or file is provided
+            return Response({"error": "chat_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         if not message and not file:
-            return Response(
-                {"error": "Either message or file must be provided"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # If file is provided, update message_type
+            return Response({"error": "Either message or file must be provided"}, status=status.HTTP_400_BAD_REQUEST)
+
         if file and message_type == "text":
             return Response(
-                {"error": "message_type must be specified when file is provided (photo, video, audio, document)"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "message_type must be specified when file is provided (photo, video, audio, document)"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
-        # Check file size limits (Telegram API limits)
+
         if file:
             file_size_mb = file.size / (1024 * 1024)  # Convert to MB
-            
+
             if message_type == "photo" and file_size_mb > 10:
                 return Response(
-                    {"error": "Photo file size must be less than 10MB"}, 
-                    status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                    {"error": "Photo file size must be less than 10MB"}, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
                 )
             elif message_type in ["video", "audio", "document"] and file_size_mb > 50:
                 return Response(
-                    {"error": f"{message_type.capitalize()} file size must be less than 50MB"}, 
-                    status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                    {"error": f"{message_type.capitalize()} file size must be less than 50MB"},
+                    status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 )
-        
+
         mongo_client = MongoDBClient()
         try:
             chat_repo = MongoRepository(chat_collection, mongo_client)
-            
-            # Create new message document
             message_data = {
                 "chat_id": chat_id,
                 "message": message,
                 "message_type": message_type,
                 "is_read": False,
-                "from_admin": True,  # Mark as admin message
+                "from_admin": True,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow(),
             }
-            
-            # Add file information if file is provided
+            file_id = None
             if file:
-                # Save file to media storage
-                from django.core.files.storage import default_storage
-                from django.core.files.base import ContentFile
-                import os
-                
-                # Generate unique filename
-                file_extension = os.path.splitext(file.name)[1]
-                file_name = f"chat/{project_id}/{chat_id}/{datetime.utcnow().timestamp()}{file_extension}"
-                
-                # Save file
-                file_path = default_storage.save(file_name, ContentFile(file.read()))
-                file_url = default_storage.url(file_path)
-                
-                message_data.update({
-                    "file_path": file_path,
-                    "file_url": file_url,
-                    "file_name": file.name,
-                    "file_size": file.size,
-                })
-            
-            # Insert message into MongoDB
+                file_instance = FileModel.objects.create(
+                    project=project,
+                    user=request.user,
+                    file=file,
+                )
+                message_data["file"] = str(file_instance.uuid)
+                file_id = file_instance.pk
+
             result = chat_repo.insert_one(message_data)
-            
-            # Get the inserted message with its ID
+
             if result:
                 message_id = str(result)
                 message_data["_id"] = message_id
             else:
                 message_id = None
-            
-            # TODO: Send message via Telegram Bot API (with rate limiting)
-            # This should be done in a background task (Celery) to respect rate limits
             telegram_sent = False
-            
-            # Check if we should send via Telegram
-            if hasattr(project, 'bot_token') and project.bot_token:
-                # Import telegram sending task
-                try:
-                    from core.apps.api.tasks.chat import send_telegram_message
-                    # Queue the message sending task (respects rate limits)
-                    send_telegram_message.delay(
-                        bot_token=project.bot_token,
-                        chat_id=chat_id,
-                        text=message,
-                        file_path=message_data.get('file_path'),
-                        file_type=message_type if file else None,
-                    )
-                    telegram_sent = True
-                except ImportError:
-                    # Task not available, skip telegram sending
-                    pass
-            
-            return Response({
-                "success": True,
-                "message_id": message_id,
-                "message": message_data,
-                "telegram_sent": telegram_sent
-            })
-            
+            try:
+                send_telegram_message.delay(
+                    chat_id=chat_id,
+                    project_id=project_id,
+                    message_type=message_type,
+                    text=message,
+                    file_id=file_id,
+                )
+                telegram_sent = True
+            except ImportError:
+                pass
+
+            return Response(
+                {"success": True, "message_id": message_id, "message": message_data, "telegram_sent": telegram_sent}
+            )
+
         except Exception as e:
             return Response(
-                {"error": f"Failed to send message: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": f"Failed to send message: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         finally:
             mongo_client.close()

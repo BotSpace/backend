@@ -75,6 +75,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
                 FieldModel(collection=chat_collection, name="message", type=FieldType.TEXT.value),
                 FieldModel(collection=chat_collection, name="message_type", type=FieldType.TEXT.value),
                 FieldModel(collection=chat_collection, name="is_read", type=FieldType.BOOL.value, default=False),
+                FieldModel(collection=chat_collection, name="from_admin", type=FieldType.BOOL.value, default=False),
                 FieldModel(collection=chat_collection, name="updated_at", type=FieldType.DATETIME.value),
                 FieldModel(collection=chat_collection, name="created_at", type=FieldType.DATETIME.value),
             ]
