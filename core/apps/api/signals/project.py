@@ -59,6 +59,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
                 FieldModel(collection=collection, name="chat_id", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
                 FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
+                FieldModel(collection=collection, name="updated_at", type=FieldType.DATETIME.value, required=True),
                 FieldModel(collection=collection, name="created_at", type=FieldType.DATETIME.value, required=True),
             ]
         )
@@ -71,7 +72,11 @@ def ProjectSignal(sender, instance, created, **kwargs):
         FieldModel.objects.bulk_create(
             [
                 FieldModel(collection=chat_collection, name="chat_id", type=FieldType.TEXT.value, required=True),
-                FieldModel(collection=chat_collection, name="text", type=FieldType.TEXT.value),
+                FieldModel(collection=chat_collection, name="message", type=FieldType.TEXT.value),
+                FieldModel(collection=chat_collection, name="message_type", type=FieldType.TEXT.value),
+                FieldModel(collection=chat_collection, name="is_read", type=FieldType.BOOL.value, default=False),
+                FieldModel(collection=chat_collection, name="updated_at", type=FieldType.DATETIME.value),
+                FieldModel(collection=chat_collection, name="created_at", type=FieldType.DATETIME.value),
             ]
         )
 
