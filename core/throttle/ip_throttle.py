@@ -21,7 +21,8 @@ class DebugContainerThrottle(SimpleRateThrottle):
             ip = ip.split(",")[0].strip()
         else:
             ip = request.META.get("REMOTE_ADDR")
-        logging.info("debug container new client ip=%s", ip)
+        logging.info(request.META)
+        return None
         if not ip:
             return None
         return f"throttle_ip_{ip}"
