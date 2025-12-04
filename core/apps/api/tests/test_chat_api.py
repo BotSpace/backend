@@ -280,3 +280,158 @@ class TestChatAPI:
         
         # Should return 404 because user doesn't own this project
         assert response.status_code == 404
+
+    @patch('core.apps.api.views.chat.MongoRepository')
+    @patch('core.apps.api.views.chat.MongoDBClient')
+    def test_send_message(self, mock_mongo_client, mock_mongo_repo, chat_client):
+        """Test sending a message to a user"""
+        client, project, users_collection, chat_collection = chat_client
+        
+        # Setup mock repository
+        mock_repo_instance = MagicMock()
+        mock_insert_result = "507f191e810c19729de860ea"  # Mock ObjectId
+        mock_repo_instance.insert_one.return_value = mock_insert_result
+        mock_mongo_repo.return_value = mock_repo_instance
+        
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_mongo_client.return_value = mock_client_instance
+        
+        # Make request
+        url = reverse('chat-send-message', kwargs={'project_id': project.id})
+        response = client.post(url, data={
+            'chat_id': '123456789',
+            'text': 'Hello, this is a test message from admin!'
+        }, format='json')
+        
+        assert response.status_code == 200
+        response_data = response.json()
+        
+        # BaseViewSetMixin wraps response
+        if 'data' in response_data:
+            data = response_data['data']
+        else:
+            data = response_data
+            
+        assert data['success'] is True
+        assert data['message_id'] == mock_insert_result
+        assert data['message']['chat_id'] == '123456789'
+        assert data['message']['text'] == 'Hello, this is a test message from admin!'
+        assert data['message']['from_admin'] is True
+        
+        # Verify insert_one was called with correct data
+        mock_repo_instance.insert_one.assert_called_once()
+        call_args = mock_repo_instance.insert_one.call_args[0][0]
+        assert call_args['chat_id'] == '123456789'
+        assert call_args['text'] == 'Hello, this is a test message from admin!'
+        assert call_args['from_admin'] is True
+
+    @patch('core.apps.api.views.chat.MongoRepository')
+    @patch('core.apps.api.views.chat.MongoDBClient')
+    def test_send_message_missing_params(self, mock_mongo_client, mock_mongo_repo, chat_client):
+        """Test sending message with missing parameters"""
+        client, project, users_collection, chat_collection = chat_client
+        
+        # Setup mock (shouldn't be used)
+        mock_repo_instance = MagicMock()
+        mock_mongo_repo.return_value = mock_repo_instance
+        mock_client_instance = MagicMock()
+        mock_mongo_client.return_value = mock_client_instance
+        
+        # Make request without text and file
+        url = reverse('chat-send-message', kwargs={'project_id': project.id})
+        response = client.post(url, data={
+            'chat_id': '123456789'
+        }, format='json')
+        
+        assert response.status_code == 400
+        
+        # Make request without chat_id
+        response = client.post(url, data={
+            'text': 'Test message'
+        }, format='json')
+        
+        assert response.status_code == 400
+
+    @patch('core.apps.api.views.chat.MongoRepository')
+    @patch('core.apps.api.views.chat.MongoDBClient')
+    @patch('core.apps.api.views.chat.default_storage')
+    def test_send_message_with_file(self, mock_storage, mock_mongo_client, mock_mongo_repo, chat_client):
+        """Test sending message with file attachment"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        client, project, users_collection, chat_collection = chat_client
+        
+        # Setup mock repository
+        mock_repo_instance = MagicMock()
+        mock_insert_result = "507f191e810c19729de860ea"
+        mock_repo_instance.insert_one.return_value = mock_insert_result
+        mock_mongo_repo.return_value = mock_repo_instance
+        
+        # Setup mock client
+        mock_client_instance = MagicMock()
+        mock_mongo_client.return_value = mock_client_instance
+        
+        # Setup mock storage
+        mock_storage.save.return_value = "chat/1/123456789/test.jpg"
+        mock_storage.url.return_value = "/media/chat/1/123456789/test.jpg"
+        
+        # Create fake file
+        fake_file = SimpleUploadedFile(
+            "test.jpg",
+            b"fake image content",
+            content_type="image/jpeg"
+        )
+        
+        # Make request with file
+        url = reverse('chat-send-message', kwargs={'project_id': project.id})
+        response = client.post(url, data={
+            'chat_id': '123456789',
+            'text': 'Photo caption',
+            'file_type': 'photo',
+            'file': fake_file
+        }, format='multipart')
+        
+        assert response.status_code == 200
+        response_data = response.json()
+        
+        # BaseViewSetMixin wraps response
+        if 'data' in response_data:
+            data = response_data['data']
+        else:
+            data = response_data
+        
+        assert data['success'] is True
+        assert data['message']['file_type'] == 'photo'
+        assert 'file_url' in data['message']
+
+    @patch('core.apps.api.views.chat.MongoRepository')
+    @patch('core.apps.api.views.chat.MongoDBClient')
+    def test_send_message_file_size_limit(self, mock_mongo_client, mock_mongo_repo, chat_client):
+        """Test file size limit validation"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        client, project, users_collection, chat_collection = chat_client
+        
+        # Setup mocks
+        mock_repo_instance = MagicMock()
+        mock_mongo_repo.return_value = mock_repo_instance
+        mock_client_instance = MagicMock()
+        mock_mongo_client.return_value = mock_client_instance
+        
+        # Create file larger than 10MB for photo
+        large_file = SimpleUploadedFile(
+            "large.jpg",
+            b"x" * (11 * 1024 * 1024),  # 11MB
+            content_type="image/jpeg"
+        )
+        
+        url = reverse('chat-send-message', kwargs={'project_id': project.id})
+        response = client.post(url, data={
+            'chat_id': '123456789',
+            'text': 'Large photo',
+            'file_type': 'photo',
+            'file': large_file
+        }, format='multipart')
+        
+        assert response.status_code == 413  # Request Entity Too Large

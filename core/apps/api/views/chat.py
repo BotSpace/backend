@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django_core.mixins import BaseViewSetMixin
+from datetime import datetime
 
 from core.apps.api.models.project import ProjectModel
 from core.apps.cms.models.cms import CollectionModel
@@ -19,6 +20,8 @@ from core.apps.api.serializers.chat import (
     MarkAsReadResponseSerializer,
     ChatStatsResponseSerializer,
     ErrorResponseSerializer,
+    SendMessageRequestSerializer,
+    SendMessageResponseSerializer,
 )
 
 
@@ -369,5 +372,178 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 }
             )
 
+        finally:
+            mongo_client.close()
+
+    @extend_schema(
+        summary="Foydalanuvchiga xabar yuborish",
+        description="""
+        Bitta foydalanuvchiga xabar yuborish (matn va media).
+        Yuborilgan xabar avtomatik ravishda chatga qo'shiladi va real-time stream orqali boshqa clientlarga yuboriladi.
+        
+        **Media yuborish:**
+        - photo: max 10MB
+        - video: max 50MB
+        - audio: max 50MB
+        - document: max 50MB
+        
+        **Telegram API limitlari:**
+        - 1 ta botga 30 xabar/soniya
+        - 1 ta chatga 1 xabar/soniya
+        - Bu limitlar avtomatik kuzatiladi
+        """,
+        parameters=[
+            OpenApiParameter(
+                name="project_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="Project ID",
+                required=True,
+            ),
+        ],
+        request=SendMessageRequestSerializer,
+        responses={
+            200: SendMessageResponseSerializer,
+            400: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+            413: ErrorResponseSerializer,
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="send-message/(?P<project_id>[0-9]+)")
+    def send_message(self, request, project_id=None):
+        """
+        Send a message to a user (text and/or media)
+        
+        Body:
+        - chat_id: User's Telegram chat ID
+        - text: Message text or caption (optional if file is provided)
+        - file: File to send (photo, video, audio, document) - optional
+        - file_type: Type of file (photo, video, audio, document) - required if file is provided
+        """
+        project, users_collection, chat_collection = self.get_collections(project_id)
+        
+        if not chat_collection:
+            return Response({"error": "Chat collection not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        chat_id = request.data.get("chat_id")
+        text = request.data.get("text", "")
+        file = request.FILES.get("file")
+        file_type = request.data.get("file_type")
+        
+        if not chat_id:
+            return Response(
+                {"error": "chat_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate that at least text or file is provided
+        if not text and not file:
+            return Response(
+                {"error": "Either text or file must be provided"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file_type if file is provided
+        if file and not file_type:
+            return Response(
+                {"error": "file_type is required when file is provided"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check file size limits (Telegram API limits)
+        if file:
+            file_size_mb = file.size / (1024 * 1024)  # Convert to MB
+            
+            if file_type == "photo" and file_size_mb > 10:
+                return Response(
+                    {"error": "Photo file size must be less than 10MB"}, 
+                    status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                )
+            elif file_type in ["video", "audio", "document"] and file_size_mb > 50:
+                return Response(
+                    {"error": f"{file_type.capitalize()} file size must be less than 50MB"}, 
+                    status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                )
+        
+        mongo_client = MongoDBClient()
+        try:
+            chat_repo = MongoRepository(chat_collection, mongo_client)
+            
+            # Create new message document
+            message_data = {
+                "chat_id": chat_id,
+                "text": text,
+                "read": False,
+                "from_admin": True,  # Mark as admin message
+                "created_at": datetime.utcnow(),
+            }
+            
+            # Add file information if file is provided
+            if file:
+                # Save file to media storage
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                import os
+                
+                # Generate unique filename
+                file_extension = os.path.splitext(file.name)[1]
+                file_name = f"chat/{project_id}/{chat_id}/{datetime.utcnow().timestamp()}{file_extension}"
+                
+                # Save file
+                file_path = default_storage.save(file_name, ContentFile(file.read()))
+                file_url = default_storage.url(file_path)
+                
+                message_data.update({
+                    "file_type": file_type,
+                    "file_path": file_path,
+                    "file_url": file_url,
+                    "file_name": file.name,
+                    "file_size": file.size,
+                })
+            
+            # Insert message into MongoDB
+            result = chat_repo.insert_one(message_data)
+            
+            # Get the inserted message with its ID
+            if result:
+                message_id = str(result)
+                message_data["_id"] = message_id
+            else:
+                message_id = None
+            
+            # TODO: Send message via Telegram Bot API (with rate limiting)
+            # This should be done in a background task (Celery) to respect rate limits
+            telegram_sent = False
+            
+            # Check if we should send via Telegram
+            if hasattr(project, 'bot_token') and project.bot_token:
+                # Import telegram sending task
+                try:
+                    from core.apps.api.tasks.chat import send_telegram_message
+                    # Queue the message sending task (respects rate limits)
+                    send_telegram_message.delay(
+                        bot_token=project.bot_token,
+                        chat_id=chat_id,
+                        text=text,
+                        file_path=message_data.get('file_path'),
+                        file_type=file_type,
+                    )
+                    telegram_sent = True
+                except ImportError:
+                    # Task not available, skip telegram sending
+                    pass
+            
+            return Response({
+                "success": True,
+                "message_id": message_id,
+                "message": message_data,
+                "telegram_sent": telegram_sent
+            })
+            
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to send message: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         finally:
             mongo_client.close()
