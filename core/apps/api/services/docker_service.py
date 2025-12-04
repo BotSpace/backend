@@ -103,6 +103,11 @@ def create_service(image, name, command=None, **kwargs):
             condition="on-failure",
             max_attempts=5,
         ),
+        log_driver="json-file",
+        log_driver_options={
+            "max-size": "5m",
+            "max-file": "2",
+        },
         resources=resources,
         **kwargs,
     )
