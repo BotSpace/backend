@@ -238,7 +238,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             chat_repo = MongoRepository(chat_collection, mongo_client)
 
             # Get messages for this chat_id
-            messages = chat_repo.find(where={"chat_id": chat_id}, limit=limit, skip=skip, sort=[("_id", -1)])
+            messages = chat_repo.find(where={"chat_id": int(chat_id)}, limit=limit, skip=skip, sort=[("_id", -1)])
 
             # Get total count
             total_messages = chat_repo.count({"chat_id": chat_id})
