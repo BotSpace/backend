@@ -31,7 +31,6 @@ from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.services.webhook import set_webhook
 from core.apps.cms.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
-from core.throttle.ip_throttle import DebugContainerThrottle, IPThrottle
 
 
 @extend_schema(tags=["project"])
@@ -59,12 +58,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     def get_object(self):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
-
-    def get_throttles(self):
-        super().get_throttles()
-        if self.action == "debug":
-            return [DebugContainerThrottle()]
-        return [IPThrottle()]
 
     def perform_create(self, serializer):
         serializer.save(
