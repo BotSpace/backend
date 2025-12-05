@@ -60,10 +60,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
 
     def perform_create(self, serializer):
-        serializer.save(
-            owner=self.request.user,
-            flow={"nodes": [], "edges": []},
-        )
+        raise Exception(serializer.validated_data)
+        serializer.save(owner=self.request.user)
 
     @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
     def create_from_template(self, request):

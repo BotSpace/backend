@@ -1,7 +1,8 @@
 from rest_framework import serializers
+from core.apps.api.models import ProjectPlanModel, PlanModel
 
 from core.apps.api.models import ProjectModel
-from core.apps.api.models.project import DebugModel, EnviromentModel
+from core.apps.api.models.project import EnviromentModel
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
 from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
@@ -24,6 +25,14 @@ class BaseProjectSerializer(serializers.ModelSerializer):
 
     def get_users(self, obj) -> int:
         return self.dashboardService.users_count()
+
+    def validate_plan_id(self, value):
+        """Validate plan exists and is active"""
+        try:
+            plan = PlanModel.objects.get(id=value, is_active=True)
+            return plan.pk
+        except PlanModel.DoesNotExist:
+            raise serializers.ValidationError("Invalid or inactive plan")
 
     class Meta:
         model = ProjectModel
@@ -110,7 +119,7 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
 class CreateProjectSerializer(BaseProjectSerializer):
     debug = CreateDebugSerializer(required=False)
     release = None
-    plan_id = serializers.IntegerField(required=False, write_only=True, help_text="Tarif ID (ixtiyoriy, default: FREE)")
+    plan_id = serializers.IntegerField(required=True, write_only=True, help_text="Tarif ID (ixtiyoriy, default: FREE)")
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [
@@ -121,40 +130,9 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "plan_id",
         ]
 
-    def validate_plan_id(self, value):
-        """Validate plan exists and is active"""
-        from core.apps.api.models import PlanModel
-
-        try:
-            plan = PlanModel.objects.get(id=value, is_active=True)
-            return plan.id
-        except PlanModel.DoesNotExist:
-            raise serializers.ValidationError("Invalid or inactive plan")
-
-    def create(self, validated_data):
-        """Create project with plan assignment"""
-        plan_id = validated_data.pop("plan_id", None)
-        instance = super().create(validated_data)
-        instance.flow = default_flow()
-        instance.save()
-
-        # If plan_id is specified, update the auto-created plan
-        if plan_id:
-            from core.apps.api.models import ProjectPlanModel, PlanModel
-            from core.apps.api.enums.plan import PlanStatus
-
-            try:
-                project_plan = ProjectPlanModel.objects.get(project=instance)
-                new_plan = PlanModel.objects.get(id=plan_id, is_active=True)
-                project_plan.plan = new_plan
-                project_plan.save()
-            except (ProjectPlanModel.DoesNotExist, PlanModel.DoesNotExist):
-                pass  # Fallback to signal-created FREE plan
-
-        return instance
-
 
 class CreateProjectFromTemplate(serializers.Serializer):
     template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all())
     name = serializers.CharField(max_length=255)
     token = serializers.CharField(max_length=255)
+    plan_id = serializers.IntegerField(required=False, write_only=True, help_text="Tarif ID (ixtiyoriy, default: FREE)")

@@ -1,5 +1,7 @@
 import logging
 
+from core.apps.api.models import PlanModel, ProjectPlanModel
+from core.apps.api.enums.plan import PlanType, PlanStatus
 from django.db import transaction
 from django.conf import settings
 
@@ -28,10 +30,8 @@ def ProjectSignal(sender, instance, created, **kwargs):
             pass
 
         def create_mongo_creds():
-            """Deferred MongoDB credentials creation"""
             if not getattr(settings, "TESTING", False):
                 try:
-                    # Refresh instance to ensure we have latest data
                     fresh_instance = type(instance).objects.get(pk=instance.pk)
                     credentials = fresh_instance.get_mongo_credentials()
                     logging.info(
@@ -41,13 +41,11 @@ def ProjectSignal(sender, instance, created, **kwargs):
                         credentials["database"],
                     )
                 except Exception as e:
-                    # Skip if MongoDB is unavailable or mocked in tests
                     logging.warning(
                         "Skipped MongoDB credentials creation for project project_id=%s: %s", instance.id, str(e)
                     )
 
         transaction.on_commit(create_mongo_creds)
-
         collection = CollectionModel.objects.create(
             name="users",
             user=instance.owner,
@@ -87,12 +85,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.owner,
         )
 
-        # Assign default FREE plan to new project
         try:
-            from core.apps.api.models import PlanModel, ProjectPlanModel
-            from core.apps.api.enums.plan import PlanType, PlanStatus
-
-            # Get or create FREE plan
             free_plan, _ = PlanModel.objects.get_or_create(
                 name=PlanType.FREE,
                 defaults={
@@ -102,10 +95,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
                     "description": "Bepul tarif - 100 tagacha foydalanuvchi",
                 },
             )
-
-            # Assign plan to project
             ProjectPlanModel.objects.create(project=instance, plan=free_plan, status=PlanStatus.ACTIVE, current_users=0)
-
             logging.info("Project ga FREE plan biriktirildi project_id=%s", instance.id)
         except Exception as e:
             logging.error("Project ga plan biriktirishda xatolik: project_id=%s error=%s", instance.id, e)
