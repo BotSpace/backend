@@ -248,7 +248,8 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 if "_id" in msg:
                     msg["_id"] = str(msg["_id"])
 
-            return Response({"messages": messages.reverse(), "total": total_messages, "limit": limit, "skip": skip})
+            messages.reverse()
+            return Response({"messages": messages, "total": total_messages, "limit": limit, "skip": skip})
 
         finally:
             mongo_client.close()
