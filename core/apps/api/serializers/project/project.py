@@ -5,6 +5,7 @@ from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
 from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
+from core.apps.api.services.project import default_flow
 from core.apps.cms.services.mongo import get_project_collection
 from core.apps.template.models import TemplateModel
 
@@ -134,6 +135,8 @@ class CreateProjectSerializer(BaseProjectSerializer):
         """Create project with plan assignment"""
         plan_id = validated_data.pop("plan_id", None)
         instance = super().create(validated_data)
+        instance.flow = default_flow()
+        instance.save()
 
         # If plan_id is specified, update the auto-created plan
         if plan_id:
