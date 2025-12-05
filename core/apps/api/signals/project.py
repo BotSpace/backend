@@ -12,6 +12,7 @@ from core.apps.api.models import project
 from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
+from core.apps.api.services.project import default_flow
 from core.apps.api.tasks.bot import sync_bot
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel
@@ -87,6 +88,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.name,
             instance.owner,
         )
+        instance.flow = default_flow()
 
         # Assign default FREE plan to new project
         try:
