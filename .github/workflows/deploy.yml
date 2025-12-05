@@ -164,7 +164,10 @@ jobs:
               "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
               "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}" \
               "TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }}" \
-              "PROTOCOL_HTTPS=true"
+              "PROTOCOL_HTTPS=true" \
+              "CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }}" \
+              "CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }}" \
+              "CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }}"
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
