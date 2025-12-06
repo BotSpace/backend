@@ -12,6 +12,7 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveMode
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from core.apps.api.serializers.project import default_flow
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
@@ -69,10 +70,10 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
                         "plan_id": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"]
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"],
                         }
-                    }
-                }
+                    },
+                },
             ),
         },
     )
@@ -93,6 +94,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             subtract_balance(self.request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}")
 
         project = serializer.save(owner=self.request.user)
+        project.flow = default_flow()
         ProjectPlanModel.objects.create(project=project, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
 
     @extend_schema(
@@ -106,17 +108,14 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
                 response={
                     "type": "object",
                     "properties": {
-                        "detail": {
-                            "type": "string",
-                            "example": "template not purchased"
-                        },
+                        "detail": {"type": "string", "example": "template not purchased"},
                         "plan_id": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"]
-                        }
-                    }
-                }
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"],
+                        },
+                    },
+                },
             ),
         },
     )
