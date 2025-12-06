@@ -95,6 +95,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
         project = serializer.save(owner=self.request.user)
         project.flow = default_flow()
+        project.save()
         ProjectPlanModel.objects.create(project=project, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
 
     @extend_schema(
