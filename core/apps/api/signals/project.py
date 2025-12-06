@@ -1,7 +1,5 @@
 import logging
 
-from core.apps.api.models import PlanModel, ProjectPlanModel
-from core.apps.api.enums.plan import PlanType, PlanStatus
 from django.db import transaction
 from django.conf import settings
 
@@ -84,21 +82,6 @@ def ProjectSignal(sender, instance, created, **kwargs):
             instance.name,
             instance.owner,
         )
-
-        try:
-            free_plan, _ = PlanModel.objects.get_or_create(
-                name=PlanType.FREE,
-                defaults={
-                    "price": 0,
-                    "max_users": 100,
-                    "powered_by_botmother": True,
-                    "description": "Bepul tarif - 100 tagacha foydalanuvchi",
-                },
-            )
-            ProjectPlanModel.objects.create(project=instance, plan=free_plan, status=PlanStatus.ACTIVE, current_users=0)
-            logging.info("Project ga FREE plan biriktirildi project_id=%s", instance.id)
-        except Exception as e:
-            logging.error("Project ga plan biriktirishda xatolik: project_id=%s error=%s", instance.id, e)
 
 
 @receiver(post_delete, sender=ProjectModel)

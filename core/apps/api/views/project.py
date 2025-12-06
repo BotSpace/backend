@@ -1,5 +1,8 @@
 # type: ignore
 from django.shortcuts import get_object_or_404
+from core.apps.payment.services.balance import subtract_balance
+from core.apps.api.models import ProjectPlanModel
+from core.apps.api.enums.plan import PlanStatus
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -11,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
 from core.apps.api.serializers.project import (
     CreateEnviromentSerializer,
     CreateProjectSerializer,
@@ -53,6 +56,29 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         super().__init__(**kwargs)
         self.dashboardService = DashboardService()
 
+    @extend_schema(
+        summary="Loyiha yaratish",
+        description="Yangi loyiha yaratadi. Plan tanlash majburiy va balansingiz yetarli bo'lishi kerak.",
+        responses={
+            201: ListProjectSerializer,
+            400: OpenApiResponse(
+                description="Xatolik: plan noto'g'ri yoki balans yetarli emas",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "plan_id": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"]
+                        }
+                    }
+                }
+            ),
+        },
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
     def get_queryset(self):
         return ProjectModel.objects.order_by("-id").filter(owner=self.request.user)
 
@@ -60,9 +86,40 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
 
     def perform_create(self, serializer):
-        raise Exception(serializer.validated_data)
-        serializer.save(owner=self.request.user)
+        plan_id = serializer.validated_data.get("plan_id")
+        plan = PlanModel.objects.get(id=plan_id, is_active=True)
 
+        if plan.price > 0:
+            subtract_balance(self.request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}")
+
+        project = serializer.save(owner=self.request.user)
+        ProjectPlanModel.objects.create(project=project, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
+
+    @extend_schema(
+        summary="Shablondan loyiha yaratish",
+        description="Sotib olingan shablondan yangi loyiha yaratadi. Plan talab qilinadi va balans tekshiriladi.",
+        request=CreateProjectFromTemplate,
+        responses={
+            200: ListProjectSerializer,
+            400: OpenApiResponse(
+                description="Xatolik: shablon sotib olinmagan, plan noto'g'ri yoki balans yetarli emas",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "detail": {
+                            "type": "string",
+                            "example": "template not purchased"
+                        },
+                        "plan_id": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"]
+                        }
+                    }
+                }
+            ),
+        },
+    )
     @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
     def create_from_template(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -72,11 +129,19 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
+
+        plan_id = data.get("plan_id")
+        plan = PlanModel.objects.get(id=plan_id, is_active=True)
+
+        if plan.price > 0:
+            subtract_balance(request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}")
+
         instance = ProjectModel.objects.create(
             name=data.get("name"),
             flow=template.flow,
             owner=request.user,
         )
+        ProjectPlanModel.objects.create(project=instance, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
         EnviromentModel.objects.create(
             key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
         )

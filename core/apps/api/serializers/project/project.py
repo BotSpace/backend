@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from core.apps.api.models import ProjectPlanModel, PlanModel
+from drf_spectacular.utils import extend_schema_field, OpenApiExample
+from core.apps.api.models import PlanModel
 
 from core.apps.api.models import ProjectModel
 from core.apps.api.models.project import EnviromentModel
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
 from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
-from core.apps.api.services.project import default_flow
 from core.apps.cms.services.mongo import get_project_collection
 from core.apps.template.models import TemplateModel
 
@@ -119,7 +119,29 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
 class CreateProjectSerializer(BaseProjectSerializer):
     debug = CreateDebugSerializer(required=False)
     release = None
-    plan_id = serializers.IntegerField(required=True, write_only=True, help_text="Tarif ID (ixtiyoriy, default: FREE)")
+    plan_id = serializers.IntegerField(
+        required=True,
+        write_only=True,
+        help_text="Tarif ID (majburiy). Balansingiz yetarli bo'lishi kerak."
+    )
+
+    def validate(self, attrs):
+        plan_id = attrs.get("plan_id")
+        if plan_id:
+            try:
+                plan = PlanModel.objects.get(id=plan_id, is_active=True)
+                user = self.context["request"].user
+                if user.balance < plan.price:
+                    raise serializers.ValidationError(
+                        {
+                            "plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(
+                                plan.price, user.balance
+                            )
+                        }
+                    )
+            except PlanModel.DoesNotExist:
+                raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
+        return attrs
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [
@@ -129,10 +151,69 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "flow",
             "plan_id",
         ]
+        examples = [
+            OpenApiExample(
+                "Loyiha yaratish",
+                value={
+                    "name": "Mening botim",
+                    "plan_id": 1,
+                    "flow": {},
+                    "debug": {
+                        "token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+                    }
+                },
+                description="FREE yoki boshqa tarifda loyiha yaratish"
+            )
+        ]
 
 
 class CreateProjectFromTemplate(serializers.Serializer):
-    template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all())
-    name = serializers.CharField(max_length=255)
-    token = serializers.CharField(max_length=255)
-    plan_id = serializers.IntegerField(required=False, write_only=True, help_text="Tarif ID (ixtiyoriy, default: FREE)")
+    template = serializers.PrimaryKeyRelatedField(
+        queryset=TemplateModel.objects.all(),
+        help_text="Shablon ID"
+    )
+    name = serializers.CharField(
+        max_length=255,
+        help_text="Loyiha nomi"
+    )
+    token = serializers.CharField(
+        max_length=255,
+        help_text="Release bot tokeni"
+    )
+    plan_id = serializers.IntegerField(
+        required=True,
+        write_only=True,
+        help_text="Tarif ID (majburiy). Balansingiz yetarli bo'lishi kerak."
+    )
+
+    def validate(self, attrs):
+        plan_id = attrs.get("plan_id")
+        if plan_id:
+            try:
+                plan = PlanModel.objects.get(id=plan_id, is_active=True)
+                user = self.context["request"].user
+                if user.balance < plan.price:
+                    raise serializers.ValidationError(
+                        {
+                            "plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(
+                                plan.price, user.balance
+                            )
+                        }
+                    )
+            except PlanModel.DoesNotExist:
+                raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
+        return attrs
+
+    class Meta:
+        examples = [
+            OpenApiExample(
+                "Shablondan loyiha yaratish",
+                value={
+                    "template": 1,
+                    "name": "Mening shablon loyiham",
+                    "token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+                    "plan_id": 1
+                },
+                description="Sotib olingan shablondan loyiha yaratish"
+            )
+        ]
