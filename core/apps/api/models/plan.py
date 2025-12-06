@@ -15,29 +15,15 @@ class PlanModel(AbstractBaseModel):
     """Tarif rejasi modeli"""
 
     name = models.CharField(verbose_name=_("Nom"), max_length=50, choices=PlanType.choices, unique=True)
-
-    # Pricing
     price = models.DecimalField(verbose_name=_("Narx"), max_digits=20, decimal_places=2, default=Decimal("0.00"))
-
-    # Limits
     max_users = models.IntegerField(verbose_name=_("Maksimal foydalanuvchilar soni"), default=100)
-
-    # Features
     powered_by_botmother = models.BooleanField(
         verbose_name=_("Powered by BotMother"), default=True, help_text=_("Botda 'Powered by BotMother' ko'rsatiladi")
     )
-
     custom_domain = models.BooleanField(verbose_name=_("Custom domain"), default=False)
-
     priority_support = models.BooleanField(verbose_name=_("Priority support"), default=False)
-
-    # Description
     description = models.TextField(verbose_name=_("Tavsif"), null=True, blank=True)
-
-    # Status
     is_active = models.BooleanField(verbose_name=_("Faol"), default=True)
-
-    # Order for display
     order = models.IntegerField(verbose_name=_("Tartib"), default=0)
 
     def __str__(self):
@@ -58,29 +44,19 @@ class ProjectPlanModel(AbstractBaseModel):
     """Proyekt tariflari"""
 
     project = models.OneToOneField("api.ProjectModel", on_delete=models.CASCADE, related_name="plan_subscription")
-
     plan = models.ForeignKey(PlanModel, on_delete=models.PROTECT, related_name="subscriptions")
-
     status = models.CharField(
         verbose_name=_("Holat"), max_length=20, choices=PlanStatus.choices, default=PlanStatus.ACTIVE
     )
-
-    # User statistics
     current_users = models.IntegerField(verbose_name=_("Joriy foydalanuvchilar"), default=0)
-
-    # Grace period tracking
     limit_exceeded_at = models.DateTimeField(
         verbose_name=_("Limit oshgan sana"),
         null=True,
         blank=True,
         help_text=_("Foydalanuvchilar soni limitdan oshgan sana"),
     )
-
     grace_period_notified = models.BooleanField(verbose_name=_("Ogohlantirish yuborildi"), default=False)
-
-    # Dates
     started_at = models.DateTimeField(verbose_name=_("Boshlangan sana"), auto_now_add=True)
-
     expires_at = models.DateTimeField(verbose_name=_("Tugash sanasi"), null=True, blank=True)
 
     def __str__(self):
