@@ -12,7 +12,7 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveMode
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from core.apps.api.serializers.project import default_flow
+from core.apps.api.services.project import default_flow
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
