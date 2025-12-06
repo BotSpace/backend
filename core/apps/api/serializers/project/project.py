@@ -143,6 +143,10 @@ class CreateProjectSerializer(BaseProjectSerializer):
                 raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
         return attrs
 
+    def create(self, validated_data):
+        validated_data.pop('plan_id', None)
+        return super().create(validated_data)
+
     class Meta(BaseProjectSerializer.Meta):
         fields = [
             "id",
