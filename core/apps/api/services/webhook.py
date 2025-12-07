@@ -42,8 +42,9 @@ def set_webhook(instance: ProjectModel, mode: WEBHOOK_MODE):
     }
     token = ""
     if mode == "debug":
-        url = base_url + str(instance.debug_webhook_uuid) + "/"
-        token = debug_bot_token(instance.pk)
+        return True
+        # url = base_url + str(instance.debug_webhook_uuid) + "/"
+        # token = debug_bot_token(instance.pk)
     elif mode == "release":
         url = base_url + str(instance.release_webhook_uuid) + "/"
         token = release_bot_token(instance.pk)

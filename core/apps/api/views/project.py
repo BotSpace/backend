@@ -211,7 +211,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug = instance.debug
         if debug.service_id:
             remove_service(debug.service_id)
-        set_webhook(instance, "debug")
         service = deploy_service(
             instance,
             "debug",
