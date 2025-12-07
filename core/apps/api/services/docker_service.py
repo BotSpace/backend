@@ -97,7 +97,7 @@ def create_service(image, name, command=None, **kwargs):
     return get_client().services.create(
         image=image,
         command=command,
-        constraints=["node.labels.name==my"],
+        # constraints=["node.labels.name==my"],
         networks=["botmother"],
         restart_policy=RestartPolicy(
             condition="on-failure",
@@ -149,7 +149,7 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     Returns:
         Created Docker service
     """
-    path = "/var/lib/engine/%s_%s/" % (prefix, key)
+    path = "/mnt/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
     with open(path + "flow.json", "w") as file:
