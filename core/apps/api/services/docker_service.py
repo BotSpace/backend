@@ -97,7 +97,7 @@ def create_service(image, name, command=None, **kwargs):
     return get_client().services.create(
         image=image,
         command=command,
-        # constraints=["node.labels.name==my"],
+        constraints=["node.labels.name==my"],
         networks=["botmother"],
         restart_policy=RestartPolicy(
             condition="on-failure",
