@@ -23,7 +23,12 @@ class CollectionAdmin(ModelAdmin):
     inlines = [FieldsInline]
     list_display = (
         "id",
-        "__str__",
+        "name",
+        "project__name",
+        "project__owner__first_name",
+        "project__owner__last_name",
+        "project__owner__username",
+        "project__owner__phone",
     )
     search_fields = ["name"]
 

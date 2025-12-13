@@ -24,7 +24,7 @@ class ProjectModel(AbstractBaseModel):
 
     release_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     debug_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
-    
+
     # MongoDB credentials - created once per project
     mongo_username = models.CharField(max_length=255, null=True, blank=True)
     mongo_password = models.CharField(max_length=255, null=True, blank=True)
@@ -34,7 +34,7 @@ class ProjectModel(AbstractBaseModel):
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        return str(self.pk)
+        return "%s | %s %s" % (self.name, self.owner.first_name, self.owner.last_name)
 
     @classmethod
     def _create_fake(cls, owner=None):
@@ -44,55 +44,53 @@ class ProjectModel(AbstractBaseModel):
     @property
     def release(self):
         return RelaseModel.objects.filter(project_id=self.pk).order_by("id").last()
-    
+
     def get_mongo_credentials(self):
         """Get MongoDB credentials for this project
-        
+
         Creates credentials if they don't exist yet.
-        
+
         Returns:
             Dict with connection_string, database, username, and password
         """
         from core.apps.cms.services.mongo import MongoDBClient
         from django.db import transaction
-        
+
         # If credentials already exist, return them
         if self.mongo_username and self.mongo_password and self.mongo_database:
             mongo_client = MongoDBClient()
             try:
                 connection_string = mongo_client._build_connection_string(
-                    self.mongo_username,
-                    self.mongo_password,
-                    self.mongo_database
+                    self.mongo_username, self.mongo_password, self.mongo_database
                 )
             finally:
                 mongo_client.close()
-            
+
             return {
                 "username": self.mongo_username,
                 "password": self.mongo_password,
                 "database": self.mongo_database,
                 "connection_string": connection_string,
             }
-        
+
         # Create new credentials
         mongo_client = MongoDBClient()
         try:
             credentials = mongo_client.create_project_user(self.id)
-            
+
             # Save credentials to project using update to avoid triggering signals again
             # Use update() instead of save() to avoid transaction conflicts
             type(self).objects.filter(pk=self.pk).update(
                 mongo_username=credentials["username"],
                 mongo_password=credentials["password"],
-                mongo_database=credentials["database"]
+                mongo_database=credentials["database"],
             )
-            
+
             # Refresh instance to get updated values
             self.mongo_username = credentials["username"]
             self.mongo_password = credentials["password"]
             self.mongo_database = credentials["database"]
-            
+
             return credentials
         finally:
             mongo_client.close()

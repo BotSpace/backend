@@ -1,6 +1,8 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.decorators import display
 
+from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import (
     DebugModel,
     EnviromentModel,
@@ -37,8 +39,29 @@ class ProjectAdmin(ModelAdmin):
     inlines = [InlineRelease, DebugInline, InlineEnviroment]
     list_display = (
         "id",
-        "__str__",
+        "name",
+        "username",
+        "owner__phone",
+        "owner__first_name",
+        "owner__last_name",
+        "release_webhook_uuid",
+        "debug_webhook_uuid",
+        "status",
     )
+
+    @display(
+        label={
+            ContainerStatusEnum.PENDING.value: "warning",
+            ContainerStatusEnum.RUNNING.value: "success",
+            ContainerStatusEnum.FAILED.value: "info",
+            ContainerStatusEnum.STOPPED.value: "danger",
+            ContainerStatusEnum.STOPPING.value: "danger",
+        }
+    )
+    def status(self, obj):
+        if obj.release is None:
+            return ContainerStatusEnum.PENDING.value
+        return obj.release.status
 
 
 @admin.register(RelaseModel)
