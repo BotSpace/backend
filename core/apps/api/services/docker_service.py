@@ -91,7 +91,7 @@ def create_service(image, name, command=None, **kwargs):
 
     resources = Resources(
         cpu_limit=int(1e9),  # 1 CPU core
-        cpu_reservation=int(5e8),  # Reserve 0.5 CPU
+        cpu_reservation=int(1e8),  # Reserve 0.1 CPU
     )
 
     return get_client().services.create(
