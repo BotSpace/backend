@@ -14,7 +14,7 @@ permissions:
 jobs:
   build-test-push:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:16
@@ -168,6 +168,12 @@ jobs:
               "CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }}" \
               "CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }}" \
               "CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }}"
+
+            echo "${{ secrets.PRIVATE_KEY }}" > ./keys/private.pem
+            echo "${{ secrets.PUBLIC_KEY }}" > ./keys/public.pem
+
+            chmod 600 ./keys/private.pem
+            chmod 644 ./keys/public.pem
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
