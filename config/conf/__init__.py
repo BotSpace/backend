@@ -1,6 +1,7 @@
 from .cache import *  # noqa
 from .celery import *  # noqa
 from .cron import *  # noqa
+
 from .jwt import *  # noqa
 from .logs import *  # noqa
 from .rest_framework import *  # noqa
@@ -13,4 +14,4 @@ from .storage import *  # noqa
 from .channels import *  # noqa
 from .price import *  # noqa
 from .click import *  # noqa
-from .payme import * #noqa
+from .payme import *  # noqa

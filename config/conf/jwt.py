@@ -1,7 +1,5 @@
 from datetime import timedelta
 
-from django.conf import settings
-
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
@@ -9,8 +7,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "RS256",
-    "SIGNING_KEY": settings.BASE_DIR / "keys/private.pem",
-    "VERIFYING_KEY": settings.BASE_DIR / "keys/public.pem",
+    "SIGNING_KEY": "/code/keys/private.pem",
+    "VERIFYING_KEY": "/code/keys/public.pem",
     "AUDIENCE": None,
     "ISSUER": None,
     "JSON_ENCODER": None,

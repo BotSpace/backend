@@ -5,6 +5,7 @@ from typing import List, Union
 
 from config.conf import *  # noqa
 from config.conf.apps import APPS
+
 from config.conf.modules import MODULES
 from config.env import env
 from django.utils.translation import gettext_lazy as _
