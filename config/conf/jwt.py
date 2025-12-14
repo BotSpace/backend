@@ -1,4 +1,7 @@
 from datetime import timedelta
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
@@ -7,8 +10,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "RS256",
-    "SIGNING_KEY": "/code/keys/private.pem",
-    "VERIFYING_KEY": "/code/keys/public.pem",
+    "SIGNING_KEY": (BASE_DIR / "keys/private.pem").read_text(),
+    "VERIFYING_KEY": (BASE_DIR / "keys/public.pem").read_text(),
     "AUDIENCE": None,
     "ISSUER": None,
     "JSON_ENCODER": None,

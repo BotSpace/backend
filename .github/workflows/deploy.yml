@@ -149,6 +149,7 @@ jobs:
 
             # Funksiyani chaqirish misoli
             update_env \
+              "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
               "MONGO_URL=${{ secrets.MONGO_URL }}" \
               "SCRIPT=entrypoint-server.sh" \
               "DB_ENGINE=django_prometheus.db.backends.postgresql" \
