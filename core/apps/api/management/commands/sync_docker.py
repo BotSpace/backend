@@ -1,4 +1,15 @@
 # type: ignore
+"""
+DEPRECATED: This command is deprecated and replaced by docker-event-forwarder service.
+
+This command only monitors Docker events on the local node where the backend is running.
+In a multi-node Docker Swarm setup, it cannot detect events from other nodes.
+
+The new docker-event-forwarder service runs on ALL nodes and sends events to the backend
+via HTTP API (/api/docker/events/), enabling multi-node event monitoring.
+
+See: /Volumes/disk/projects/my/botmother/docker-event-forwarder/
+"""
 from typing import Any
 from core.apps.api.models.project import DebugModel, RelaseModel
 from core.apps.api.services.docker_service import get_client, convert_status
