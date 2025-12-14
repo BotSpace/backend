@@ -126,24 +126,29 @@ class CreateProjectSerializer(BaseProjectSerializer):
 
     def validate(self, attrs):
         plan_id = attrs.get("plan_id")
-        try:
-            plan = PlanModel.objects.get(id=plan_id, is_active=True)
-            user = self.context["request"].user
-            if plan.name == PlanType.FREE.value:
-                project = ProjectModel.objects.filter(
-                    owner=user, plan_subscription__plan__name=PlanType.FREE.value
-                ).first()
-                if project is not None:
-                    raise serializers.ValidationError(
-                        detail={"plan_id": "Kechirasiz bepul tarifda faqat bitta loyiha yaratish mumkun"}
-                    )
+        if plan_id is not None:
+            try:
+                plan = PlanModel.objects.get(id=plan_id, is_active=True)
+                user = self.context["request"].user
+                if plan.name == PlanType.FREE.value:
+                    project = ProjectModel.objects.filter(
+                        owner=user, plan_subscription__plan__name=PlanType.FREE.value
+                    ).first()
+                    if project is not None:
+                        raise serializers.ValidationError(
+                            detail={"plan_id": "Kechirasiz bepul tarifda faqat bitta loyiha yaratish mumkun"}
+                        )
 
-            if user.balance < plan.price:
-                raise serializers.ValidationError(
-                    {"plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(plan.price, user.balance)}
-                )
-        except PlanModel.DoesNotExist:
-            raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
+                if user.balance < plan.price:
+                    raise serializers.ValidationError(
+                        {
+                            "plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(
+                                plan.price, user.balance
+                            )
+                        }
+                    )
+            except PlanModel.DoesNotExist:
+                raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
         return attrs
 
     def create(self, validated_data):
