@@ -1,5 +1,7 @@
+# type: ignore
 from datetime import timedelta
 from pathlib import Path
+from config.env import env
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -10,8 +12,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "RS256",
-    "SIGNING_KEY": (BASE_DIR / "keys/private.pem").read_text(),
-    "VERIFYING_KEY": (BASE_DIR / "keys/public.pem").read_text(),
+    "SIGNING_KEY": env.str("PRIVATE_KEY", default=(BASE_DIR / "keys/private.pem").read_text()),
+    "VERIFYING_KEY": env.str("PUBLIC_KEY", default=(BASE_DIR / "keys/public.pem").read_text()),
     "AUDIENCE": None,
     "ISSUER": None,
     "JSON_ENCODER": None,

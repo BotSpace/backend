@@ -170,11 +170,8 @@ jobs:
               "CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }}" \
               "CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }}"
 
-            echo "${{ secrets.PRIVATE_KEY }}" > ./keys/private.pem
-            echo "${{ secrets.PUBLIC_KEY }}" > ./keys/public.pem
-
-            chmod 600 ./keys/private.pem
-            chmod 644 ./keys/public.pem
+            export PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}"
+            export PUBLIC_KEY="${{ secrets.PUBLIC_KEY }}"
 
             echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
             export PORT=${{ vars.PORT }}
