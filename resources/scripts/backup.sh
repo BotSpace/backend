@@ -1,5 +1,6 @@
 file=/tmp/db-$(/usr/bin/date +\%Y-%m-%d-%H:%M:%S).sql
-container=postgres
-/usr/bin/docker container exec $container pg_dump -U postgres django > $file
-mc cp $file b2/buket-name
+service=botmother_db
+/usr/bin/docker container exec $(docker ps -f name=$service) pg_dump -U postgres django >$file
+mc cp $file b2/botmother_db
 rm $file
+
