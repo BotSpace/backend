@@ -15,10 +15,7 @@ User = get_user_model()
 
 def default_flow():
     """Default flow with nodes and edges"""
-    return {
-        "nodes": [],
-        "edges": []
-    }
+    return {"nodes": [], "edges": []}
 
 
 class TemplateModel(AbstractBaseModel):
@@ -27,11 +24,9 @@ class TemplateModel(AbstractBaseModel):
     slug = models.SlugField(unique=True, null=True, blank=True)
     image = models.ImageField(_("image"), upload_to="template/")
     video = models.FileField(upload_to="template-video/", null=True, blank=True)
+    project = models.ForeignKey("api.ProjectModel", on_delete=models.CASCADE, null=True, blank=False)
     short_description = models.TextField(_("short description"))
     description = models.TextField(_("description"))
-    flow = models.JSONField(
-        verbose_name=_("flow"), default=default_flow, null=True, blank=True, encoder=PrettyJSONEncoder
-    )
     original_price = models.DecimalField(verbose_name=_("price"), max_digits=20, decimal_places=2)
     discount = models.DecimalField(max_digits=20, decimal_places=2, default=Decimal("0.00"))
     features = models.ManyToManyField("TemplateFeatureModel", blank=True)

@@ -12,7 +12,7 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveMode
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from core.apps.api.services.project import default_flow
+from core.apps.api.services.project import copy_collections, create_default_collections, default_flow
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
@@ -97,6 +97,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         project.flow = default_flow()
         project.save()
         ProjectPlanModel.objects.create(project=project, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
+        create_default_collections(project)
 
     @extend_schema(
         summary="Shablondan loyiha yaratish",
@@ -126,6 +127,10 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         template = data.get("template")
+        if not template.project.flow:
+            raise exceptions.ValidationError(
+                detail={"template": "Kechirasiz templateda muammo bor iltimos admin bilan bo'g'laning"}
+            )
         order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
@@ -138,7 +143,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
         instance = ProjectModel.objects.create(
             name=data.get("name"),
-            flow=template.flow,
+            flow=template.project.flow,
             owner=request.user,
         )
         ProjectPlanModel.objects.create(project=instance, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
@@ -146,6 +151,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
         )
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+        copy_collections(template.project, instance)
         return Response(data=ListProjectSerializer(instance=instance).data)
 
     @extend_schema(

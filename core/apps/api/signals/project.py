@@ -1,3 +1,4 @@
+# type: ignore
 import logging
 
 from django.db import transaction
@@ -12,8 +13,6 @@ from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
-from core.apps.cms.enums.cms import FieldType
-from core.apps.cms.models.cms import CollectionModel, FieldModel
 from core.services.redis_service import client as redis_client
 
 
@@ -44,44 +43,6 @@ def ProjectSignal(sender, instance, created, **kwargs):
                     )
 
         transaction.on_commit(create_mongo_creds)
-        collection = CollectionModel.objects.create(
-            name="users",
-            user=instance.owner,
-            project=instance,
-        )
-        FieldModel.objects.bulk_create(
-            [
-                FieldModel(collection=collection, name="chat_id", type=FieldType.TEXT.value, required=True),
-                FieldModel(collection=collection, name="first_name", type=FieldType.TEXT.value, required=True),
-                FieldModel(collection=collection, name="last_name", type=FieldType.TEXT.value, required=False),
-                FieldModel(collection=collection, name="updated_at", type=FieldType.DATETIME.value, required=True),
-                FieldModel(collection=collection, name="created_at", type=FieldType.DATETIME.value, required=True),
-            ]
-        )
-
-        chat_collection = CollectionModel.objects.create(
-            name="chat",
-            user=instance.owner,
-            project=instance,
-        )
-        FieldModel.objects.bulk_create(
-            [
-                FieldModel(collection=chat_collection, name="chat_id", type=FieldType.TEXT.value, required=True),
-                FieldModel(collection=chat_collection, name="message", type=FieldType.TEXT.value),
-                FieldModel(collection=chat_collection, name="message_type", type=FieldType.TEXT.value),
-                FieldModel(collection=chat_collection, name="is_read", type=FieldType.BOOL.value, default=False),
-                FieldModel(collection=chat_collection, name="from_admin", type=FieldType.BOOL.value, default=False),
-                FieldModel(collection=chat_collection, name="updated_at", type=FieldType.DATETIME.value),
-                FieldModel(collection=chat_collection, name="created_at", type=FieldType.DATETIME.value),
-            ]
-        )
-
-        logging.info(
-            "Project uchun collectionlar yaratildi collection=%s,chat project=%s user=%s",
-            "users",
-            instance.name,
-            instance.owner,
-        )
 
 
 @receiver(post_delete, sender=ProjectModel)

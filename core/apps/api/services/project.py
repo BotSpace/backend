@@ -1,3 +1,9 @@
+# type: ignore
+from core.apps.api.models.project import ProjectModel
+from core.apps.cms.enums.cms import FieldType
+from core.apps.cms.models.cms import CollectionModel, FieldModel
+
+
 def default_flow() -> dict:
     return {
         "nodes": [
@@ -55,3 +61,105 @@ def default_flow() -> dict:
             }
         ],
     }
+
+
+def create_default_collections(project):
+    collections = {
+        "users": {
+            "fields": {
+                "chat_id": {
+                    "type": FieldType.TEXT.value,
+                    "required": True,
+                    "default": None,
+                },
+                "first_name": {
+                    "type": FieldType.TEXT.value,
+                    "required": True,
+                },
+                "last_name": {
+                    "type": FieldType.TEXT.value,
+                    "required": False,
+                },
+                "updated_at": {
+                    "type": FieldType.DATETIME.value,
+                    "required": True,
+                },
+                "created_at": {
+                    "type": FieldType.DATETIME.value,
+                    "required": True,
+                },
+            }
+        },
+        "chat": {
+            "fields": {
+                "chat_id": {
+                    "type": FieldType.TEXT.value,
+                    "required": True,
+                },
+                "message": {
+                    "type": FieldType.TEXT.value,
+                    "required": False,
+                },
+                "message_type": {
+                    "type": FieldType.TEXT.value,
+                    "required": False,
+                },
+                "is_read": {
+                    "type": FieldType.BOOL.value,
+                    "default": False,
+                },
+                "from_admin": {
+                    "type": FieldType.BOOL.value,
+                    "default": False,
+                },
+                "updated_at": {
+                    "type": FieldType.DATETIME.value,
+                    "required": False,
+                },
+                "created_at": {
+                    "type": FieldType.DATETIME.value,
+                    "required": False,
+                },
+            }
+        },
+    }
+    for collection_name, collection_data in collections.items():
+        collection = CollectionModel.objects.create(
+            name=collection_name,
+            user=project.owner,
+            project=project,
+        )
+
+        fields = []
+        for field_name, field_props in collection_data["fields"].items():
+            fields.append(
+                FieldModel(
+                    collection=collection,
+                    name=field_name,
+                    type=field_props["type"],
+                    required=field_props.get("required", False),
+                    default=field_props.get("default"),
+                )
+            )
+
+        FieldModel.objects.bulk_create(fields)
+
+
+def copy_collections(from_instance: ProjectModel, to_instance: ProjectModel):
+    collections = from_instance.collections
+    for collection in collections.all():
+        instance = CollectionModel.objects.get_or_create(
+            name=collection.name, user=to_instance.owner, project=to_instance
+        )
+        fields = []
+        for field in collection.fields.all():
+            fields.append(
+                FieldModel(
+                    name=field.name,
+                    collection=instance,
+                    type=field.type,
+                    default=field.default,
+                    required=field.required,
+                )
+            )
+        FieldModel.objects.bulk_create(fields)
