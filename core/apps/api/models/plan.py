@@ -23,6 +23,7 @@ class PlanModel(AbstractBaseModel):
     custom_domain = models.BooleanField(verbose_name=_("Custom domain"), default=False)
     priority_support = models.BooleanField(verbose_name=_("Priority support"), default=False)
     description = models.TextField(verbose_name=_("Tavsif"), null=True, blank=True)
+    is_top = models.BooleanField(default=False)
     is_active = models.BooleanField(verbose_name=_("Faol"), default=True)
     order = models.IntegerField(verbose_name=_("Tartib"), default=0)
 
