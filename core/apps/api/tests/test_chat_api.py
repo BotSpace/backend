@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from core.apps.api.models import ProjectModel
+from core.apps.api.services.project import create_default_collections
 from core.apps.cms.models.cms import CollectionModel
 
 
@@ -25,6 +26,7 @@ def patch_docker_services():
 def chat_client(db):
     """Create test project with authenticated client"""
     instance = ProjectModel._create_fake()
+    create_default_collections(instance)
     client = APIClient()
     client.force_authenticate(instance.owner)
 

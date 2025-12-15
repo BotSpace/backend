@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from core.apps.api.models import ProjectModel, PlanModel
 
 from core.apps.api.models.project import EnviromentModel
+from core.apps.api.services.project import create_default_collections
 
 
 # --- GLOBAL PATCH FIXTURE ---
@@ -38,6 +39,7 @@ def test_plan(db):
 @pytest.fixture
 def project_client(db, test_plan):
     instance = ProjectModel._create_fake()
+    create_default_collections(instance)
     instance.owner.balance = 1000000
     instance.owner.save()
     client = APIClient()
