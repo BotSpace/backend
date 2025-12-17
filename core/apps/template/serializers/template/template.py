@@ -19,6 +19,8 @@ class BaseTemplateSerializer(serializers.ModelSerializer):
         if request is None:
             return False
         user = request.user
+        if not user.is_authenticated:
+            return False
         if TemplateOrderModel.objects.filter(
             user=user, template=obj, payment_status=True, status=TemplateOrderStatusEnum.CONFIRM.value
         ).exists():
