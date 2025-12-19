@@ -46,6 +46,7 @@ class BaseTemplateSerializer(serializers.ModelSerializer):
             "categories",
             "features",
             "is_order",
+            "demo_url",
         ]
 
 
@@ -74,6 +75,7 @@ class RetrieveTemplateSerializer(BaseTemplateSerializer):
             "categories",
             "features",
             "is_order",
+            "demo_url",
         ]
 
 

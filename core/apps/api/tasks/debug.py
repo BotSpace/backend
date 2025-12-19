@@ -11,7 +11,10 @@ from core.apps.api.services.docker_service import remove_service
 def sync_debug():
     last_time = timezone.now() - timedelta(minutes=30)
     containers = DebugModel.objects.filter(
-        is_template=False, status=ContainerStatusEnum.RUNNING.value, updated_at__lte=last_time
+        project__is_template=False,
+        is_template=False,
+        status=ContainerStatusEnum.RUNNING.value,
+        updated_at__lte=last_time,
     )
     for container in containers:
         try:

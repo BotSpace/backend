@@ -33,6 +33,7 @@ class TemplateModel(AbstractBaseModel):
     categories = models.ManyToManyField("TemplateCategoryModel", blank=True)
     views = models.BigIntegerField(default=0)
     is_verify = models.BooleanField(verbose_name=_("is verify"), default=False)
+    demo_url = models.URLField(null=True, blank=True)
     discount_type = models.CharField(
         max_length=255,
         choices=DiscountTypeEnum.choices,
