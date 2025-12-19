@@ -150,6 +150,7 @@ jobs:
             # Funksiyani chaqirish misoli
             update_env \
               "DEBUG=False" \
+              "PROJECT_ENV=prod" \
               "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
               "MONGO_URL=${{ secrets.MONGO_URL }}" \
               "SCRIPT=entrypoint-server.sh" \
