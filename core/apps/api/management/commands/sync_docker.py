@@ -1,14 +1,17 @@
 # type: ignore
 """
-DEPRECATED: This command is deprecated and replaced by docker-event-forwarder service.
+DEPRECATED: This command is deprecated and replaced by sync_kubernetes command.
 
 This command only monitors Docker events on the local node where the backend is running.
 In a multi-node Docker Swarm setup, it cannot detect events from other nodes.
 
-The new docker-event-forwarder service runs on ALL nodes and sends events to the backend
-via HTTP API (/api/docker/events/), enabling multi-node event monitoring.
+For Kubernetes deployments, use:
+    python manage.py sync_kubernetes
 
-See: /Volumes/disk/projects/my/botmother/docker-event-forwarder/
+The sync_kubernetes command watches Kubernetes Pod events across ALL nodes
+via the Kubernetes API, providing cluster-wide visibility.
+
+See: sync_kubernetes.py
 """
 from typing import Any
 from core.apps.api.models.project import DebugModel, RelaseModel

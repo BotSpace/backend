@@ -57,6 +57,9 @@ channels-redis
 docker
 aiodocker
 
+# INFO: kubernetes
+kubernetes
+
 #INFO: Monitoring
 django-prometheus
 
