@@ -126,7 +126,7 @@ class Command(BaseCommand):
 
         logger.info(f"Starting Kubernetes event watcher for namespace={namespace}")
         self.stdout.write(
-            self.style.SUCCESS(f"Kubernetes event kuzatuvchi ishga tushdi. Namespace: {namespace}")
+            self.style.SUCCESS(f"Kubernetes event watcher started. Namespace: {namespace}")
         )
 
         try:
@@ -141,8 +141,8 @@ class Command(BaseCommand):
                 except Exception as e:
                     logger.error(f"Error processing event: {e}")
         except KeyboardInterrupt:
-            logger.info("Kubernetes event kuzatuvchi to'xtatildi")
-            self.stdout.write(self.style.WARNING("Kubernetes event kuzatuvchi to'xtatildi"))
+            logger.info("Kubernetes event watcher stopped")
+            self.stdout.write(self.style.WARNING("Kubernetes event watcher stopped"))
         finally:
             w.stop()
 
