@@ -1,4 +1,5 @@
 from .docker_service import *  # noqa
+from .kubernetes_service import *  # noqa
 from .enviroment import *  # noqa
 from .dashboard import *  # noqa
 from .bot import *  # noqa

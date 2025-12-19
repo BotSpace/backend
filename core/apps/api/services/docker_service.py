@@ -1,4 +1,13 @@
 # type: ignore
+"""
+Engine orchestration service.
+
+This module provides functions for managing bot engines using either
+Docker Swarm or Kubernetes, based on the ORCHESTRATOR environment variable.
+
+Set ORCHESTRATOR=kubernetes to use Kubernetes pods.
+Set ORCHESTRATOR=docker (default) to use Docker Swarm services.
+"""
 import logging
 import json
 import pathlib
@@ -14,10 +23,27 @@ from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.utils.settings import engine_version
 
 
+# Orchestrator type: 'docker' or 'kubernetes'
+ORCHESTRATOR = env.str("ORCHESTRATOR", default="docker")
+
 client = None
 
 
+def is_kubernetes():
+    """Check if Kubernetes orchestration is enabled
+    
+    Returns:
+        bool: True if using Kubernetes, False for Docker
+    """
+    return ORCHESTRATOR.lower() == "kubernetes"
+
+
 def get_client():
+    """Get Docker client (only used when ORCHESTRATOR=docker)
+    
+    Returns:
+        Docker client instance
+    """
     global client
     if client is not None:
         return client
@@ -36,9 +62,22 @@ def get_client():
 
 
 async def service_logs_async(service_id):
-    docker = aiodocker.Docker()
-    async for line in docker.services.logs(service_id, follow=True, stdout=True, stderr=True):
-        yield line
+    """Stream logs for a service/pod asynchronously
+    
+    Args:
+        service_id: Docker service ID or Kubernetes pod name
+        
+    Yields:
+        Log lines
+    """
+    if is_kubernetes():
+        from core.apps.api.services.kubernetes_service import pod_logs_async
+        async for line in pod_logs_async(service_id):
+            yield line
+    else:
+        docker = aiodocker.Docker()
+        async for line in docker.services.logs(service_id, follow=True, stdout=True, stderr=True):
+            yield line
 
 
 def convert_status(status):
@@ -56,6 +95,18 @@ def convert_status(status):
 
 
 def get_service_status(service_id):
+    """Get the status of a service/pod
+    
+    Args:
+        service_id: Docker service ID or Kubernetes pod name
+        
+    Returns:
+        str: Container status enum value
+    """
+    if is_kubernetes():
+        from core.apps.api.services.kubernetes_service import get_pod_status
+        return get_pod_status(service_id)
+    
     try:
         state = get_client().services.get(service_id).tasks()[0]["Status"]["State"]
     except Exception as _:
@@ -114,6 +165,18 @@ def create_service(image, name, command=None, **kwargs):
 
 
 def remove_service(service_id):
+    """Remove a service/pod
+    
+    Args:
+        service_id: Docker service ID or Kubernetes pod name
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if is_kubernetes():
+        from core.apps.api.services.kubernetes_service import remove_pod
+        return remove_pod(service_id)
+    
     try:
         return get_client().services.get(service_id).remove()
     except Exception as e:
@@ -137,7 +200,10 @@ def get_default_env():
 
 
 def deploy_service(project, prefix, flow, key, _env: list = []):
-    """Deploy Docker service for project with MongoDB credentials
+    """Deploy engine service/pod for project with MongoDB credentials
+    
+    This function creates either a Docker Swarm service or Kubernetes pod
+    based on the ORCHESTRATOR environment variable.
 
     Args:
         project: ProjectModel instance
@@ -147,8 +213,13 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
         _env: Additional environment variables
 
     Returns:
-        Created Docker service
+        Created Docker service or Kubernetes pod
     """
+    if is_kubernetes():
+        from core.apps.api.services.kubernetes_service import deploy_engine
+        return deploy_engine(project, prefix, flow, key, _env)
+    
+    # Docker Swarm deployment
     path = "/mnt/engine/%s_%s/" % (prefix, key)
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
@@ -183,3 +254,39 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
         mounts=[mount],
         env=_env,
     )
+
+
+def stop_project_services(project_id: int):
+    """Stop all engine services/pods for a project
+    
+    This function works with both Docker Swarm and Kubernetes.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        int: Number of services/pods stopped
+    """
+    if is_kubernetes():
+        from core.apps.api.services.kubernetes_service import stop_project_pods
+        return stop_project_pods(project_id)
+    
+    # Docker Swarm - find services by label
+    try:
+        services = get_client().services.list(filters={
+            'label': f'project_id={project_id}'
+        })
+        
+        count = 0
+        for service in services:
+            try:
+                service.remove()
+                logging.info(f"Stopped service {service.name} for project {project_id}")
+                count += 1
+            except Exception as e:
+                logging.error(f"Error stopping service {service.name}: {e}")
+        
+        return count
+    except Exception as e:
+        logging.error(f"Error stopping services for project {project_id}: {e}")
+        return 0

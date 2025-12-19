@@ -6,7 +6,7 @@ from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet, ProjectPlanViewSet
 from core.apps.api.views.chat import ChatViewSet
-from core.apps.api.views.docker_events import docker_event_webhook
+from core.apps.api.views.docker_events import docker_event_webhook, kubernetes_event_webhook
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -45,4 +45,6 @@ urlpatterns = [
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
     # Docker events webhook from docker-event-forwarder service
     path("docker/events/", docker_event_webhook, name="docker-events-webhook"),
+    # Kubernetes events webhook from k8s event watcher service
+    path("kubernetes/events/", kubernetes_event_webhook, name="kubernetes-events-webhook"),
 ]
