@@ -152,6 +152,7 @@ class DebugModel(AbstractBaseModel):
     project = models.OneToOneField("ProjectModel", on_delete=models.CASCADE, related_name="debug")
     flow_hash = models.CharField(max_length=255, null=True, blank=True)
     service_id = models.CharField(max_length=255, null=True, blank=True)
+    is_template = models.BooleanField(default=False)
     status = models.CharField(
         max_length=255, default=ContainerStatusEnum.STOPPED.value, choices=ContainerStatusEnum.choices
     )
