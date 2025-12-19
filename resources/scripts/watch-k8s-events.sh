@@ -2,8 +2,8 @@
 # =============================================================================
 # Kubernetes Event Watcher Script
 # =============================================================================
-# Bu script Kubernetes pod eventlarni kuzatib turadi.
-# Barcha node lardagi eventlar avtomatik ravishda olinadi.
+# This script watches Kubernetes pod events.
+# Events from ALL nodes are received automatically via K8s API.
 # =============================================================================
 
 while ! nc -z $DB_HOST $DB_PORT; do

@@ -1,38 +1,38 @@
 # Flux GitOps Deployment
 
-Bu loyiha Flux v2 orqali GitOps yondashuvi bilan deploy qilinadi.
+This project is deployed using Flux v2 GitOps approach.
 
-## Flux nima?
+## What is Flux?
 
-Flux - bu Kubernetes uchun GitOps operatori. U Git repositoriydagi o'zgarishlarni avtomatik ravishda Kubernetes klasteriga sync qiladi.
+Flux is a GitOps operator for Kubernetes. It automatically syncs changes from the Git repository to the Kubernetes cluster.
 
-**Afzalliklari:**
-- CI/CD dan kubeconfig kerak emas
-- Git - yagona "source of truth"
-- Avtomatik rollback imkoniyati
-- Image taglarni avtomatik yangilash
+**Benefits:**
+- No kubeconfig needed in CI/CD
+- Git is the single "source of truth"
+- Automatic rollback capability
+- Automatic image tag updates
 
-## Serverda Flux o'rnatish
+## Installing Flux on Server
 
-### 1. Flux CLI o'rnatish
+### 1. Install Flux CLI
 
 ```bash
 # Linux
 curl -s https://fluxcd.io/install.sh | sudo bash
 
-# yoki Homebrew bilan
+# or with Homebrew
 brew install fluxcd/tap/flux
 ```
 
-### 2. Flux komponenetlarini klasterga o'rnatish
+### 2. Install Flux Components to Cluster
 
 ```bash
-# GitHub token yarating (repo va admin:repo_hook scopelari bilan)
+# Create a GitHub token (with repo and admin:repo_hook scopes)
 export GITHUB_TOKEN=<your-token>
 export GITHUB_USER=BotMather
 export GITHUB_REPO=backend
 
-# Flux bootstrap
+# Bootstrap Flux
 flux bootstrap github \
   --owner=$GITHUB_USER \
   --repository=$GITHUB_REPO \
@@ -41,7 +41,7 @@ flux bootstrap github \
   --personal
 ```
 
-### 3. Image Registry Secret yaratish (agar private registry bo'lsa)
+### 3. Create Image Registry Secret (if using private registry)
 
 ```bash
 kubectl create secret docker-registry regcred \
@@ -51,76 +51,76 @@ kubectl create secret docker-registry regcred \
   --docker-password=<password>
 ```
 
-### 4. Flux komponentalarini tekshirish
+### 4. Verify Flux Components
 
 ```bash
-# Flux holati
+# Check Flux status
 flux check
 
-# Source va Kustomization holatini ko'rish
+# View Source and Kustomization status
 flux get sources git
 flux get kustomizations
 
-# Image automation holatini ko'rish
+# View image automation status
 flux get image repository
 flux get image policy
 flux get image update
 ```
 
-## Deployment jarayoni
+## Deployment Flow
 
-1. **Developer** kod o'zgartiradi va push qiladi
-2. **GitHub Actions** Docker image build qiladi va registry ga push qiladi
-3. **Flux Image Automation** yangi image tag ni aniqlaydi
-4. **Flux** avtomatik ravishda `k8s/kustomization.yaml` dagi image tag ni yangilaydi
-5. **Flux Kustomize Controller** o'zgarishlarni Kubernetes ga apply qiladi
+1. **Developer** changes code and pushes to GitHub
+2. **GitHub Actions** builds Docker image and pushes to registry
+3. **Flux Image Automation** detects the new image tag
+4. **Flux** automatically updates the image tag in `k8s/kustomization.yaml`
+5. **Flux Kustomize Controller** applies changes to Kubernetes
 
-## Manual sync (agar kerak bo'lsa)
+## Manual Sync (if needed)
 
 ```bash
-# Barcha resurslarni sync qilish
+# Sync all resources
 flux reconcile source git flux-system
 
-# Kustomization ni sync qilish
+# Sync Kustomization
 flux reconcile kustomization botmother
 ```
 
 ## Troubleshooting
 
 ```bash
-# Flux loglarini ko'rish
+# View Flux logs
 kubectl logs -n flux-system deployment/source-controller
 kubectl logs -n flux-system deployment/kustomize-controller
 kubectl logs -n flux-system deployment/image-automation-controller
 
-# Event larni ko'rish
+# View events
 kubectl get events -n flux-system --sort-by='.lastTimestamp'
 
-# Kustomization statusini ko'rish
+# View Kustomization status
 kubectl describe kustomization botmother -n flux-system
 ```
 
-## Muhim fayllar
+## Important Files
 
-- `flux/clusters/production/` - Production klaster konfiguratsiyasi
-- `flux/clusters/production/gotk-components.yaml` - Flux komponentalari (bootstrap orqali yaratiladi)
-- `flux/clusters/production/gotk-sync.yaml` - Git repository sync (bootstrap orqali yaratiladi)
-- `flux/apps/botmother.yaml` - Botmother ilovasi Kustomization
-- `flux/apps/image-automation.yaml` - Image avtomatik yangilash
+- `flux/clusters/production/` - Production cluster configuration
+- `flux/clusters/production/gotk-components.yaml` - Flux components (created via bootstrap)
+- `flux/clusters/production/gotk-sync.yaml` - Git repository sync (created via bootstrap)
+- `flux/apps/botmother.yaml` - BotMother application Kustomization
+- `flux/apps/image-automation.yaml` - Image automatic update configuration
 
 ## Kubernetes Events Watcher
 
-Kubernetes eventlarini kuzatish uchun alohida command mavjud:
+A dedicated command exists to watch Kubernetes events:
 
 ```bash
-# Pod eventlarni kuzatish (barcha node lardan)
+# Watch pod events (from all nodes)
 python manage.py watch_k8s_events
 
-# Verbose mode bilan
+# With verbose mode
 python manage.py watch_k8s_events --verbose
 
-# Ma'lum namespace bilan
+# With specific namespace
 python manage.py watch_k8s_events --namespace=botmother
 ```
 
-**Muhim:** Kubernetes API barcha node lardagi pod eventlarni avtomatik ravishda yig'adi, shuning uchun bitta watcher yetarli.
+**Important:** The Kubernetes API automatically aggregates pod events from all nodes, so a single watcher is sufficient.

@@ -2,12 +2,12 @@
 # =============================================================================
 # Flux GitOps Setup Script for BotMother
 # =============================================================================
-# Bu script serverda Flux o'rnatish va sozlash uchun ishlatiladi.
-# Faqat bir marta ishga tushirish kerak.
+# This script installs and configures Flux on the server.
+# Run only once during initial cluster setup.
 #
-# Talablar:
-#   - kubectl o'rnatilgan va klasterga ulangan
-#   - GitHub Personal Access Token (repo, admin:repo_hook scopelari bilan)
+# Requirements:
+#   - kubectl installed and connected to the cluster
+#   - GitHub Personal Access Token (with repo and admin:repo_hook scopes)
 # =============================================================================
 
 set -e

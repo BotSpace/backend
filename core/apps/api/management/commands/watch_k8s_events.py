@@ -105,6 +105,12 @@ class Command(BaseCommand):
         if not pod or not event_type:
             return
 
+        # Validate pod metadata exists
+        if not pod.metadata or not pod.metadata.name:
+            if verbose:
+                logger.debug("Skipping pod event with missing metadata")
+            return
+
         pod_name = pod.metadata.name
         labels = pod.metadata.labels or {}
         engine_name = labels.get("engine-name")
