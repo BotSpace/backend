@@ -242,5 +242,64 @@ For issues and questions:
 
 ---
 
+## Kubernetes Deployment
+
+This project supports Kubernetes deployment with Flux GitOps.
+
+### Kubernetes Event Watching
+
+Kubernetes automatically aggregates pod events from ALL nodes in the cluster. To watch these events:
+
+```bash
+# Start the Kubernetes event watcher
+python manage.py watch_k8s_events
+
+# With verbose logging
+python manage.py watch_k8s_events --verbose
+
+# Custom namespace
+python manage.py watch_k8s_events --namespace=botmother
+```
+
+**Note:** Only ONE instance of the watcher should run across the cluster to avoid duplicate event processing.
+
+### Flux GitOps Deployment
+
+This project uses Flux v2 for GitOps-based deployments. See [flux/README.md](flux/README.md) for detailed setup instructions.
+
+**Quick setup on server:**
+
+```bash
+# 1. Set GitHub token
+export GITHUB_TOKEN=<your-github-pat>
+
+# 2. Run setup script
+./flux/setup-flux.sh
+```
+
+**How it works:**
+1. CI/CD builds and pushes Docker image to registry
+2. Flux detects new image tag automatically
+3. Flux updates `k8s/kustomization.yaml` with new tag
+4. Flux applies changes to Kubernetes cluster
+
+**Useful commands:**
+```bash
+# Check Flux status
+flux check
+
+# Watch deployments
+flux get kustomizations --watch
+
+# Manual sync
+flux reconcile kustomization botmother
+
+# View logs
+kubectl logs -n flux-system deployment/source-controller
+```
+
+---
+
 **Happy Coding! 🚀**
+
 

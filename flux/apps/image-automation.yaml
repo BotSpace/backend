@@ -1,0 +1,52 @@
+# Image repository - tells Flux where to look for new images
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: botmother
+  namespace: flux-system
+spec:
+  image: registry.jscorp.uz/botmother
+  interval: 1m
+  # If using private registry, configure secret:
+  secretRef:
+    name: regcred
+---
+# Image policy - defines which tags to use
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: botmother
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: botmother
+  policy:
+    # Use numeric tags (build numbers from CI)
+    numerical:
+      order: asc
+---
+# Image update automation - automatically updates image tags in Git
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: botmother
+  namespace: flux-system
+spec:
+  interval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: botmother
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: fluxcd
+        email: fluxcd@botmother.uz
+      messageTemplate: '🤖 Update image to {{range .Changed.Changes}}{{.NewValue}}{{end}}'
+    push:
+      branch: main
+  update:
+    path: ./k8s
+    strategy: Setters
