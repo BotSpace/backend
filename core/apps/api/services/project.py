@@ -148,7 +148,7 @@ def create_default_collections(project):
 def copy_collections(from_instance: ProjectModel, to_instance: ProjectModel):
     collections = from_instance.collections
     for collection in collections.all():
-        instance = CollectionModel.objects.get_or_create(
+        instance, _ = CollectionModel.objects.get_or_create(
             name=collection.name, user=to_instance.owner, project=to_instance
         )
         fields = []
