@@ -13,6 +13,7 @@ from typing import Optional
 
 from django.conf import settings
 from config.env import env
+from kubernetes.client.rest import ApiException
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.utils.settings import engine_version
@@ -298,12 +299,14 @@ def create_configmap(name: str, data: dict):
             created = api.create_namespaced_config_map(namespace=namespace, body=configmap)
             logger.info("Created ConfigMap: %s", name)
             return created
-        except Exception:
-            # Update existing
-            updated = api.replace_namespaced_config_map(name=name, namespace=namespace, body=configmap)
-            logger.info("Updated ConfigMap: %s", name)
-            return updated
-    except Exception as e:
+        except ApiException as e:
+            if e.status == 409:  # Conflict - ConfigMap already exists
+                # Update existing
+                updated = api.replace_namespaced_config_map(name=name, namespace=namespace, body=configmap)
+                logger.info("Updated ConfigMap: %s", name)
+                return updated
+            raise
+    except ApiException as e:
         logger.error("Error managing ConfigMap %s: %s", name, e)
         raise
 

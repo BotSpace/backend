@@ -23,6 +23,8 @@ from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.utils.settings import engine_version
 
 
+logger = logging.getLogger(__name__)
+
 # Orchestrator type: 'docker' or 'kubernetes'
 ORCHESTRATOR = env.str("ORCHESTRATOR", default="docker")
 
@@ -57,7 +59,7 @@ def get_client():
         client = _client
         return _client
     except Exception as e:
-        logging.error("docker client error error=%s", e)
+        logger.error("docker client error error=%s", e)
         raise Exception("docker client error")
 
 
@@ -180,7 +182,7 @@ def remove_service(service_id):
     try:
         return get_client().services.get(service_id).remove()
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
         print("container must be removed", e)
         return False
 
@@ -192,7 +194,7 @@ def create_volume(name):
 def get_default_env():
     api_url = os.getenv("API_URL")
     if api_url is None:
-        logging.error("API_URL not found for .env")
+        logger.error("API_URL not found for .env")
         return []
     return [
         f"API_URL={api_url}",
@@ -229,9 +231,9 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
     mount = Mount(target="/app/assets/", source=path, type="bind")
     try:
         mongo_credentials = project.get_mongo_credentials()
-        logging.info(f"Using MongoDB credentials for project {project.id}: {mongo_credentials['username']}")
+        logger.info(f"Using MongoDB credentials for project {project.id}: {mongo_credentials['username']}")
     except Exception as e:
-        logging.error(f"Failed to get MongoDB credentials for project {project.id}: {e}")
+        logger.error(f"Failed to get MongoDB credentials for project {project.id}: {e}")
         mongo_credentials = {"connection_string": env.str("MONGO_URL"), "database": f"project_{project.id}"}
 
     # Build environment variables
@@ -281,12 +283,12 @@ def stop_project_services(project_id: int):
         for service in services:
             try:
                 service.remove()
-                logging.info(f"Stopped service {service.name} for project {project_id}")
+                logger.info(f"Stopped service {service.name} for project {project_id}")
                 count += 1
             except Exception as e:
-                logging.error(f"Error stopping service {service.name}: {e}")
+                logger.error(f"Error stopping service {service.name}: {e}")
         
         return count
     except Exception as e:
-        logging.error(f"Error stopping services for project {project_id}: {e}")
+        logger.error(f"Error stopping services for project {project_id}: {e}")
         return 0
