@@ -170,8 +170,7 @@ def create_pod(image: str, name: str, env_vars: list = None, **kwargs):
         V1EnvVar,
         V1VolumeMount,
         V1Volume,
-        V1PersistentVolumeClaimVolumeSource,
-        V1RestartPolicy,
+        V1ContainerPort,
     )
     
     api = get_k8s_client()
@@ -208,7 +207,7 @@ def create_pod(image: str, name: str, env_vars: list = None, **kwargs):
         env=container_env,
         resources=resources,
         volume_mounts=volume_mounts if volume_mounts else None,
-        ports=[{"containerPort": 8000, "protocol": "TCP"}],
+        ports=[V1ContainerPort(container_port=8000, protocol="TCP")],
     )
     
     # Pod metadata with labels
