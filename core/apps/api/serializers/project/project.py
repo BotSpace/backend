@@ -191,6 +191,14 @@ class CreateProjectFromTemplate(serializers.Serializer):
             try:
                 plan = PlanModel.objects.get(id=plan_id, is_active=True)
                 user = self.context["request"].user
+                if plan.name == PlanType.FREE.value:
+                    project = ProjectModel.objects.filter(
+                        owner=user, plan_subscription__plan__name=PlanType.FREE.value
+                    ).first()
+                    if project is not None:
+                        raise serializers.ValidationError(
+                            detail={"plan_id": "Kechirasiz bepul tarifda faqat bitta loyiha yaratish mumkun"}
+                        )
                 if user.balance < plan.price:
                     raise serializers.ValidationError(
                         {
