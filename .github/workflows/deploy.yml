@@ -1,4 +1,4 @@
-name: Build and Push to Docker Hub
+name: Build and Deploy to Kubernetes
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 env:
   PROJECT_NAME: botmother
+  K8S_NAMESPACE: botmother
 
 permissions:
   contents: write
@@ -90,9 +91,11 @@ jobs:
           docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
           echo "SUCCESS TAGS: latest, ${{ github.run_number }}"
 
-      - name: stack.yaml updated
+      - name: Update Kubernetes manifests
         run: |
-          sed -i 's|image: ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:.*|image: ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}|' stack.yaml
+          # Update image tag in kustomization.yaml
+          sed -i 's/newTag: .*/newTag: "${{ github.run_number }}"/' k8s/kustomization.yaml
+          # Update health check response
           sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
 
       - name: Commit and push updated version
@@ -104,77 +107,87 @@ jobs:
           git pull origin main --rebase
           git push origin main
 
-      - name: Execute remote SSH commands using SSH key
-        uses: appleboy/ssh-action@v1.2.2
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            PROJECTS=/opt/projects/
-            DIR=/opt/projects/${{ env.PROJECT_NAME }}/
-            
-            if [ -d "$PROJECTS" ]; then
-              echo "projects papkasi mavjud"
-            else
-              mkdir -p $PROJECTS
-              echo "projects papkasi yaratildi"
-            fi
+          version: 'latest'
 
-            if [ -d "$DIR" ]; then
-              echo "loyiha mavjud"
-            else
-              cd $PROJECTS
-              git clone git@github.com:${{ github.repository }}.git ${{ env.PROJECT_NAME }}
-              echo "Clone qilindi";
-            fi
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
 
-            cd $DIR
-            git fetch origin main
-            git reset --hard origin/main
-            cp .env.example .env
+      - name: Create/Update Kubernetes secrets
+        run: |
+          kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic botmother-secrets \
+            --namespace=${{ env.K8S_NAMESPACE }} \
+            --from-literal=POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            --from-literal=DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            --from-literal=DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
+            --from-literal=MONGO_URL=${{ secrets.MONGO_URL }} \
+            --from-literal=BOT_TOKEN=${{ secrets.BOT_TOKEN }} \
+            --from-literal=TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }} \
+            --from-literal=CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }} \
+            --from-literal=CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }} \
+            --from-literal=CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }} \
+            --from-literal=DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }} \
+            --from-literal=DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
+            --from-literal=DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-            update_env() {
-                local env_file=".env"
-                cp .env.example "$env_file"
+      - name: Update ConfigMap
+        run: |
+          kubectl create configmap botmother-config \
+            --namespace=${{ env.K8S_NAMESPACE }} \
+            --from-literal=DEBUG=False \
+            --from-literal=DJANGO_SETTINGS_MODULE=config.settings.production \
+            --from-literal=PROJECT_ENV=prod \
+            --from-literal=PROTOCOL_HTTPS=true \
+            --from-literal=SCRIPT=entrypoint-server.sh \
+            --from-literal=PORT=8000 \
+            --from-literal=DB_ENGINE=django_prometheus.db.backends.postgresql \
+            --from-literal=DB_NAME=django \
+            --from-literal=DB_USER=postgres \
+            --from-literal=DB_HOST=postgres \
+            --from-literal=DB_PORT=5432 \
+            --from-literal=CACHE_BACKEND=django.core.cache.backends.redis.RedisCache \
+            --from-literal=REDIS_URL=redis://redis:6379 \
+            --from-literal=REDIS_HOST=redis \
+            --from-literal=REDIS_PORT=6379 \
+            --from-literal=CACHE_ENABLED=True \
+            --from-literal=CACHE_TIMEOUT=120 \
+            --from-literal=ALLOWED_HOSTS="127.0.0.1,web,botlarnionasi.jscorp.uz,api.botmother.uz" \
+            --from-literal=CSRF_TRUSTED_ORIGINS="http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz,https://api.botmother.uz" \
+            --from-literal=API_URL=https://botlarnionasi.jscorp.uz \
+            --from-literal=K8S_NAMESPACE=${{ env.K8S_NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-                # argumentlar orqali key=value olish
-                for kv in "$@"; do
-                    local key="${kv%%=*}"
-                    local value="${kv#*=}"
-                    sed -i "s|^$key=.*|$key=$value|" "$env_file"
-                done
-            }
+      - name: Create Docker Registry Secret
+        run: |
+          kubectl create secret docker-registry regcred \
+            --namespace=${{ env.K8S_NAMESPACE }} \
+            --docker-server=${{ vars.DOCKER_REGISTRY }} \
+            --docker-username=${{ secrets.DOCKER_USERNAME }} \
+            --docker-password=${{ secrets.DOCKER_PASSWORD }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-            # Funksiyani chaqirish misoli
-            update_env \
-              "DEBUG=False" \
-              "PROJECT_ENV=prod" \
-              "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
-              "MONGO_URL=${{ secrets.MONGO_URL }}" \
-              "SCRIPT=entrypoint-server.sh" \
-              "DB_ENGINE=django_prometheus.db.backends.postgresql" \
-              "DJANGO_SETTINGS_MODULE=config.settings.production" \
-              "CACHE_ENABLED=True" \
-              "ALLOWED_HOSTS=127.0.0.1,web,botlarnionasi.jscorp.uz,api.botmother.uz" \
-              "CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz,https://api.botmother.uz" \
-              "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
-              "API_URL=https://botlarnionasi.jscorp.uz" \
-              "DB_HOST=postgres" \
-              "PORT=${{ vars.PORT }}" \
-              "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" \
-              "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
-              "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}" \
-              "TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }}" \
-              "PROTOCOL_HTTPS=true" \
-              "CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }}" \
-              "CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }}" \
-              "CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }}"
+      - name: Deploy to Kubernetes
+        run: |
+          cd k8s
+          kubectl apply -k .
+          
+          # Wait for deployment
+          kubectl rollout status deployment/web -n ${{ env.K8S_NAMESPACE }} --timeout=300s
+          kubectl rollout status deployment/nginx -n ${{ env.K8S_NAMESPACE }} --timeout=300s
 
-            export PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}"
-            export PUBLIC_KEY="${{ secrets.PUBLIC_KEY }}"
+      - name: Run migrations
+        run: |
+          kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/web -- python manage.py migrate --noinput
 
-            echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
-            export PORT=${{ vars.PORT }}
-            docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} --with-registry-auth
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+          kubectl get services -n ${{ env.K8S_NAMESPACE }}

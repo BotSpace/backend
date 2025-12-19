@@ -53,10 +53,6 @@ websockets
 channels-redis
 
 
-# INFO: docker
-docker
-aiodocker
-
 # INFO: kubernetes
 kubernetes
 

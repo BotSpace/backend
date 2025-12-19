@@ -157,53 +157,38 @@ class TestKubernetesService:
         assert mock_api.delete_namespaced_pod.call_count == 2
 
 
-class TestDockerServiceKubernetesSwitch:
-    """Test Docker service functions with Kubernetes switch"""
+class TestDockerServiceWrapper:
+    """Test Docker service wrapper functions that delegate to Kubernetes"""
 
-    @patch('core.apps.api.services.kubernetes_service.get_pod_status')
-    def test_get_service_status_uses_kubernetes(self, mock_get_pod_status):
-        """Test that get_service_status uses Kubernetes when ORCHESTRATOR=kubernetes"""
+    @patch('core.apps.api.services.docker_service.get_pod_status')
+    def test_get_service_status(self, mock_get_pod_status):
+        """Test that get_service_status delegates to Kubernetes"""
         from core.apps.api.services.docker_service import get_service_status
         
         mock_get_pod_status.return_value = ContainerStatusEnum.RUNNING.value
         
-        # Force is_kubernetes to return True
-        with patch('core.apps.api.services.docker_service.is_kubernetes', return_value=True):
-            status = get_service_status("test-pod")
-            mock_get_pod_status.assert_called_once_with("test-pod")
-            assert status == ContainerStatusEnum.RUNNING.value
+        status = get_service_status("test-pod")
+        mock_get_pod_status.assert_called_once_with("test-pod")
+        assert status == ContainerStatusEnum.RUNNING.value
 
-    @patch('core.apps.api.services.kubernetes_service.remove_pod')
-    def test_remove_service_uses_kubernetes(self, mock_remove_pod):
-        """Test that remove_service uses Kubernetes when ORCHESTRATOR=kubernetes"""
+    @patch('core.apps.api.services.docker_service.remove_pod')
+    def test_remove_service(self, mock_remove_pod):
+        """Test that remove_service delegates to Kubernetes"""
         from core.apps.api.services.docker_service import remove_service
         
         mock_remove_pod.return_value = True
         
-        with patch('core.apps.api.services.docker_service.is_kubernetes', return_value=True):
-            result = remove_service("test-pod")
-            mock_remove_pod.assert_called_once_with("test-pod")
-            assert result is True
+        result = remove_service("test-pod")
+        mock_remove_pod.assert_called_once_with("test-pod")
+        assert result is True
 
-    def test_is_kubernetes_returns_correct_value(self):
-        """Test that is_kubernetes returns correct value based on ORCHESTRATOR"""
-        from core.apps.api.services import docker_service
+    @patch('core.apps.api.services.docker_service.stop_project_pods')
+    def test_stop_project_services(self, mock_stop_pods):
+        """Test that stop_project_services delegates to Kubernetes"""
+        from core.apps.api.services.docker_service import stop_project_services
         
-        # Save original value
-        original = docker_service.ORCHESTRATOR
+        mock_stop_pods.return_value = 2
         
-        try:
-            # Test docker
-            docker_service.ORCHESTRATOR = 'docker'
-            assert docker_service.is_kubernetes() is False
-            
-            # Test kubernetes
-            docker_service.ORCHESTRATOR = 'kubernetes'
-            assert docker_service.is_kubernetes() is True
-            
-            # Test case insensitive
-            docker_service.ORCHESTRATOR = 'KUBERNETES'
-            assert docker_service.is_kubernetes() is True
-        finally:
-            # Restore original value
-            docker_service.ORCHESTRATOR = original
+        count = stop_project_services(123)
+        mock_stop_pods.assert_called_once_with(123)
+        assert count == 2

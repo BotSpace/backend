@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: botmother-secrets
+  namespace: botmother
+type: Opaque
+stringData:
+  # Database
+  POSTGRES_PASSWORD: "changeme"
+  DB_PASSWORD: "changeme"
+  
+  # Django
+  DJANGO_SECRET_KEY: "changeme"
+  
+  # External services
+  MONGO_URL: "mongodb://bot:password@mongo:27017"
+  BOT_TOKEN: "changeme"
+  TEST_BOT_TOKEN: "changeme"
+  
+  # Click payment
+  CLICK_SERVICE_ID: "none"
+  CLICK_MERCHANT_ID: "none"
+  CLICK_SECRET_KEY: "none"
+  
+  # Docker Registry (for pulling images)
+  DOCKER_USERNAME: "changeme"
+  DOCKER_PASSWORD: "changeme"
+  DOCKER_REGISTRY: "registry.example.com"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: botmother-config
+  namespace: botmother
+data:
+  # Django settings
+  DEBUG: "False"
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  PROJECT_ENV: "prod"
+  PROTOCOL_HTTPS: "true"
+  SCRIPT: "entrypoint-server.sh"
+  PORT: "8000"
+  
+  # Database
+  DB_ENGINE: "django_prometheus.db.backends.postgresql"
+  DB_NAME: "django"
+  DB_USER: "postgres"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  
+  # Redis/Cache
+  CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"
+  REDIS_URL: "redis://redis:6379"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  CACHE_ENABLED: "True"
+  CACHE_TIMEOUT: "120"
+  
+  # URLs
+  ALLOWED_HOSTS: "127.0.0.1,web,botmother.example.com"
+  CSRF_TRUSTED_ORIGINS: "https://botmother.example.com"
+  API_URL: "https://botmother.example.com"
+  
+  # Kubernetes
+  K8S_NAMESPACE: "botmother"
