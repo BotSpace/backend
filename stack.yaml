@@ -2,13 +2,13 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16.3-alpine
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_DB=botmother
+      - POSTGRES_DB=django
       - POSTGRES_PASSWORD_FILE=/run/secrets/botmother_postgres_password
     secrets:
-      - postgres_password
+      - botmother_postgres_password
     networks:
       - botmother
     volumes:
@@ -18,7 +18,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.name == my 
       restart_policy:
         condition: any
         max_attempts: 0
@@ -31,10 +31,10 @@ services:
         max_failure_ratio: 0.2
       resources:
         limits:
-          cpus: '1.00'
+          cpus: '2'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d botmother"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d django"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,7 +57,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.name == my 
       restart_policy:
         condition: any
       update_config:
@@ -67,10 +67,6 @@ services:
         monitor: 30s
         delay: 30s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 256M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -84,15 +80,19 @@ services:
         max-file: "5"
 
   web:
-    image: jscorptech/botmother:latest
+    image: registry.jscorp.uz/botmother:213
     env_file:
       - .env
     environment:
       - PYTHONPYCACHEPREFIX=/var/cache/pycache
       - DJANGO_SETTINGS_MODULE=config.settings.production
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - PUBLIC_KEY=${PUBLIC_KEY}
     networks:
       - botmother
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/engine/:/mnt/engine/:rw
       - logs:/code/resources/logs/:rw
       - media:/code/resources/media/:rw
       - static:/code/resources/staticfiles/:rw
@@ -105,6 +105,9 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+      placement:
+        constraints:
+          - node.labels.name == my
       update_config:
         parallelism: 1
         order: start-first
@@ -112,10 +115,6 @@ services:
         monitor: 30s
         delay: 30s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '1.50'
-          memory: 1024M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 15s
@@ -133,22 +132,18 @@ services:
     ports:
       - mode: ingress
         target: 80
-        published: ${PORT:?enviromentda PORT topilmadi} 
+        published: ${PORT:?enviromentda PORT topilmadi}
         protocol: tcp
     volumes:
-      - type: bind
-        source: ./resources/layout/nginx.conf
-        target: /etc/nginx/nginx.conf
-        read_only: true
       - media:/usr/share/nginx/html/resources/media/:ro
       - static:/usr/share/nginx/html/resources/staticfiles/:ro
     networks:
       - botmother
     deploy:
-      mode: global
+      mode: replicated
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.name == my
       restart_policy:
         condition: any
       update_config:
@@ -158,10 +153,6 @@ services:
         monitor: 10s
         delay: 10s
         max_failure_ratio: 0.2
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 256M
     tmpfs:
       - /var/cache/nginx
       - /var/run
@@ -182,6 +173,7 @@ networks:
   botmother:
     driver: overlay
     attachable: true
+    external: true
 
 volumes:
   media:
@@ -199,4 +191,4 @@ volumes:
 
 secrets:
   botmother_postgres_password:
-    external: false
+    external: true

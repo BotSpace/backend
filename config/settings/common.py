@@ -5,10 +5,12 @@ from typing import List, Union
 
 from config.conf import *  # noqa
 from config.conf.apps import APPS
+
 from config.conf.modules import MODULES
 from config.env import env
 from django.utils.translation import gettext_lazy as _
 from rich.traceback import install
+
 
 install(show_locals=True)
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -93,6 +95,12 @@ TEMPLATES = [
     },
 ]
 # fmt: off
+
+
+
+
+
+
 
 WSGI_APPLICATION = "config.wsgi.application"
 

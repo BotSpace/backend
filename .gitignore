@@ -2,6 +2,9 @@ node_modules
 
 # OS ignores
 *.DS_Store
+supervisord.pid
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

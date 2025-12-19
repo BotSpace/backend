@@ -13,3 +13,8 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+CACHEOPS_ENABLED = False
+
+# Flag to indicate we're in test mode
+TESTING = True

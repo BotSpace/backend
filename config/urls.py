@@ -1,4 +1,3 @@
-# type: ignore
 """
 All urls configurations tree
 """
@@ -11,11 +10,11 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from config.env import env
-from core.apps.api.views.project import logs
+from core.apps.api.views.docker import logs
 
 
 def home(request):
-    return HttpResponse("OK: #58ba0740fa37d41ccba507e0a6634ea1760784b9")
+    return HttpResponse("OK: #7e5af5a4b5b74f5795561eb7b4292b32febc0629")
 
 
 urlpatterns = [
@@ -27,8 +26,9 @@ urlpatterns = [
     path("sse/api/project/<str:service_id>/logs/", logs),
     path("api/", include("core.apps.cms.urls")),
     path("", include("django_prometheus.urls")),
+    path("api/", include("core.apps.payment.urls")),
+    path("api/", include("core.apps.template.urls")),
 ]
-
 urlpatterns += [
     path("admin/", admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
@@ -36,8 +36,7 @@ urlpatterns += [
     path("rosetta/", include("rosetta.urls")),
     path("ckeditor5/", include("django_ckeditor_5.urls"), name="ck_editor_5_upload_file"),
 ]
-
-if env.bool("SILK_ENiABLED", False):
+if env.bool("SILK_ENABLED", False):
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 if env.str("PROJECT_ENV") == "debug":
     urlpatterns += [

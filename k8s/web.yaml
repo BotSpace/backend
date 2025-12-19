@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: botmother
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      serviceAccountName: botmother-sa
+      containers:
+      - name: web
+        image: registry.jscorp.uz/botmother:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: botmother-config
+        - secretRef:
+            name: botmother-secrets
+        env:
+        - name: PYTHONPYCACHEPREFIX
+          value: "/var/cache/pycache"
+        resources:
+          limits:
+            cpu: "2"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: media
+          mountPath: /code/resources/media
+        - name: static
+          mountPath: /code/resources/staticfiles
+        - name: logs
+          mountPath: /code/resources/logs
+        - name: pycache
+          mountPath: /var/cache/pycache
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: media
+        persistentVolumeClaim:
+          claimName: media-pvc
+      - name: static
+        persistentVolumeClaim:
+          claimName: static-pvc
+      - name: logs
+        persistentVolumeClaim:
+          claimName: logs-pvc
+      - name: pycache
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: botmother
+spec:
+  selector:
+    app: web
+  ports:
+  - port: 8000
+    targetPort: 8000
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+  namespace: botmother
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-pvc
+  namespace: botmother
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logs-pvc
+  namespace: botmother
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,20 +1,21 @@
-import hashlib
-import json
-
-from django.http import StreamingHttpResponse
+# type: ignore
 from django.shortcuts import get_object_or_404
+from core.apps.payment.services.balance import subtract_balance
+from core.apps.api.models import ProjectPlanModel
+from core.apps.api.enums.plan import PlanStatus
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from core.apps.api.services.project import copy_collections, create_default_collections, default_flow
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
 from core.apps.api.serializers.project import (
     CreateEnviromentSerializer,
     CreateProjectSerializer,
@@ -27,46 +28,19 @@ from core.apps.api.serializers.project import (
     RetrieveRelaseSerializer,
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
-from core.apps.api.services.docker_service import deploy_service, remove_service, service_logs_async
-from core.apps.api.services.enviroment import project_enviroment, validate_debug_enviroment
-
-
-async def logs(request, service_id):
-    async def stream():
-        async for line in service_logs_async(service_id):
-            if line[-1] == "\n":
-                line = line[:-1]
-            if line is None or line == "":
-                continue
-            yield f"data: {line}\n\n"
-
-        yield "data: Container is not running\n\n"
-
-    response = StreamingHttpResponse(stream(), content_type="text/event-stream")
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-
-    response["Access-Control-Allow-Origin"] = "*"
-    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-    response["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    response["Access-Control-Allow-Credentials"] = "false"
-    return response
+from core.apps.api.serializers.project.project import CreateProjectFromTemplate
+from core.apps.api.services.dashboard import DashboardService
+from core.apps.api.services.docker_service import deploy_service, remove_service
+from core.apps.api.services.enviroment import project_enviroment
+from core.apps.api.services.webhook import set_webhook
+from core.apps.cms.models.cms import CollectionModel
+from core.apps.template.models.order import TemplateOrderModel
 
 
 @extend_schema(tags=["project"])
 class ProjectView(BaseViewSetMixin, ModelViewSet):
     serializer_class = ListProjectSerializer
     permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        queryset = ProjectModel.objects.order_by("-id").all()
-        if self.request.user.is_authenticated:
-            return queryset.filter(owner=self.request.user)
-        return queryset.none()
-
-    def get_object(self):
-        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
-
     action_permission_classes = {}
     action_serializer_class = {
         "list": ListProjectSerializer,
@@ -76,12 +50,152 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "update": CreateProjectSerializer,
         "debug": CreateDebugSerializer,
         "info": ListDebugSerializer,
+        "create_from_template": CreateProjectFromTemplate,
     }
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.dashboardService = DashboardService()
+
+    @extend_schema(
+        summary="Loyiha yaratish",
+        description="Yangi loyiha yaratadi. Plan tanlash majburiy va balansingiz yetarli bo'lishi kerak.",
+        responses={
+            201: ListProjectSerializer,
+            400: OpenApiResponse(
+                description="Xatolik: plan noto'g'ri yoki balans yetarli emas",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "plan_id": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"],
+                        }
+                    },
+                },
+            ),
+        },
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return ProjectModel.objects.order_by("-id").filter(owner=self.request.user)
+
+    def get_object(self):
+        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
+
     def perform_create(self, serializer):
-        serializer.save(
-            owner=self.request.user,
-            flow={"nodes": [], "edges": []},
+        plan_id = serializer.validated_data.get("plan_id")
+        plan = PlanModel.objects.get(id=plan_id, is_active=True)
+
+        if plan.price > 0:
+            subtract_balance(self.request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}")
+
+        project = serializer.save(owner=self.request.user)
+        project.flow = default_flow()
+        project.save()
+        ProjectPlanModel.objects.create(project=project, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
+        create_default_collections(project)
+
+    @extend_schema(
+        summary="Shablondan loyiha yaratish",
+        description="Sotib olingan shablondan yangi loyiha yaratadi. Plan talab qilinadi va balans tekshiriladi.",
+        request=CreateProjectFromTemplate,
+        responses={
+            200: ListProjectSerializer,
+            400: OpenApiResponse(
+                description="Xatolik: shablon sotib olinmagan, plan noto'g'ri yoki balans yetarli emas",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "detail": {"type": "string", "example": "template not purchased"},
+                        "plan_id": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["Balansingiz yetarli emas. Kerakli: 50000, Mavjud: 10000"],
+                        },
+                    },
+                },
+            ),
+        },
+    )
+    @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
+    def create_from_template(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        template = data.get("template")
+        if not template.project.flow:
+            raise exceptions.ValidationError(
+                detail={"template": "Kechirasiz templateda muammo bor iltimos admin bilan bo'g'laning"}
+            )
+        order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
+        if order is None or not order.payment_status:
+            raise exceptions.ValidationError(detail=_("template not purchased"))
+
+        plan_id = data.get("plan_id")
+        plan = PlanModel.objects.get(id=plan_id, is_active=True)
+
+        if plan.price > 0:
+            subtract_balance(request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}")
+
+        instance = ProjectModel.objects.create(
+            name=data.get("name"),
+            flow=template.project.flow,
+            owner=request.user,
+        )
+        ProjectPlanModel.objects.create(project=instance, plan=plan, status=PlanStatus.ACTIVE, current_users=0)
+        EnviromentModel.objects.create(
+            key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
+        )
+        RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+        copy_collections(template.project, instance)
+        return Response(data=ListProjectSerializer(instance=instance).data)
+
+    @extend_schema(
+        summary="Dashboard api",
+        responses={
+            200: OpenApiResponse(
+                response={
+                    "type": "object",
+                    "properties": {
+                        "total_users": {"type": "integer", "example": 100},
+                        "daily_users": {"type": "integer", "example": 50},
+                        "chart": {
+                            "type": "object",
+                            "properties": {
+                                "new_users": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "date": {"type": "string", "example": "2025-11-22"},
+                                            "value": {"type": "integer", "example": 100},
+                                        },
+                                    },
+                                }
+                            },
+                        },
+                    },
+                },
+            ),
+        },
+    )
+    @action(methods=["GET"], detail=True, url_name="dashboard", url_path="dashboard")
+    def dashboard(self, request, pk):
+        project = self.get_object()
+        collection = get_object_or_404(CollectionModel, project=project, name="users")
+        self.dashboardService.set_collection(collection)
+        return Response(
+            data={
+                "chart": {
+                    "new_users": self.dashboardService.get_user_chart(),
+                },
+                "total_users": self.dashboardService.users_count(),
+                "daily_users": self.dashboardService.daily_users(),
+            }
         )
 
     @action(methods=["GET"], detail=True, url_name="info", url_path="info")
@@ -99,15 +213,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug")
     def debug(self, request, pk):
-        if not validate_debug_enviroment(pk):
-            return Response(data={"detail": _("debug uchun enviroment to'liq emas")}, status=400)
         instance = self.get_object()
         debug = instance.debug
-        # hash = hashlib.md5(json.dumps(instance.flow).encode()).hexdigest()
-        # if debug.flow_hash == hash:
-        #     return Response(data={"detail": _("No changes")})
-        # debug.flow_hash = hash
-        # debug.save()
         if debug.service_id:
             remove_service(debug.service_id)
         service = deploy_service(
@@ -124,9 +231,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
 
 @extend_schema(tags=["relase"])
-class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
+class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
     serializer_class = ListRelaseSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     action_permission_classes = {}
     action_serializer_class = {
@@ -136,7 +243,7 @@ class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMod
     }
 
     def get_queryset(self):
-        queryset = RelaseModel.objects.order_by("-id")
+        queryset = RelaseModel.objects.order_by("-id").filter(project__owner=self.request.user)
         if self.action in ["list"]:
             project_id = self.request.query_params.get("project")
             if project_id is None:
@@ -154,6 +261,7 @@ class RelaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMod
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get("project")
+        set_webhook(project, "release")
         relase = RelaseModel.objects.filter(
             project=project,
         ).last()

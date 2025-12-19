@@ -1,3 +1,4 @@
+import logging
 from rest_framework.views import APIView
 from ..serializers import LoginSerializer
 from rest_framework import status
@@ -23,20 +24,21 @@ class LoginView(APIView):
             phone=user.phone,
             defaults={
                 "phone": user.phone,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
+                "first_name": user.first_name if user.first_name is not None else "",
+                "last_name": user.last_name if user.last_name is not None else "",
             },
         )
         service = UserService()
         token = service.validate_user(user)
-        bot.edit_message_text(
-            chat_id=code.user.user_id,
-            message_id=code.message_id,
-            text="Tasdiqlash ko'di foydalanildi 🫡 ```{}```".format(
-                datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-            ),
-            parse_mode="markdown",
-        )
+        try:
+            bot.edit_message_text(
+                chat_id=code.user.user_id,
+                message_id=code.message_id,
+                text="Tasdiqlash ko'di foydalanildi 🫡 ```{}```".format(datetime.now().strftime("%d-%m-%Y %H:%M:%S")),
+                parse_mode="markdown",
+            )
+        except Exception as err:
+            logging.error(err)
         code.delete()
         return Response(
             {"user": UserSerializer(user).data, "token": token},

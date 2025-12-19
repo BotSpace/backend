@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: botmother-sa
+  namespace: botmother
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: botmother-role
+  namespace: botmother
+rules:
+# Pod management for engine pods
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+# ConfigMap management for flow files
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+# Pod logs
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: botmother-rolebinding
+  namespace: botmother
+subjects:
+- kind: ServiceAccount
+  name: botmother-sa
+  namespace: botmother
+roleRef:
+  kind: Role
+  name: botmother-role
+  apiGroup: rbac.authorization.k8s.io

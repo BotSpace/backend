@@ -11,6 +11,7 @@ class User(auth_models.AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     validated_at = models.DateTimeField(null=True, blank=True)
+    balance = models.BigIntegerField(default=0)
     role = models.CharField(
         max_length=255,
         choices=RoleChoice,

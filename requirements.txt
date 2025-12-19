@@ -8,7 +8,7 @@ django-extensions==3.2.3
 django-filter==24.3
 django-redis==5.4.0
 django-unfold==0.65.0
-djangorestframework-simplejwt==5.3.1
+djangorestframework-simplejwt[crypto]==5.3.1
 drf-spectacular==0.28.0
 importlib-metadata==8.5.0
 importlib-resources==6.4.5
@@ -36,6 +36,7 @@ channels==4.2.0
 django-rosetta==0.10.1
 django-cacheops~=7.1
 django-silk
+httpx
 
 # !NOTE: on-server
 gunicorn
@@ -52,9 +53,13 @@ websockets
 channels-redis
 
 
-# INFO: docker
-docker
-aiodocker
+# INFO: kubernetes
+kubernetes
 
 #INFO: Monitoring
 django-prometheus
+
+
+click-pkg
+payme-pkg
+openpyxl==3.1.2

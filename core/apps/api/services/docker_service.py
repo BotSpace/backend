@@ -1,70 +1,87 @@
 # type: ignore
-import json
-import logging
-import pathlib
+"""
+Engine orchestration service.
 
-import aiodocker
-from docker.types import Mount
-from rest_framework_simplejwt import tokens
-from config.env import env
+This module provides functions for managing bot engines using Kubernetes pods.
+Engine instances are deployed as Kubernetes pods with appropriate resource limits.
+"""
+import logging
 import os
 
-import docker
-from core.apps.api.enums.container import ContainerStatusEnum
+from config.env import env
 
-try:
-    client = docker.from_env()
-except Exception as e:
-    print(e)
-    client = None
+from core.apps.api.enums.container import ContainerStatusEnum
+from core.apps.api.services.kubernetes_service import (
+    deploy_engine,
+    get_pod_status,
+    pod_logs_async,
+    remove_pod,
+    stop_project_pods,
+    convert_k8s_event_status,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 async def service_logs_async(service_id):
-    docker = aiodocker.Docker()
-    async for line in docker.services.logs(service_id, follow=True, stdout=True, stderr=True):
+    """Stream logs for a pod asynchronously
+    
+    Args:
+        service_id: Kubernetes pod name
+        
+    Yields:
+        Log lines
+    """
+    async for line in pod_logs_async(service_id):
         yield line
 
 
+def convert_status(status):
+    """Convert status string to container status enum value
+    
+    Args:
+        status: Status string from Kubernetes event
+        
+    Returns:
+        str: Container status enum value
+    """
+    return convert_k8s_event_status("MODIFIED", status)
+
+
 def get_service_status(service_id):
-    try:
-        state = client.services.get(service_id).tasks()[0]["Status"]["State"]
-    except Exception as _:
-        return ContainerStatusEnum.STOPPED.value
-    match state:
-        case "new" | "pending" | "assigned" | "accepted" | "preparing" | "starting":
-            return ContainerStatusEnum.INIT.value
-        case "running":
-            return ContainerStatusEnum.RUNNING.value
-        case "complete" | "shutdown" | "remove":
-            return ContainerStatusEnum.STOPPED.value
-        case "failed" | "rejected" | "orphaned":
-            return ContainerStatusEnum.FAILED.value
-        case _:
-            return ContainerStatusEnum.STOPPED.value
-
-
-def create_service(image, name, command=None, **kwargs):
-    kwargs["name"] = name
-    return client.services.create(image=image, command=command, **kwargs)
+    """Get the status of a pod
+    
+    Args:
+        service_id: Kubernetes pod name
+        
+    Returns:
+        str: Container status enum value
+    """
+    return get_pod_status(service_id)
 
 
 def remove_service(service_id):
-    try:
-        return client.services.get(service_id).remove()
-    except Exception as e:
-        logging.error(e)
-        print("container must be removed", e)
-        return False
-
-
-def create_volume(name):
-    return client.volumes.create(name=name)
+    """Remove a pod
+    
+    Args:
+        service_id: Kubernetes pod name
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    return remove_pod(service_id)
 
 
 def get_default_env():
+    """Get default environment variables for engine pods
+    
+    Returns:
+        list: List of environment variable strings
+    """
     api_url = os.getenv("API_URL")
     if api_url is None:
-        logging.error("API_URL not found for .env")
+        logger.error("API_URL not found for .env")
         return []
     return [
         f"API_URL={api_url}",
@@ -72,21 +89,30 @@ def get_default_env():
 
 
 def deploy_service(project, prefix, flow, key, _env: list = []):
-    path = "/var/lib/engine/%s_%s/" % (prefix, key)
-    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-    with open(path + "flow.json", "w") as file:
-        file.write(json.dumps(flow, indent=4))
-    mount = Mount(
-        target="/code/assets/",
-        source=path,
-        type="bind",
-    )
+    """Deploy engine pod for project with MongoDB credentials
+
+    Args:
+        project: ProjectModel instance
+        prefix: Service prefix (debug/release)
+        flow: Bot flow configuration
+        key: Unique service key
+        _env: Additional environment variables
+
+    Returns:
+        Created Kubernetes pod
+    """
+    # Add default env vars
     _env.extend(get_default_env())
-    _env.append(f"API_TOKEN={str(tokens.AccessToken.for_user(project.owner))}")
-    _env.append(f"PROJECT_ID={project.id}")
-    return create_service(
-        "jscorptech/engine:latest",
-        "%s_%s" % (prefix, key),
-        mounts=[mount],
-        env=_env,
-    )
+    return deploy_engine(project, prefix, flow, key, _env)
+
+
+def stop_project_services(project_id: int):
+    """Stop all engine pods for a project
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        int: Number of pods stopped
+    """
+    return stop_project_pods(project_id)

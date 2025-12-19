@@ -1,16 +1,45 @@
 # type: ignore
+import logging
 from django.db.transaction import atomic
 from bson import ObjectId
-from django.http import request
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from core.apps.api.services.file import file_exists
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models import CollectionModel
 from core.apps.cms.models.cms import FieldModel
 from core.apps.cms.serializers.cms.field import CreateFieldSerializer, RetrieveFieldSerializer
-from core.apps.cms.services.collection import collection_validate_data
 from core.apps.api.models import ProjectModel
+from datetime import datetime, timezone
+from dateutil import parser
+import re
+
+
+def to_datetime_safe(value: str) -> datetime:
+    """
+    Har qanday vaqt stringini xavfsiz datetime ga aylantiradi.
+    Nanosecond -> microsecond ga avtomatik moslashtiradi.
+    """
+
+    if not isinstance(value, str):
+        raise ValueError("Datetime must be string")
+
+    # 1) Nanosecond (9 digit) aniqlash va 6 digitgacha qisqartirish
+    match = re.search(r"\.(\d+)", value)
+    if match:
+        fraction = match.group(1)
+        if len(fraction) > 6:  # nano → micro
+            value = value.replace("." + fraction, "." + fraction[:6])  # faqat 6 ta raqam qoldiramiz
+
+    # 2) dateutil orqali parse
+    dt = parser.parse(value)
+
+    # 3) Agar timezone bo'lmasa — UTC qilamiz
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt
 
 
 class BaseCollectionSerializer(serializers.ModelSerializer):
@@ -92,6 +121,9 @@ class BaseDataCollectionSerializer(serializers.Serializer):
             raise ValidationError(detail={"where": ["where is not dict"]})
         for field, _value in value.items():
             if field == "_id":
+                if isinstance(_value, dict) and "$oid" in _value:
+                    value[field] = ObjectId(_value["$oid"])
+                    break
                 value[field] = ObjectId(_value)
                 break
         return value
@@ -103,8 +135,29 @@ class AddDataCollectionSerializer(BaseDataCollectionSerializer):
             raise ValidationError(detail="Expected a JSON object")
         validated = {}
         for field, value in data.items():
+            try:
+                instance = FieldModel.objects.get(collection=self.context.get("collection"), name=field)
+            except FieldModel.DoesNotExist:
+                logging.info("invalid field")
+                continue
+            if instance.type == FieldType.DATETIME.value:
+                validated[field] = to_datetime_safe(value)
+                continue
+            elif instance.type in [
+                FieldType.AUDIO.value,
+                FieldType.VIDEO.value,
+                FieldType.FILE.value,
+                FieldType.PHOTO.value,
+            ]:
+                if not file_exists(value):
+                    raise ValidationError(detail={field: "invalid file uuid"})
             validated[field] = value
         return validated
+
+
+class InsertIfNotExists(BaseDataCollectionSerializer):
+    where = serializers.DictField(required=True)
+    data = AddDataCollectionSerializer()
 
 
 class FindDataCollectionSerializer(BaseDataCollectionSerializer):
@@ -121,6 +174,12 @@ class FindOneDataCollectionSerializer(BaseDataCollectionSerializer):
         if len(attrs.get("where", {})) <= 0:
             raise ValidationError(detail={"where": ["where is empty"]})
         return attrs
+
+
+class CountDataCollectionSerializer(BaseDataCollectionSerializer):
+    """Serializer for counting documents in collection"""
+
+    where = serializers.DictField(required=False)
 
 
 class DeleteDataCollectionSerializer(BaseDataCollectionSerializer):

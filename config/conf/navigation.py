@@ -30,22 +30,64 @@ PAGES = [
     },
     {
         "title": _("Dashboard"),
-        "separator": True,  # Top border
+        "separator": True,
         "items": [
             {
                 "title": _("Projects"),
-                "icon": "group",
+                "icon": "folder",
                 "link": reverse_lazy("admin:api_projectmodel_changelist"),
             },
             {
                 "title": _("Release"),
-                "icon": "group",
+                "icon": "rocket_launch",
                 "link": reverse_lazy("admin:api_relasemodel_changelist"),
             },
             {
                 "title": _("Collection"),
-                "icon": "group",
+                "icon": "collections",
                 "link": reverse_lazy("admin:cms_collectionmodel_changelist"),
+            },
+        ],
+    },
+    {
+        "title": _("Pricing Plans"),
+        "separator": True,
+        "items": [
+            {
+                "title": _("Plans"),
+                "icon": "card_membership",
+                "link": reverse_lazy("admin:api_planmodel_changelist"),
+            },
+            {
+                "title": _("Subscriptions"),
+                "icon": "subscriptions",
+                "link": reverse_lazy("admin:api_projectplanmodel_changelist"),
+            },
+        ],
+    },
+    {
+        "title": _("Templates"),
+        "separator": True,
+        "items": [
+            {
+                "title": _("Templates"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatemodel_changelist"),
+            },
+            {
+                "title": _("Features"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatefeaturemodel_changelist"),
+            },
+            {
+                "title": _("Categories"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templatecategorymodel_changelist"),
+            },
+            {
+                "title": _("Orders"),
+                "icon": "group",
+                "link": reverse_lazy("admin:template_templateordermodel_changelist"),
             },
         ],
     },
