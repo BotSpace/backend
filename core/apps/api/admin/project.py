@@ -14,7 +14,7 @@ from core.apps.api.models import (
 class DebugInline(TabularInline):
     model = DebugModel
     tab = True
-    fields = ["flow_hash", "service_id", "status"]
+    fields = ["flow_hash", "service_id", "status", "is_template"]
     extra = 0
 
 
