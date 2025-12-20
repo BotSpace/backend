@@ -13,12 +13,13 @@ resources:
   - nginx.yaml
   - ingress.yaml
 
-# Image configuration - update tag via CI/CD
+# Image configuration - updated automatically by Flux Image Automation
+# The marker comment below is used by Flux to identify where to update the tag
 images:
   - name: registry.jscorp.uz/botmother
-    newTag: latest
+    newTag: "latest" # {"$imagepolicy": "flux-system:botmother:tag"}
 
 # Common labels
 commonLabels:
   app.kubernetes.io/name: botmother
-  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/managed-by: flux

@@ -1,4 +1,4 @@
-name: Build and Deploy to Kubernetes
+name: Build and Push Docker Image
 
 on:
   push:
@@ -91,103 +91,19 @@ jobs:
           docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
           echo "SUCCESS TAGS: latest, ${{ github.run_number }}"
 
-      - name: Update Kubernetes manifests
+      # NOTE: Flux Image Automation will automatically detect the new image tag
+      # and update k8s/kustomization.yaml, then apply the changes to the cluster.
+      # No kubectl commands needed here - GitOps handles deployment!
+
+      - name: Update health check response
         run: |
-          # Update image tag in kustomization.yaml
-          sed -i 's/newTag: .*/newTag: "${{ github.run_number }}"/' k8s/kustomization.yaml
-          # Update health check response
           sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
 
-      - name: Commit and push updated version
+      - name: Commit health check update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "🔄 image to ${{ github.run_number }} [CI SKIP]" || echo "No changes"
+          git add config/urls.py
+          git diff --staged --quiet || git commit -m "🔄 Update health check to ${{ github.run_number }} [CI SKIP]"
           git pull origin main --rebase
-          git push origin main
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'latest'
-
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
-      - name: Create/Update Kubernetes secrets
-        run: |
-          kubectl create namespace ${{ env.K8S_NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
-          
-          kubectl create secret generic botmother-secrets \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --from-literal=POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --from-literal=DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --from-literal=DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
-            --from-literal=MONGO_URL=${{ secrets.MONGO_URL }} \
-            --from-literal=BOT_TOKEN=${{ secrets.BOT_TOKEN }} \
-            --from-literal=TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }} \
-            --from-literal=CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }} \
-            --from-literal=CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }} \
-            --from-literal=CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }} \
-            --from-literal=DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }} \
-            --from-literal=DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} \
-            --from-literal=DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Update ConfigMap
-        run: |
-          kubectl create configmap botmother-config \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --from-literal=DEBUG=False \
-            --from-literal=DJANGO_SETTINGS_MODULE=config.settings.production \
-            --from-literal=PROJECT_ENV=prod \
-            --from-literal=PROTOCOL_HTTPS=true \
-            --from-literal=SCRIPT=entrypoint-server.sh \
-            --from-literal=PORT=8000 \
-            --from-literal=DB_ENGINE=django_prometheus.db.backends.postgresql \
-            --from-literal=DB_NAME=django \
-            --from-literal=DB_USER=postgres \
-            --from-literal=DB_HOST=postgres \
-            --from-literal=DB_PORT=5432 \
-            --from-literal=CACHE_BACKEND=django.core.cache.backends.redis.RedisCache \
-            --from-literal=REDIS_URL=redis://redis:6379 \
-            --from-literal=REDIS_HOST=redis \
-            --from-literal=REDIS_PORT=6379 \
-            --from-literal=CACHE_ENABLED=True \
-            --from-literal=CACHE_TIMEOUT=120 \
-            --from-literal=ALLOWED_HOSTS="127.0.0.1,web,botlarnionasi.jscorp.uz,api.botmother.uz" \
-            --from-literal=CSRF_TRUSTED_ORIGINS="http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz,https://api.botmother.uz" \
-            --from-literal=API_URL=https://botlarnionasi.jscorp.uz \
-            --from-literal=K8S_NAMESPACE=${{ env.K8S_NAMESPACE }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Create Docker Registry Secret
-        run: |
-          kubectl create secret docker-registry regcred \
-            --namespace=${{ env.K8S_NAMESPACE }} \
-            --docker-server=${{ vars.DOCKER_REGISTRY }} \
-            --docker-username=${{ secrets.DOCKER_USERNAME }} \
-            --docker-password=${{ secrets.DOCKER_PASSWORD }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy to Kubernetes
-        run: |
-          cd k8s
-          kubectl apply -k .
-          
-          # Wait for deployment
-          kubectl rollout status deployment/web -n ${{ env.K8S_NAMESPACE }} --timeout=300s
-          kubectl rollout status deployment/nginx -n ${{ env.K8S_NAMESPACE }} --timeout=300s
-
-      - name: Run migrations
-        run: |
-          kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/web -- python manage.py migrate --noinput
-
-      - name: Verify deployment
-        run: |
-          kubectl get pods -n ${{ env.K8S_NAMESPACE }}
-          kubectl get services -n ${{ env.K8S_NAMESPACE }}
+          git push origin main || echo "No changes to push"
