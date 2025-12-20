@@ -5,6 +5,7 @@ namespace: botmother
 
 resources:
   - namespace.yaml
+  - secrets.yaml
   - configmap.yaml
   - rbac.yaml
   - postgres.yaml
@@ -20,6 +21,7 @@ images:
     newTag: "latest" # {"$imagepolicy": "flux-system:botmother:tag"}
 
 # Common labels
-commonLabels:
-  app.kubernetes.io/name: botmother
-  app.kubernetes.io/managed-by: flux
+labels:
+  - pairs:
+      app.kubernetes.io/name: botmother
+      app.kubernetes.io/managed-by: flux

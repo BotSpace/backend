@@ -68,7 +68,7 @@ metadata:
   name: nginx
   namespace: botmother
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: nginx
   ports:
