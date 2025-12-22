@@ -9,7 +9,10 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: standard  # Change to your StorageClass
+  # IMPORTANT: Update storageClassName to match your cluster
+  # Check available: kubectl get storageclass
+  # Common values: standard, gp2 (AWS), pd-standard (GKE), managed-csi (Azure)
+  storageClassName: standard
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -22,7 +25,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard  # Change to your StorageClass
+  storageClassName: standard
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -35,7 +38,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard  # Change to your StorageClass
+  storageClassName: standard
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -48,7 +51,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: standard  # Change to your StorageClass
+  storageClassName: standard
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -61,4 +64,4 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: standard  # Change to your StorageClass
+  storageClassName: standard

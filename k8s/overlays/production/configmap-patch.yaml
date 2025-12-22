@@ -6,12 +6,16 @@ metadata:
 data:
   # External PostgreSQL connection
   # IMPORTANT: Replace with your actual external PostgreSQL host
-  DB_HOST: "postgres.example.com"  # Change to your PostgreSQL server IP/hostname
+  # Example IP: DB_HOST: "10.0.1.100"
+  # Example domain: DB_HOST: "postgres.mycompany.com"
+  DB_HOST: "REPLACE_WITH_POSTGRES_HOST_IP_OR_DOMAIN"  # Change to your PostgreSQL server IP/hostname
   
   # External Redis connection
   # IMPORTANT: Replace with your actual external Redis host
-  REDIS_HOST: "redis.example.com"  # Change to your Redis server IP/hostname
-  REDIS_URL: "redis://redis.example.com:6379"  # Change to your Redis server
+  # Example IP: REDIS_HOST: "10.0.1.101"
+  # Example domain: REDIS_HOST: "redis.mycompany.com"
+  REDIS_HOST: "REPLACE_WITH_REDIS_HOST_IP_OR_DOMAIN"  # Change to your Redis server IP/hostname
+  REDIS_URL: "redis://REPLACE_WITH_REDIS_HOST_IP_OR_DOMAIN:6379"  # Change to your Redis server
   
   # Production-specific settings
   ALLOWED_HOSTS: "web,botmother-web,your-domain.com"  # Add your domain

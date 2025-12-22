@@ -69,9 +69,11 @@ case $option in
     2)
         print_info "Updating deployment..."
         read -p "Enter new image tag (e.g., v1.0.1): " tag
+        read -p "Enter nginx image tag (or press enter for 'latest'): " nginx_tag
+        nginx_tag=${nginx_tag:-latest}
         if [ -n "$tag" ]; then
             kubectl set image deployment/botmother-web web=registry.jscorp.uz/botmother:$tag -n botmother
-            kubectl set image deployment/botmother-nginx nginx=jscorptech/nginx:latest -n botmother
+            kubectl set image deployment/botmother-nginx nginx=jscorptech/nginx:$nginx_tag -n botmother
             print_info "Image updated. Rolling update in progress..."
             kubectl rollout status deployment/botmother-web -n botmother
         fi

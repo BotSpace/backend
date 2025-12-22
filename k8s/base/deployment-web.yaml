@@ -77,6 +77,13 @@ spec:
           timeoutSeconds: 15
           failureThreshold: 5
       volumes:
+      # WARNING: Mounting Docker socket provides root-level access to the host
+      # This is required for the application's engine functionality
+      # Security considerations:
+      # - Only use this if absolutely necessary
+      # - Consider alternatives: Docker-in-Docker, remote Docker API, Kubernetes API
+      # - Restrict pod to specific nodes with proper security controls
+      # - Use Pod Security Policies/Standards to limit damage
       - name: docker-sock
         hostPath:
           path: /var/run/docker.sock

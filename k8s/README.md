@@ -353,6 +353,20 @@ Use your cloud provider's snapshot features or tools like Velero for Kubernetes-
 5. **TLS**: Enable TLS for all external communications
 6. **Regular Updates**: Keep images and dependencies updated
 
+### ⚠️ Docker Socket Security Warning
+
+The web deployment mounts `/var/run/docker.sock` for engine functionality. This provides root-level access to the host Docker daemon and presents a security risk.
+
+**Mitigations:**
+- Only deploy on trusted, isolated nodes
+- Implement Pod Security Policies to restrict capabilities
+- Consider alternatives:
+  - Use Kubernetes API instead of Docker API where possible
+  - Remote Docker daemon with TLS authentication
+  - Docker-in-Docker with proper isolation
+- Monitor container activity closely
+- Restrict which pods can mount the Docker socket using admission controllers
+
 ## Rollback
 
 ```bash
