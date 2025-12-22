@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: botmother-config
+  namespace: botmother
+data:
+  # External PostgreSQL connection
+  # IMPORTANT: Replace with your actual external PostgreSQL host
+  DB_HOST: "postgres.example.com"  # Change to your PostgreSQL server IP/hostname
+  
+  # External Redis connection
+  # IMPORTANT: Replace with your actual external Redis host
+  REDIS_HOST: "redis.example.com"  # Change to your Redis server IP/hostname
+  REDIS_URL: "redis://redis.example.com:6379"  # Change to your Redis server
+  
+  # Production-specific settings
+  ALLOWED_HOSTS: "web,botmother-web,your-domain.com"  # Add your domain
+  CSRF_TRUSTED_ORIGINS: "https://your-domain.com"  # Add your domain
+  
+  # Port for production
+  PORT: "80"

@@ -1,0 +1,59 @@
+# Optional: Ingress for exposing the application
+# Uncomment and customize this file if you want to use Ingress instead of LoadBalancer
+#
+# Prerequisites:
+# - Ingress controller installed (e.g., nginx-ingress, traefik)
+# - cert-manager for automatic TLS certificates (optional)
+#
+# To use this file:
+# 1. Uncomment the content below
+# 2. Replace 'your-domain.com' with your actual domain
+# 3. Add this file to kustomization.yaml resources
+# 4. Apply with: kubectl apply -k k8s/overlays/production
+
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: botmother-ingress
+#   namespace: botmother
+#   annotations:
+#     # For nginx-ingress
+#     kubernetes.io/ingress.class: nginx
+#     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+#     
+#     # For automatic TLS with cert-manager
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+#     
+#     # Optional: Additional nginx configurations
+#     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+#     nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+#     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+# spec:
+#   tls:
+#   - hosts:
+#     - your-domain.com
+#     - www.your-domain.com
+#     secretName: botmother-tls-cert
+#   rules:
+#   - host: your-domain.com
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: botmother-nginx
+#             port:
+#               number: 80
+#   - host: www.your-domain.com
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: botmother-nginx
+#             port:
+#               number: 80

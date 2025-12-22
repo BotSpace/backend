@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botmother-web
+  namespace: botmother
+  labels:
+    app: botmother
+    component: web
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: botmother
+      component: web
+  template:
+    metadata:
+      labels:
+        app: botmother
+        component: web
+    spec:
+      containers:
+      - name: web
+        image: registry.jscorp.uz/botmother:213  # Update with your image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: botmother-config
+        - secretRef:
+            name: botmother-secret
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        - name: engine
+          mountPath: /mnt/engine
+        - name: logs
+          mountPath: /code/resources/logs
+        - name: media
+          mountPath: /code/resources/media
+        - name: static
+          mountPath: /code/resources/staticfiles
+        - name: pycache
+          mountPath: /var/cache/pycache
+        - name: tmp
+          mountPath: /tmp
+        - name: run
+          mountPath: /run
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 5
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: engine
+        persistentVolumeClaim:
+          claimName: botmother-engine
+      - name: logs
+        persistentVolumeClaim:
+          claimName: botmother-logs
+      - name: media
+        persistentVolumeClaim:
+          claimName: botmother-media
+      - name: static
+        persistentVolumeClaim:
+          claimName: botmother-static
+      - name: pycache
+        persistentVolumeClaim:
+          claimName: botmother-pycache
+      - name: tmp
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      # Optional: Use image pull secrets if using private registry
+      # imagePullSecrets:
+      # - name: registry-credentials

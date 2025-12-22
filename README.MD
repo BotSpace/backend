@@ -244,7 +244,56 @@ For issues and questions:
 
 ## Kubernetes Deployment
 
-This project supports Kubernetes deployment with Flux GitOps.
+This project supports Kubernetes deployment with **external PostgreSQL and Redis** for better scalability and high availability.
+
+### Quick Start
+
+See [k8s/QUICK-START.md](k8s/QUICK-START.md) for a quick guide (available in O'zbek/Uzbek).
+
+For detailed documentation, see [k8s/README.md](k8s/README.md).
+
+### Architecture
+
+- **Web Service**: Django backend application
+- **Nginx Service**: Reverse proxy and static file server
+- **External PostgreSQL**: Database on dedicated host
+- **External Redis**: Cache server on dedicated host
+
+### Deploy to Kubernetes
+
+```bash
+# 1. Setup external PostgreSQL and Redis servers
+# See k8s/QUICK-START.md for instructions
+
+# 2. Update configuration with your external service IPs
+# Edit k8s/overlays/production/configmap-patch.yaml
+
+# 3. Create secrets
+kubectl create secret generic botmother-secret \
+  --namespace=botmother \
+  --from-literal=DJANGO_SECRET_KEY='your-secret-key' \
+  --from-literal=DB_PASSWORD='your-db-password'
+
+# 4. Deploy
+kubectl apply -k k8s/overlays/production
+
+# 5. Run migrations
+kubectl exec -n botmother -it deployment/botmother-web -- python manage.py migrate
+```
+
+### Helper Script
+
+Use the deployment helper script for common tasks:
+
+```bash
+cd k8s
+./deploy.sh
+# Interactive menu for deploy, update, logs, migrations, etc.
+```
+
+### Migration from Docker Swarm
+
+If migrating from Docker Swarm, see [k8s/MIGRATION.md](k8s/MIGRATION.md) for a comprehensive guide.
 
 ### Kubernetes Event Watching
 
@@ -263,39 +312,24 @@ python manage.py watch_k8s_events --namespace=botmother
 
 **Note:** Only ONE instance of the watcher should run across the cluster to avoid duplicate event processing.
 
-### Flux GitOps Deployment
-
-This project uses Flux v2 for GitOps-based deployments. See [flux/README.md](flux/README.md) for detailed setup instructions.
-
-**Quick setup on server:**
+### Useful Commands
 
 ```bash
-# 1. Set GitHub token
-export GITHUB_TOKEN=<your-github-pat>
-
-# 2. Run setup script
-./flux/setup-flux.sh
-```
-
-**How it works:**
-1. CI/CD builds and pushes Docker image to registry
-2. Flux detects new image tag automatically
-3. Flux updates `k8s/kustomization.yaml` with new tag
-4. Flux applies changes to Kubernetes cluster
-
-**Useful commands:**
-```bash
-# Check Flux status
-flux check
-
-# Watch deployments
-flux get kustomizations --watch
-
-# Manual sync
-flux reconcile kustomization botmother
+# Check deployment status
+kubectl get all -n botmother
 
 # View logs
-kubectl logs -n flux-system deployment/source-controller
+kubectl logs -n botmother -l component=web --tail=100
+kubectl logs -n botmother -l component=nginx --tail=100
+
+# Scale deployment
+kubectl scale deployment botmother-web --replicas=3 -n botmother
+
+# Update image
+kubectl set image deployment/botmother-web web=registry.jscorp.uz/botmother:v1.0.1 -n botmother
+
+# Rollback
+kubectl rollout undo deployment/botmother-web -n botmother
 ```
 
 ---
