@@ -13,9 +13,10 @@ resources:
   - service.yaml
 
 # Common labels applied to all resources
-commonLabels:
-  app.kubernetes.io/name: botmother
-  app.kubernetes.io/managed-by: kustomize
+labels:
+  - pairs:
+      app.kubernetes.io/name: botmother
+      app.kubernetes.io/managed-by: kustomize
 
 # Common annotations
 commonAnnotations:

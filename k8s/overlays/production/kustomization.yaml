@@ -3,26 +3,18 @@ kind: Kustomization
 
 namespace: botmother
 
-bases:
+resources:
   - ../../base
 
 # Production-specific patches
-patchesStrategicMerge:
-  - configmap-patch.yaml
-  - deployment-patch.yaml
+patches:
+  - path: configmap-patch.yaml
+  - path: deployment-patch.yaml
 
 # Images - Update with your actual image tags
 images:
   - name: registry.jscorp.uz/botmother
     newTag: latest  # Or specific version tag
-
-# ConfigMap generator for production-specific env vars
-# configMapGenerator:
-#   - name: botmother-config
-#     behavior: merge
-#     literals:
-#       - DB_HOST=your-postgres-host
-#       - REDIS_HOST=your-redis-host
 
 # Production replicas
 replicas:
