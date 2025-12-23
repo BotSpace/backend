@@ -159,3 +159,6 @@ cython_debug/
 
 # Visual Studio Code
 .vscode
+
+# Kubernetes production secrets
+k8s/secret-production.yaml
