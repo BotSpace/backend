@@ -56,6 +56,9 @@ spec:
       - name: tmp
         emptyDir: {}
       - name: engine
+        # SECURITY NOTE: hostPath is used to access Docker engine on the host
+        # This is required for container management functionality
+        # Ensure this deployment runs on trusted nodes only
         hostPath:
           path: /mnt/engine
           type: DirectoryOrCreate

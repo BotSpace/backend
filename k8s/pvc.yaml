@@ -4,11 +4,16 @@ metadata:
   name: botmother-media
   namespace: botmother
 spec:
+  # NOTE: ReadWriteMany requires a storage class that supports it (e.g., NFS, CephFS, GlusterFS)
+  # For cloud providers: AWS EFS, Azure Files, or GCP Filestore
+  # Alternative: Use ReadWriteOnce with a single-node deployment
   accessModes:
   - ReadWriteMany
   resources:
     requests:
       storage: 10Gi
+  # Change this to match your cluster's storage class
+  # Examples: nfs-client, efs-sc, azurefile, filestore-sc
   storageClassName: standard
 ---
 apiVersion: v1

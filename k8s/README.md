@@ -15,28 +15,37 @@ The application is deployed with the following components:
 
 ## Prerequisites
 
-1. A Kubernetes cluster (v1.20+)
+1. A Kubernetes cluster (v1.23+ recommended for best compatibility)
 2. `kubectl` configured to access your cluster
 3. External PostgreSQL database
 4. External Redis instance
-5. Storage class `standard` available in your cluster (or modify `pvc.yaml` to use your storage class)
+5. Storage class supporting ReadWriteMany (e.g., NFS, EFS, Azure Files, GCP Filestore)
+   - Alternative: Use ReadWriteOnce and deploy web replicas on a single node
 
 ## Deployment Steps
 
 ### 1. Update Secrets
 
-Edit `secret.yaml` and update all placeholder values:
-- `DJANGO_SECRET_KEY`
+**IMPORTANT**: Edit `secret.yaml` and update all placeholder values before deploying to production:
+
+- `DJANGO_SECRET_KEY` - Generate with: `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'`
 - `DB_HOST` and `DB_PASSWORD` (PostgreSQL connection)
 - `REDIS_HOST` and `REDIS_URL` (Redis connection)
 - `BOT_TOKEN`, `API_URL`
 - Payment gateway credentials
 - Storage credentials
-- And other sensitive values
+- All other sensitive values
 
-### 2. Update ConfigMap (if needed)
+**Never commit actual production secrets to version control!**
+
+### 2. Update ConfigMap and Storage (if needed)
 
 Edit `configmap.yaml` if you need to change any non-sensitive configuration values.
+
+**Storage Configuration**: Edit `pvc.yaml` to match your storage class:
+- Change `storageClassName` from `standard` to your cluster's storage class
+- Ensure your storage class supports ReadWriteMany access mode
+- Common options: `nfs-client`, `efs-sc`, `azurefile`, `filestore-sc`
 
 ### 3. Create the namespace
 
