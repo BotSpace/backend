@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botmother-nginx
+  namespace: botmother
+  labels:
+    app: botmother
+    component: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: botmother
+      component: nginx
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: botmother
+        component: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: jscorptech/nginx:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        volumeMounts:
+        - name: media
+          mountPath: /usr/share/nginx/html/resources/media
+          readOnly: true
+        - name: static
+          mountPath: /usr/share/nginx/html/resources/staticfiles
+          readOnly: true
+        - name: cache
+          mountPath: /var/cache/nginx
+        - name: run
+          mountPath: /var/run
+        - name: tmp
+          mountPath: /var/tmp
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: media
+        persistentVolumeClaim:
+          claimName: botmother-media
+      - name: static
+        persistentVolumeClaim:
+          claimName: botmother-static
+      - name: cache
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: botmother-nginx
+  namespace: botmother
+  labels:
+    app: botmother
+    component: nginx
+spec:
+  type: LoadBalancer
+  selector:
+    app: botmother
+    component: nginx
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP

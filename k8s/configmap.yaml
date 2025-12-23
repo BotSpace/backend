@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: botmother-config
+  namespace: botmother
+data:
+  # Django configs
+  DEBUG: "False"
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  PROJECT_ENV: "prod"
+  PROTOCOL_HTTPS: "True"
+  
+  # OTP configs
+  OTP_SIZE: "4"
+  OTP_PROD: "true"
+  OTP_MODULE: "core.services.otp"
+  OTP_SERVICE: "EskizService"
+  
+  # Database configs (connection details for external PostgreSQL)
+  DB_ENGINE: "django.db.backends.postgresql_psycopg2"
+  DB_NAME: "django"
+  DB_USER: "postgres"
+  DB_PORT: "5432"
+  
+  # Cache configs (connection details for external Redis)
+  CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"
+  REDIS_PORT: "6379"
+  CACHE_ENABLED: "True"
+  CACHE_TIMEOUT: "120"
+  
+  # Vite settings
+  VITE_LIVE: "False"
+  VITE_PORT: "5173"
+  VITE_HOST: "127.0.0.1"
+  
+  # Storage
+  STORAGE_DEFAULT: "FILE"
+  STORAGE_STATIC: "STATIC"
+  
+  # Kubernetes config
+  K8S_NAMESPACE: "botmother"
+  
+  # Pricing
+  RAM_PRICE: "1000"
+  CPU_PRICE: "1000"
+  NET_RX_PRICE: "1000"
+  NET_TX_PRICE: "1000"
+  STORAGE_PRICE: "1000"
+  
+  # Prometheus
+  PROMETHEUS_MULTIPROC_DIR: "/tmp/prometheus_metrics"

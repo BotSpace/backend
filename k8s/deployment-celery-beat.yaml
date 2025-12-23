@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botmother-celery-beat
+  namespace: botmother
+  labels:
+    app: botmother
+    component: celery-beat
+spec:
+  replicas: 1  # Only one instance of beat should run
+  selector:
+    matchLabels:
+      app: botmother
+      component: celery-beat
+  strategy:
+    type: Recreate  # Ensure only one instance runs at a time
+  template:
+    metadata:
+      labels:
+        app: botmother
+        component: celery-beat
+    spec:
+      containers:
+      - name: celery-beat
+        image: registry.jscorp.uz/botmother:latest
+        imagePullPolicy: Always
+        command: ["sh", "./resources/scripts/celery-beat.sh"]
+        env:
+        - name: PYTHONPYCACHEPREFIX
+          value: "/var/cache/pycache"
+        envFrom:
+        - configMapRef:
+            name: botmother-config
+        - secretRef:
+            name: botmother-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: pycache
+          mountPath: /var/cache/pycache
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: pycache
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
