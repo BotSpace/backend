@@ -18,9 +18,9 @@ data:
 
   # Database configs (connection details for external PostgreSQL)
   DB_ENGINE: "django.db.backends.postgresql_psycopg2"
-  DB_NAME: "django"
+  DB_NAME: "railway"
   DB_USER: "postgres"
-  DB_PORT: "5432"
+  DB_PORT: "54787"
 
   # Cache configs (connection details for external Redis)
   CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"

@@ -8,13 +8,13 @@ spec:
   # For cloud providers: AWS EFS, Azure Files, or GCP Filestore
   # Alternative: Use ReadWriteOnce with a single-node deployment
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
   # Change this to match your cluster's storage class
   # Examples: nfs-client, efs-sc, azurefile, filestore-sc
-  storageClassName: standard
+  storageClassName: local-path
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -23,11 +23,11 @@ metadata:
   namespace: botmother
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard
+  storageClassName: local-path
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -36,8 +36,8 @@ metadata:
   namespace: botmother
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard
+  storageClassName: local-path

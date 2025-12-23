@@ -24,76 +24,78 @@ spec:
         component: web
     spec:
       containers:
-      - name: web
-        image: registry.jscorp.uz/botmother:latest
-        imagePullPolicy: Always
-        command: ["sh", "./resources/scripts/entrypoint-server.sh"]
-        ports:
-        - containerPort: 8000
-          name: http
-          protocol: TCP
-        env:
-        - name: PYTHONPYCACHEPREFIX
-          value: "/var/cache/pycache"
-        envFrom:
-        - configMapRef:
-            name: botmother-config
-        - secretRef:
-            name: botmother-secret
-        resources:
-          requests:
-            cpu: 500m
-            memory: 512Mi
-          limits:
-            cpu: 2000m
-            memory: 2Gi
-        volumeMounts:
-        - name: media
-          mountPath: /code/resources/media
-        - name: static
-          mountPath: /code/resources/staticfiles
-        - name: logs
-          mountPath: /code/resources/logs
-        - name: pycache
-          mountPath: /var/cache/pycache
-        - name: tmp
-          mountPath: /tmp
-        - name: engine
-          mountPath: /mnt/engine
-        livenessProbe:
-          httpGet:
-            path: /health/
-            port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 15
-          timeoutSeconds: 10
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /health/
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+        - name: web
+          image: registry.jscorp.uz/botmother:latest
+          imagePullPolicy: Always
+          command: ["sh", "./resources/scripts/entrypoint-server.sh"]
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          env:
+            - name: PYTHONPYCACHEPREFIX
+              value: "/var/cache/pycache"
+          envFrom:
+            - configMapRef:
+                name: botmother-config
+            - secretRef:
+                name: botmother-secret
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          volumeMounts:
+            - name: media
+              mountPath: /code/resources/media
+            - name: static
+              mountPath: /code/resources/staticfiles
+            - name: logs
+              mountPath: /code/resources/logs
+            - name: pycache
+              mountPath: /var/cache/pycache
+            - name: tmp
+              mountPath: /tmp
+            - name: engine
+              mountPath: /mnt/engine
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      imagePullSecrets:
+        - name: botmother-registry
       volumes:
-      - name: media
-        persistentVolumeClaim:
-          claimName: botmother-media
-      - name: static
-        persistentVolumeClaim:
-          claimName: botmother-static
-      - name: logs
-        persistentVolumeClaim:
-          claimName: botmother-logs
-      - name: pycache
-        emptyDir: {}
-      - name: tmp
-        emptyDir: {}
-      - name: engine
-        # SECURITY NOTE: hostPath is used to access Docker engine on the host
-        # This is required for container management functionality
-        # Ensure this deployment runs on trusted nodes only
-        hostPath:
-          path: /mnt/engine
-          type: DirectoryOrCreate
+        - name: media
+          persistentVolumeClaim:
+            claimName: botmother-media
+        - name: static
+          persistentVolumeClaim:
+            claimName: botmother-static
+        - name: logs
+          persistentVolumeClaim:
+            claimName: botmother-logs
+        - name: pycache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: engine
+          # SECURITY NOTE: hostPath is used to access Docker engine on the host
+          # This is required for container management functionality
+          # Ensure this deployment runs on trusted nodes only
+          hostPath:
+            path: /mnt/engine
+            type: DirectoryOrCreate
