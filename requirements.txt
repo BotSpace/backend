@@ -61,5 +61,5 @@ django-prometheus
 
 
 click-pkg
-payme-pkg
+payme-pkg==3.3.0
 openpyxl==3.1.2
