@@ -2,10 +2,9 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
     tags:
-      - "*"
+      - "*-dev"
+      - "*-prod"
 
 env:
   PROJECT_NAME: botmother
@@ -87,44 +86,14 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 🚀 MAIN → latest + run_number
-      - name: Tag & push image (main)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          docker tag ${{ env.PROJECT_NAME }}:test \
-            ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
-
-          docker tag ${{ env.PROJECT_NAME }}:test \
-            ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-
-          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
-          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-
-          echo "PUSHED: latest, ${{ github.run_number }}"
-
-      # 🚀 TAG → tag nomi bilan
       - name: Tag & push image (git tag)
-        if: github.ref_type == 'tag'
         run: |
           docker tag ${{ env.PROJECT_NAME }}:test \
             ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.ref_name }}
+          docker tag ${{ env.PROJECT_NAME }}:test \
+            ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
 
           docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.ref_name }}
+          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
 
           echo "PUSHED TAG IMAGE: ${{ github.ref_name }}"
-
-      # 📝 faqat main uchun commit
-      - name: Update health check response
-        if: github.ref == 'refs/heads/main'
-        run: |
-          sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
-
-      - name: Commit health check update
-        if: github.ref == 'refs/heads/main'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add config/urls.py
-          git diff --staged --quiet || git commit -m "🔄 Update health check to ${{ github.run_number }} [CI SKIP]"
-          git pull origin main --rebase
-          git push origin main || echo "No changes to push"
