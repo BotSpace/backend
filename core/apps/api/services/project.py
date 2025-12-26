@@ -1,4 +1,3 @@
-# type: ignore
 from core.apps.api.models.project import ProjectModel
 from core.apps.cms.enums.cms import FieldType
 from core.apps.cms.models.cms import CollectionModel, FieldModel

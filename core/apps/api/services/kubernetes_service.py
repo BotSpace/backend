@@ -1,9 +1,8 @@
-# type: ignore
 """
-Kubernetes service for managing engine pods.
+Kubernetes service for managing engine deployments.
 
-This service replaces Docker Swarm service management with Kubernetes pods.
-Engine instances are deployed as Kubernetes pods with appropriate resource limits.
+This service manages Kubernetes deployments for engine instances.
+Engine instances are deployed as Kubernetes deployments with appropriate resource limits.
 """
 import logging
 import json
@@ -69,36 +68,29 @@ def get_namespace():
     return env.str("K8S_NAMESPACE", default="botmother")
 
 
-def get_pod_status(pod_name: str) -> str:
-    """Get the status of a Kubernetes pod
+def get_deployment_status(deployment_name: str) -> str:
+    """Get the status of a Kubernetes deployment
     
     Args:
-        pod_name: Name of the pod
+        deployment_name: Name of the deployment
         
     Returns:
         str: Container status enum value
     """
     try:
-        api = get_k8s_client()
+        from kubernetes import client
+        apps_api = client.AppsV1Api()
         namespace = get_namespace()
-        pod = api.read_namespaced_pod(name=pod_name, namespace=namespace)
-        phase = pod.status.phase
+        deployment = apps_api.read_namespaced_deployment(name=deployment_name, namespace=namespace)
         
-        match phase:
-            case "Pending":
-                return ContainerStatusEnum.INIT.value
-            case "Running":
-                return ContainerStatusEnum.RUNNING.value
-            case "Succeeded":
-                return ContainerStatusEnum.STOPPED.value
-            case "Failed":
-                return ContainerStatusEnum.FAILED.value
-            case "Unknown":
-                return ContainerStatusEnum.FAILED.value
-            case _:
-                return ContainerStatusEnum.STOPPED.value
+        if deployment.status.ready_replicas and deployment.status.ready_replicas > 0:
+            return ContainerStatusEnum.RUNNING.value
+        elif deployment.status.replicas and deployment.status.replicas > 0:
+            return ContainerStatusEnum.INIT.value
+        else:
+            return ContainerStatusEnum.STOPPED.value
     except Exception as e:
-        logger.error("Error getting pod status for %s: %s", pod_name, e)
+        logger.error("Error getting deployment status for %s: %s", deployment_name, e)
         return ContainerStatusEnum.STOPPED.value
 
 
@@ -150,20 +142,22 @@ def get_default_env():
     ]
 
 
-def create_pod(image: str, name: str, env_vars: list = None, **kwargs):
-    """Create a Kubernetes pod for engine
+def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
+    """Create a Kubernetes Deployment for engine
     
     Args:
         image: Container image
-        name: Pod name
+        name: Deployment name
         env_vars: List of environment variable strings (KEY=VALUE format)
-        **kwargs: Additional pod configuration
+        **kwargs: Additional deployment configuration
         
     Returns:
-        Created pod object
+        Created deployment object
     """
     from kubernetes.client import (
-        V1Pod,
+        V1Deployment,
+        V1DeploymentSpec,
+        V1PodTemplateSpec,
         V1PodSpec,
         V1Container,
         V1ObjectMeta,
@@ -172,9 +166,12 @@ def create_pod(image: str, name: str, env_vars: list = None, **kwargs):
         V1VolumeMount,
         V1Volume,
         V1ContainerPort,
+        V1LabelSelector,
+        V1LocalObjectReference,
     )
+    from kubernetes import client
     
-    api = get_k8s_client()
+    apps_api = client.AppsV1Api()
     namespace = get_namespace()
     
     # Convert env strings to V1EnvVar objects
@@ -219,52 +216,63 @@ def create_pod(image: str, name: str, env_vars: list = None, **kwargs):
     if "project_id" in kwargs:
         labels["project_id"] = str(kwargs["project_id"])
     
-    metadata = V1ObjectMeta(
-        name=name,
-        namespace=namespace,
-        labels=labels,
+    # Pod template
+    pod_template = V1PodTemplateSpec(
+        metadata=V1ObjectMeta(labels=labels),
+        spec=V1PodSpec(
+            containers=[container],
+            restart_policy="Always",
+            volumes=volumes if volumes else None,
+            image_pull_secrets=[V1LocalObjectReference(name="registry-secret")],
+        )
     )
     
-    # Pod spec
-    spec = V1PodSpec(
-        containers=[container],
-        restart_policy="OnFailure",
-        volumes=volumes if volumes else None,
+    # Deployment spec
+    deployment_spec = V1DeploymentSpec(
+        replicas=1,
+        selector=V1LabelSelector(match_labels=labels),
+        template=pod_template,
     )
     
-    pod = V1Pod(
-        api_version="v1",
-        kind="Pod",
-        metadata=metadata,
-        spec=spec,
+    # Deployment metadata
+    deployment = V1Deployment(
+        api_version="apps/v1",
+        kind="Deployment",
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+            labels=labels,
+        ),
+        spec=deployment_spec,
     )
     
     try:
-        created_pod = api.create_namespaced_pod(namespace=namespace, body=pod)
-        logger.info("Created pod: %s in namespace: %s", name, namespace)
-        return created_pod
+        created_deployment = apps_api.create_namespaced_deployment(namespace=namespace, body=deployment)
+        logger.info("Created deployment: %s in namespace: %s", name, namespace)
+        return created_deployment
     except Exception as e:
-        logger.error("Error creating pod %s: %s", name, e)
+        logger.error("Error creating deployment %s: %s", name, e)
         raise
 
 
-def remove_pod(pod_name: str):
-    """Remove a Kubernetes pod
+def remove_deployment(deployment_name: str):
+    """Remove a Kubernetes deployment
     
     Args:
-        pod_name: Name of the pod to remove
+        deployment_name: Name of the deployment to remove
         
     Returns:
         bool: True if successful, False otherwise
     """
     try:
-        api = get_k8s_client()
+        from kubernetes import client
+        apps_api = client.AppsV1Api()
         namespace = get_namespace()
-        api.delete_namespaced_pod(name=pod_name, namespace=namespace)
-        logger.info("Removed pod: %s", pod_name)
+        apps_api.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
+        logger.info("Removed deployment: %s", deployment_name)
         return True
     except Exception as e:
-        logger.error("Error removing pod %s: %s", pod_name, e)
+        logger.error("Error removing deployment %s: %s", deployment_name, e)
         return False
 
 
@@ -332,7 +340,7 @@ def delete_configmap(name: str):
 
 
 def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None):
-    """Deploy an engine pod for a project
+    """Deploy an engine deployment for a project
     
     Args:
         project: ProjectModel instance
@@ -342,15 +350,15 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
         _env: Additional environment variables
         
     Returns:
-        Created pod object
+        Created deployment object
     """
     from kubernetes.client import V1VolumeMount, V1Volume, V1ConfigMapVolumeSource
     
     if _env is None:
         _env = []
     
-    pod_name = f"{prefix}-{key}".lower().replace("_", "-")
-    configmap_name = f"{pod_name}-flow"
+    deployment_name = f"{prefix}-{key}".lower().replace("_", "-")
+    configmap_name = f"{deployment_name}-flow"
     
     # Create ConfigMap with flow
     flow_json = json.dumps(flow, indent=4)
@@ -402,9 +410,9 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
     
     image = f"registry.jscorp.uz/golang-engine:{engine_version()}"
     
-    return create_pod(
+    return create_deployment(
         image=image,
-        name=pod_name,
+        name=deployment_name,
         env_vars=_env,
         volume_mounts=volume_mounts,
         volumes=volumes,
@@ -412,45 +420,46 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
     )
 
 
-def stop_project_pods(project_id: int):
-    """Stop all engine pods for a project
+def stop_project_deployments(project_id: int):
+    """Stop all engine deployments for a project
     
     Args:
         project_id: Project ID
         
     Returns:
-        int: Number of pods stopped
+        int: Number of deployments stopped
     """
     try:
-        api = get_k8s_client()
+        from kubernetes import client
+        apps_api = client.AppsV1Api()
         namespace = get_namespace()
         
-        # List pods with project_id label
-        pods = api.list_namespaced_pod(
+        # List deployments with project_id label
+        deployments = apps_api.list_namespaced_deployment(
             namespace=namespace,
             label_selector=f"project_id={project_id}"
         )
         
         count = 0
-        for pod in pods.items:
+        for deployment in deployments.items:
             try:
-                api.delete_namespaced_pod(name=pod.metadata.name, namespace=namespace)
-                logger.info("Stopped pod %s for project %s", pod.metadata.name, project_id)
+                apps_api.delete_namespaced_deployment(name=deployment.metadata.name, namespace=namespace)
+                logger.info("Stopped deployment %s for project %s", deployment.metadata.name, project_id)
                 count += 1
             except Exception as e:
-                logger.error("Error stopping pod %s: %s", pod.metadata.name, e)
+                logger.error("Error stopping deployment %s: %s", deployment.metadata.name, e)
         
         return count
     except Exception as e:
-        logger.error("Error stopping project pods for %s: %s", project_id, e)
+        logger.error("Error stopping project deployments for %s: %s", project_id, e)
         return 0
 
 
-async def pod_logs_async(pod_name: str):
-    """Stream pod logs asynchronously
+async def deployment_logs_async(deployment_name: str):
+    """Stream deployment logs asynchronously
     
     Args:
-        pod_name: Name of the pod
+        deployment_name: Name of the deployment
         
     Yields:
         Log lines
@@ -467,6 +476,16 @@ async def pod_logs_async(pod_name: str):
         api = client.CoreV1Api()
         namespace = get_namespace()
         
+        # Get pods for this deployment
+        label_selector = f"engine-name={deployment_name}"
+        pods = api.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+        
+        if not pods.items:
+            yield "No pods found for deployment"
+            return
+        
+        pod_name = pods.items[0].metadata.name
+        
         w = watch.Watch()
         for line in w.stream(
             api.read_namespaced_pod_log,
@@ -476,5 +495,5 @@ async def pod_logs_async(pod_name: str):
         ):
             yield line
     except Exception as e:
-        logger.error("Error streaming logs for pod %s: %s", pod_name, e)
+        logger.error("Error streaming logs for deployment %s: %s", deployment_name, e)
         yield f"Error: {str(e)}"

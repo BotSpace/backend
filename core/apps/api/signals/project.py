@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 
 from django.db import transaction
@@ -86,7 +85,7 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
             "%s_%s" % (instance.project.pk, instance.version),
             [*list(project_enviroment(instance.project.id)), "IS_RELEASE=true"],
         )
-        instance.service_id = service.id
+        instance.service_id = service.metadata.name
         instance.status = ContainerStatusEnum.INIT.value
         instance.save()
 

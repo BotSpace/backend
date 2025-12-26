@@ -1,9 +1,7 @@
-# type: ignore
 import logging
 from typing import Optional
 from telebot import TeleBot
 from django.core.files.base import ContentFile
-
 from django.core.files.storage import default_storage
 
 from core.apps.api.exceptions.bot import ReleaseBotTokenNotFound
@@ -19,27 +17,13 @@ class TelegramBotService:
         self.bot = None
 
     def set_bot(self, token: str):
-        """[TODO:summary]
-
-        Args:
-            token: [TODO:description]
-        """
         self.bot = TeleBot(token)
 
     def check_bot(self):
-        """check bot is set
-
-        Raises:
-            Exception: [TODO:description]
-        """
         if self.bot is None:
-            raise Exception("Bot not set example: obj.set_bot('3123123:dsfasdfsadfasdf')")
+            raise Exception("Bot not set")
 
     def get_me(self):
-        """Get bot
-        Returns:
-            object
-        """
         self.check_bot()
         if self.me is None:
             self.me = self.bot.get_me()
@@ -47,15 +31,9 @@ class TelegramBotService:
         return self.me
 
     def save(self):
-        """save project updated"""
         self.project.save()
 
     def set_project(self, project: ProjectModel):
-        """Set project instance
-
-        Args:
-            project: ProjectModel instance
-        """
         self.project = project
         try:
             token = EnviromentModel.objects.get(project=project, key="RELEASE_BOT_TOKEN").value
@@ -67,7 +45,6 @@ class TelegramBotService:
         return self.get_me().username
 
     def update_me_photo(self) -> Optional[str]:
-        """Bot profile photo"""
         self.check_bot()
         me_id = self.get_me().id
         photos = self.bot.get_user_profile_photos(me_id).photos

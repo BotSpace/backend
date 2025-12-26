@@ -1,4 +1,3 @@
-# type: ignore
 from django.shortcuts import get_object_or_404
 from core.apps.payment.services.balance import subtract_balance
 from core.apps.api.models import ProjectPlanModel
@@ -224,7 +223,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             instance.id,
             list(project_enviroment(instance.id)),
         )
-        debug.service_id = service.id
+        debug.service_id = service.metadata.name
         debug.status = "initializing"
         debug.save()
         return Response(data={"detail": _("Updated")})

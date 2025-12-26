@@ -1,4 +1,3 @@
-# type: ignore
 from typing import Literal
 from django.db import models
 from core.apps.api.models.project import ProjectModel
