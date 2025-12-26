@@ -154,7 +154,9 @@ def get_default_env():
     ]
 
 
-def get_pod_ips_by_label(label_selector, namespace="default"):
+def get_pod_ips_by_label(label_selector, namespace=None):
+    if namespace is None:
+        namespace = get_namespace()
     api = get_k8s_client()
 
     pods = api.list_namespaced_pod(namespace, label_selector=label_selector)
