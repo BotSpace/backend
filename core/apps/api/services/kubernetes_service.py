@@ -234,6 +234,8 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
             restart_policy="Always",
             volumes=volumes if volumes else None,
             image_pull_secrets=[V1LocalObjectReference(name="registry-secret")],
+            hostname=name,
+            subdomain="bot-provider",
         ),
     )
 
