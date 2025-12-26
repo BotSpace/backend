@@ -155,10 +155,9 @@ def get_default_env():
 
 
 def get_pod_ips_by_label(label_selector, namespace="default"):
-    config.load_kube_config()
-    v1 = client.CoreV1Api()
+    api = get_k8s_client()
 
-    pods = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+    pods = api.list_namespaced_pod(namespace, label_selector=label_selector)
 
     ips = [pod.status.pod_ip for pod in pods.items if pod.status.pod_ip]
     return ips
