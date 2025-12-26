@@ -15,6 +15,23 @@ from kubernetes.client.rest import ApiException
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.utils.settings import engine_version
+from kubernetes.client import (
+    V1EnvVar,
+    V1Deployment,
+    V1DeploymentSpec,
+    V1PodTemplateSpec,
+    V1PodSpec,
+    V1Container,
+    V1ObjectMeta,
+    V1ConfigMap,
+    V1ResourceRequirements,
+    V1EnvFromSource,
+    V1SecretEnvSource,
+    V1ContainerPort,
+    V1LabelSelector,
+    V1LocalObjectReference,
+)
+from kubernetes import client, config, watch
 
 
 logger = logging.getLogger(__name__)
@@ -35,8 +52,6 @@ def get_k8s_client():
         return _k8s_core_api
 
     try:
-        from kubernetes import client, config
-
         # Try in-cluster config first (when running inside Kubernetes)
         try:
             config.load_incluster_config()
@@ -77,8 +92,6 @@ def get_deployment_status(deployment_name: str) -> str:
         str: Container status enum value
     """
     try:
-        from kubernetes import client
-
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
         deployment = apps_api.read_namespaced_deployment(name=deployment_name, namespace=namespace)
@@ -130,7 +143,6 @@ def get_default_env():
     Returns:
         list: List of V1EnvVar objects
     """
-    from kubernetes.client import V1EnvVar
 
     api_url = os.getenv("API_URL")
     if api_url is None:
@@ -140,6 +152,16 @@ def get_default_env():
     return [
         V1EnvVar(name="API_URL", value=api_url),
     ]
+
+
+def get_pod_ips_by_label(label_selector, namespace="default"):
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+
+    pods = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+
+    ips = [pod.status.pod_ip for pod in pods.items if pod.status.pod_ip]
+    return ips
 
 
 def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
@@ -154,21 +176,6 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     Returns:
         Created deployment object
     """
-    from kubernetes.client import (
-        V1Deployment,
-        V1DeploymentSpec,
-        V1PodTemplateSpec,
-        V1PodSpec,
-        V1Container,
-        V1ObjectMeta,
-        V1ResourceRequirements,
-        V1EnvFromSource,
-        V1SecretEnvSource,
-        V1ContainerPort,
-        V1LabelSelector,
-        V1LocalObjectReference,
-    )
-    from kubernetes import client
 
     apps_api = client.AppsV1Api()
     namespace = get_namespace()
@@ -277,8 +284,6 @@ def remove_deployment(deployment_name: str):
         bool: True if successful, False otherwise
     """
     try:
-        from kubernetes import client
-
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
 
@@ -306,7 +311,6 @@ def create_configmap(name: str, data: dict):
     Returns:
         Created ConfigMap object
     """
-    from kubernetes.client import V1ConfigMap, V1ObjectMeta
 
     api = get_k8s_client()
     namespace = get_namespace()
@@ -517,8 +521,6 @@ def stop_project_deployments(project_id: int):
         int: Number of deployments stopped
     """
     try:
-        from kubernetes import client
-
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
 
@@ -551,8 +553,6 @@ async def deployment_logs_async(deployment_name: str):
     Yields:
         Log lines
     """
-    from kubernetes import client, config, watch
-
     try:
         # Load config
         try:
