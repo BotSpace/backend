@@ -19,7 +19,7 @@ def project_by_release_uuid(request, uuid):
         project = ProjectModel.objects.get(release_webhook_uuid=uuid)
         release = project.release
         version = release.version if release else 1
-        podIPs = get_pod_ips_by_label(f"engine-name=release-{project.id}_{version}")
+        podIPs = get_pod_ips_by_label(f"engine-name=release-{project.id}-{version}")
         if len(podIPs) <= 0:
             podIP = "None"
         else:
