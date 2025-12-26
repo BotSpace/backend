@@ -195,28 +195,16 @@ def handle_limit_exceeded(project_plan: ProjectPlanModel):
 
 def stop_project_services(project_id: int):
     """
-    Stop all Docker services for a project
+    Stop all Docker/Kubernetes services for a project
     
     Args:
         project_id: ProjectModel ID
     """
-    from core.apps.api.services.docker_service import get_client
+    from core.apps.api.services.docker_service import stop_project_services as _stop_services
     
     try:
-        client = get_client()
-        
-        # Find and stop all services for this project
-        services = client.services.list(filters={
-            'label': f'project_id={project_id}'
-        })
-        
-        for service in services:
-            try:
-                service.remove()
-                logger.info(f"Stopped service {service.name} for project {project_id}")
-            except Exception as e:
-                logger.error(f"Error stopping service {service.name}: {e}")
-    
+        count = _stop_services(project_id)
+        logger.info(f"Stopped {count} services for project {project_id}")
     except Exception as e:
         logger.error(f"Error stopping services for project {project_id}: {e}")
 

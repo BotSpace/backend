@@ -53,9 +53,8 @@ websockets
 channels-redis
 
 
-# INFO: docker
-docker
-aiodocker
+# INFO: kubernetes
+kubernetes
 
 #INFO: Monitoring
 django-prometheus
@@ -64,3 +63,4 @@ django-prometheus
 click-pkg
 payme-pkg==3.3.0
 openpyxl==3.1.2
+gevent

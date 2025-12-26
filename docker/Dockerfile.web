@@ -9,7 +9,6 @@ WORKDIR /code
 COPY requirements.txt /code/requirements.txt
 
 RUN uv pip install -r requirements.txt
-RUN apk add supervisor
 
 COPY ./ /code
 
@@ -19,5 +18,6 @@ RUN chmod +x /code/resources/scripts/$SCRIPT
 
 RUN mkdir -p /tmp/prometheus_metrics
 
-CMD supervisord -c supervisord.conf
+# Default CMD for backwards compatibility (can be overridden in k8s)
+CMD ["sh", "./resources/scripts/entrypoint-server.sh"]
 

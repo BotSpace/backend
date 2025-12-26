@@ -15,14 +15,6 @@ def validate_debug_enviroment(project_id):
 
 
 def debug_bot_token(project_id: int) -> Optional[str]:
-    """Get Debug bot token
-
-    Args:
-        project_id: [TODO:description]
-
-    Returns:
-        [TODO:description]
-    """
     try:
         return EnviromentModel.objects.get(project_id=project_id, key="BOT_TOKEN").value
     except EnviromentModel.DoesNotExist:
@@ -30,14 +22,6 @@ def debug_bot_token(project_id: int) -> Optional[str]:
 
 
 def release_bot_token(project_id: int) -> Optional[str]:
-    """Get Release bot token
-
-    Args:
-        project_id: [TODO:description]
-
-    Returns:
-        [TODO:description]
-    """
     try:
         return EnviromentModel.objects.get(project_id=project_id, key="RELEASE_BOT_TOKEN").value
     except EnviromentModel.DoesNotExist:

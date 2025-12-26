@@ -20,7 +20,7 @@ def patch_docker_services():
         "core.apps.api.views.project.set_webhook"
     ) as mock_set_webhook:
         magic = MagicMock()
-        magic.id = "321312"
+        magic.metadata.name = "test-deployment-123"
         mock_deploy.return_value = magic
         mock_remove.return_value = True
         mock_deploy_view.return_value = magic

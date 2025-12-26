@@ -1,12 +1,14 @@
-name: Build and Push to Docker Hub
+name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "*-dev"
+      - "*-prod"
 
 env:
   PROJECT_NAME: botmother
+  K8S_NAMESPACE: botmother
 
 permissions:
   contents: write
@@ -28,7 +30,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis
         options: >-
@@ -44,22 +46,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Copy env
-        run: |
-          cp .env.example .env
+        run: cp .env.example .env
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # 🔨 Build image locally
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.web
-          push: false
           load: true
+          push: false
           tags: ${{ env.PROJECT_NAME }}:test
           no-cache: true
 
+      # 🧪 Run tests
       - name: Run migrations and tests
         run: |
           docker run --rm \
@@ -68,113 +71,29 @@ jobs:
             -e DB_PORT=5432 \
             -e DB_NAME=testdb \
             -e DB_USER=postgres \
+            -e DB_PASSWORD=postgres \
             -e REDIS_URL=redis://localhost:6379 \
             -e REDIS_HOST=localhost \
-            -e DB_PASSWORD=postgres \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
             ${{ env.PROJECT_NAME }}:test \
             sh -c "python manage.py migrate && pytest -v"
 
-      - name: Login to Docker Hub
+      # 🔐 Login Docker registry
+      - name: Login to Docker Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Tag and push to Docker Hub
+      - name: Tag & push image (git tag)
         run: |
-          docker tag ${{ env.PROJECT_NAME }}:test ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
-          docker tag ${{ env.PROJECT_NAME }}:test ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker tag ${{ env.PROJECT_NAME }}:test \
+            ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.ref_name }}
+          docker tag ${{ env.PROJECT_NAME }}:test \
+            ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
+
+          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.ref_name }}
           docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
-          docker push ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          echo "SUCCESS TAGS: latest, ${{ github.run_number }}"
 
-      - name: stack.yaml updated
-        run: |
-          sed -i 's|image: ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:.*|image: ${{ vars.DOCKER_REGISTRY }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}|' stack.yaml
-          sed -i 's/return HttpResponse("OK.*"/return HttpResponse("OK: #${{ github.sha }}"/' config/urls.py
-
-      - name: Commit and push updated version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "🔄 image to ${{ github.run_number }} [CI SKIP]" || echo "No changes"
-          git pull origin main --rebase
-          git push origin main
-
-      - name: Execute remote SSH commands using SSH key
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            PROJECTS=/opt/projects/
-            DIR=/opt/projects/${{ env.PROJECT_NAME }}/
-            
-            if [ -d "$PROJECTS" ]; then
-              echo "projects papkasi mavjud"
-            else
-              mkdir -p $PROJECTS
-              echo "projects papkasi yaratildi"
-            fi
-
-            if [ -d "$DIR" ]; then
-              echo "loyiha mavjud"
-            else
-              cd $PROJECTS
-              git clone git@github.com:${{ github.repository }}.git ${{ env.PROJECT_NAME }}
-              echo "Clone qilindi";
-            fi
-
-            cd $DIR
-            git fetch origin main
-            git reset --hard origin/main
-            cp .env.example .env
-
-            update_env() {
-                local env_file=".env"
-                cp .env.example "$env_file"
-
-                # argumentlar orqali key=value olish
-                for kv in "$@"; do
-                    local key="${kv%%=*}"
-                    local value="${kv#*=}"
-                    sed -i "s|^$key=.*|$key=$value|" "$env_file"
-                done
-            }
-
-            # Funksiyani chaqirish misoli
-            update_env \
-              "DEBUG=False" \
-              "PROJECT_ENV=prod" \
-              "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" \
-              "MONGO_URL=${{ secrets.MONGO_URL }}" \
-              "SCRIPT=entrypoint-server.sh" \
-              "DB_ENGINE=django_prometheus.db.backends.postgresql" \
-              "DJANGO_SETTINGS_MODULE=config.settings.production" \
-              "CACHE_ENABLED=True" \
-              "ALLOWED_HOSTS=127.0.0.1,web,botlarnionasi.jscorp.uz,api.botmother.uz" \
-              "CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,https://botlarnionasi.jscorp.uz,https://api.botmother.uz" \
-              "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" \
-              "API_URL=https://botlarnionasi.jscorp.uz" \
-              "DB_HOST=postgres" \
-              "PORT=${{ vars.PORT }}" \
-              "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" \
-              "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" \
-              "DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}" \
-              "TEST_BOT_TOKEN=${{ secrets.TEST_BOT_TOKEN }}" \
-              "PROTOCOL_HTTPS=true" \
-              "CLICK_SERVICE_ID=${{ secrets.CLICK_SERVICE_ID }}" \
-              "CLICK_MERCHANT_ID=${{ secrets.CLICK_MERCHANT_ID }}" \
-              "CLICK_SECRET_KEY=${{ secrets.CLICK_SECRET_KEY }}"
-
-            export PRIVATE_KEY="${{ secrets.PRIVATE_KEY }}"
-            export PUBLIC_KEY="${{ secrets.PUBLIC_KEY }}"
-
-            echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username jscorptech --password-stdin
-            export PORT=${{ vars.PORT }}
-            docker stack deploy -c stack.yaml ${{ env.PROJECT_NAME }} --with-registry-auth
+          echo "PUSHED TAG IMAGE: ${{ github.ref_name }}"

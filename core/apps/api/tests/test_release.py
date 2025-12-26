@@ -14,7 +14,7 @@ def patch_docker_services():
         "core.apps.api.signals.project.deploy_service"
     ) as mock_deploy, patch("core.apps.api.views.project.deploy_service") as mock_deploy_view:
         magic = MagicMock()
-        magic.id = "321312"
+        magic.metadata.name = "test-deployment-123"
         mock_deploy.return_value = magic
         mock_remove.return_value = True
         mock_deploy_view.return_value = magic

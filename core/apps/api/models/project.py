@@ -1,4 +1,3 @@
-# type: ignore
 import uuid
 from typing import Any
 

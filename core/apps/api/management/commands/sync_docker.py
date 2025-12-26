@@ -1,83 +1,99 @@
 # type: ignore
 """
-DEPRECATED: This command is deprecated and replaced by docker-event-forwarder service.
+Kubernetes pod event watcher management command.
 
-This command only monitors Docker events on the local node where the backend is running.
-In a multi-node Docker Swarm setup, it cannot detect events from other nodes.
-
-The new docker-event-forwarder service runs on ALL nodes and sends events to the backend
-via HTTP API (/api/docker/events/), enabling multi-node event monitoring.
-
-See: /Volumes/disk/projects/my/botmother/docker-event-forwarder/
+This command watches for Kubernetes pod events and updates the database accordingly.
+For production use, consider using a separate k8s-event-watcher service that sends
+events via webhook to /api/kubernetes/events/ endpoint.
 """
 from typing import Any
 from core.apps.api.models.project import DebugModel, RelaseModel
-from core.apps.api.services.docker_service import get_client, convert_status
+from core.apps.api.services.kubernetes_service import (
+    get_k8s_client,
+    get_namespace,
+    convert_k8s_event_status,
+)
 import logging
 
 from django.core.management.base import BaseCommand
+from kubernetes import watch
 
 from core.apps.websocket.services.events import ws_publish
 from core.domain.ws import DebugContainerStatus, EventTypes, ReleaseContainerStatus
 
 
 class Command(BaseCommand):
+    help = "Watch Kubernetes pod events for engine status updates"
 
     def handle(self, *args: Any, **options: Any) -> str | None:
         try:
-            client = get_client()
-            if client is None:
-                logging.critical("Client is None")
-                return
-            for event in client.events(decode=True):
+            api = get_k8s_client()
+            namespace = get_namespace()
+            w = watch.Watch()
+            
+            logging.info(f"Starting Kubernetes pod watcher in namespace: {namespace}")
+            
+            for event in w.stream(
+                api.list_namespaced_pod,
+                namespace=namespace,
+                label_selector="app=botmother-engine",
+            ):
                 try:
-                    if event.get("Type") != "container":
-                        logging.info("invalid event event=%s", event.get("Type"))
+                    event_type = event.get("type")
+                    pod = event.get("object")
+                    
+                    if not pod or not event_type:
                         continue
-                    attr = event.get("Actor", {}).get("Attributes", {})
-                    service_id = attr.get("com.docker.swarm.service.id", None)
-                    if service_id is None:
+                    
+                    pod_name = pod.metadata.name
+                    labels = pod.metadata.labels or {}
+                    engine_name = labels.get("engine-name")
+                    
+                    if not engine_name:
                         continue
-                    if "status" in event:
-                        status = event.get("status", None)
-                    elif "Action" in event:
-                        status = event.get("Action", None)
-                    if status is None:
-                        continue
-                    name = attr.get("com.docker.swarm.service.name", None)
-                    if name is None:
-                        continue
-                    service_type = "debug" if name.startswith("debug") else "release"
+                    
+                    # Get status
+                    phase = pod.status.phase if pod.status else "Unknown"
+                    reason = phase
+                    
+                    if pod.status and pod.status.container_statuses:
+                        container_state = pod.status.container_statuses[0].state
+                        if container_state.running:
+                            reason = "running"
+                        elif container_state.waiting:
+                            reason = container_state.waiting.reason or "waiting"
+                        elif container_state.terminated:
+                            reason = container_state.terminated.reason or "terminated"
+                    
+                    # Determine service type
+                    service_type = "debug" if engine_name.startswith("debug") else "release"
+                    
+                    # Find and update service
                     service = None
-                    if service_type == "debug":
-                        try:
-                            service = DebugModel.objects.get(service_id=service_id)
-                        except DebugModel.DoesNotExist:
-                            logging.info(
-                                "debug model instance not found service=%s event=%s status=%s",
-                                service_id,
-                                event.get("Type"),
-                                status,
-                            )
-                            continue
-                    elif service_type == "release":
-                        try:
-                            service = RelaseModel.objects.get(service_id=service_id)
-                        except RelaseModel.DoesNotExist:
-                            logging.info(
-                                "release model instance not found service=%s event=%s status=%s",
-                                service_id,
-                                event.get("Type"),
-                                status,
-                            )
-                            continue
-                    if service is None:
-                        logging.info("invalid service")
+                    try:
+                        if service_type == "debug":
+                            service = DebugModel.objects.get(service_id=pod_name)
+                        else:
+                            service = RelaseModel.objects.get(service_id=pod_name)
+                    except (DebugModel.DoesNotExist, RelaseModel.DoesNotExist):
+                        logging.info(
+                            f"{service_type} service not found: pod_name={pod_name}, "
+                            f"engine_name={engine_name}"
+                        )
                         continue
-                    service.status = convert_status(status)
+                    
+                    # Update status
+                    new_status = convert_k8s_event_status(event_type, reason)
+                    service.status = new_status
                     service.save()
+                    
+                    logging.info(
+                        f"{service_type} status change: pod={pod_name}, "
+                        f"status={new_status}, event={event_type}, reason={reason}"
+                    )
+                    
+                    # Send WebSocket notification
                     if service_type == "debug":
-                        logging.info("debug status change status=%s service=%s", status, service.pk)
                         ws_publish(
                             service.project.owner.id,
                             DebugContainerStatus(
@@ -88,8 +104,7 @@ class Command(BaseCommand):
                             ),
                             EventTypes.DEBUG_STATUS,
                         )
-                    if service_type == "release":
-                        logging.info("release status change status=%s service=%s", status, service.pk)
+                    else:
                         ws_publish(
                             service.project.owner.id,
                             ReleaseContainerStatus(
@@ -100,8 +115,9 @@ class Command(BaseCommand):
                             ),
                             EventTypes.RELEASE_STATUS,
                         )
+                        
                 except Exception as e:
-                    logging.error("sync docker error=%s", e)
-
+                    logging.error(f"Error processing pod event: {e}")
+                    
         except KeyboardInterrupt:
-            logging.info("docker kuzatuvchi to'xtatildi")
+            logging.info("Kubernetes pod watcher stopped")

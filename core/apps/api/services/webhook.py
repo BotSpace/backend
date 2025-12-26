@@ -1,4 +1,3 @@
-# type: ignore
 import logging
 from typing import Literal
 from httpx import Client, Timeout
@@ -26,16 +25,6 @@ def service_send_webhook(service_name, payload):
 
 
 def set_webhook(instance: ProjectModel, mode: WEBHOOK_MODE):
-    """set webhook url
-
-    Args:
-        instance: ProjectModel instance
-        mode: container mode release or debug
-
-    Raises:
-        ValueError: [TODO:description]
-        BotTokenNotFound: [TODO:description]
-    """
     base_url = "https://%(domain)s/api/bot-webhook/%(mode)s/" % {
         "domain": env.str("DOMAIN", "api.botmother.uz"),
         "mode": mode,
@@ -43,8 +32,6 @@ def set_webhook(instance: ProjectModel, mode: WEBHOOK_MODE):
     token = ""
     if mode == "debug":
         return True
-        # url = base_url + str(instance.debug_webhook_uuid) + "/"
-        # token = debug_bot_token(instance.pk)
     elif mode == "release":
         url = base_url + str(instance.release_webhook_uuid) + "/"
         token = release_bot_token(instance.pk)
