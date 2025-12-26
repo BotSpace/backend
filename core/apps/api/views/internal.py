@@ -19,10 +19,11 @@ def project_by_release_uuid(request, uuid):
         project = ProjectModel.objects.get(release_webhook_uuid=uuid)
         release = project.release
         version = release.version if release else 1
-        podIPs = get_pod_ips_by_label(f"app=release-{project.id}_{version}")
+        podIPs = get_pod_ips_by_label(f"engine-name=release-{project.id}_{version}")
         if len(podIPs) <= 0:
             podIP = "None"
-        podIP = podIPs[0]
+        else:
+            podIP = podIPs[0]
         return Response(
             {
                 "id": project.id,
@@ -49,10 +50,11 @@ def project_by_debug_uuid(request, uuid):
     """
     try:
         project = ProjectModel.objects.get(debug_webhook_uuid=uuid)
-        podIPs = get_pod_ips_by_label(f"app=debug-{project.id}")
+        podIPs = get_pod_ips_by_label(f"engine-name=debug-{project.id}")
         if len(podIPs) <= 0:
             podIP = "None"
-        podIP = podIPs[0]
+        else:
+            podIP = podIPs[0]
         return Response(
             {
                 "id": project.id,
