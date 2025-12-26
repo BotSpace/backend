@@ -10,9 +10,10 @@ from core.apps.api.enums.container import ContainerStatusEnum
 class TestKubernetesService:
     """Test Kubernetes engine deployment management"""
 
+    @patch('core.apps.api.services.kubernetes_service.create_secret')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_create_deployment(self, mock_get_namespace, mock_apps_api_class):
+    def test_create_deployment(self, mock_get_namespace, mock_apps_api_class, mock_create_secret):
         """Test creating Kubernetes deployment for engine"""
         from core.apps.api.services.kubernetes_service import create_deployment
         
@@ -27,17 +28,25 @@ class TestKubernetesService:
         deployment = create_deployment(
             image="registry.jscorp.uz/golang-engine:v1",
             name="test-deployment",
-            env_vars=["API_URL=http://localhost:8000"]
+            env_vars=["API_URL=http://localhost:8000", "BOT_TOKEN=test123"]
         )
+        
+        # Verify Secret was created
+        assert mock_create_secret.called
+        secret_call_args = mock_create_secret.call_args
+        assert secret_call_args[0][0] == "test-deployment-env"  # Secret name
+        assert "API_URL" in secret_call_args[0][1]  # Secret data contains env vars
+        assert "BOT_TOKEN" in secret_call_args[0][1]
         
         # Verify deployment creation was called
         assert mock_apps_api.create_namespaced_deployment.called
         call_kwargs = mock_apps_api.create_namespaced_deployment.call_args[1]
         assert call_kwargs["namespace"] == "botmother"
 
+    @patch('core.apps.api.services.kubernetes_service.delete_secret')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class):
+    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret):
         """Test removing Kubernetes deployment"""
         from core.apps.api.services.kubernetes_service import remove_deployment
         
@@ -51,6 +60,10 @@ class TestKubernetesService:
             name="test-deployment",
             namespace="botmother"
         )
+        
+        # Verify Secret deletion was called
+        mock_delete_secret.assert_called_once_with("test-deployment-env")
+        
         assert result is True
 
     @patch('kubernetes.client.AppsV1Api')

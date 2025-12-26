@@ -148,7 +148,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     Args:
         image: Container image
         name: Deployment name
-        env_vars: List of environment variable strings (KEY=VALUE format)
+        env_vars: List of environment variable strings (KEY=VALUE format) - will be stored in Secret
         **kwargs: Additional deployment configuration
         
     Returns:
@@ -163,6 +163,8 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         V1ObjectMeta,
         V1ResourceRequirements,
         V1EnvVar,
+        V1EnvFromSource,
+        V1SecretEnvSource,
         V1VolumeMount,
         V1Volume,
         V1ContainerPort,
@@ -174,13 +176,24 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     apps_api = client.AppsV1Api()
     namespace = get_namespace()
     
-    # Convert env strings to V1EnvVar objects
-    container_env = get_default_env()
+    # Create Secret for environment variables
+    secret_name = f"{name}-env"
+    env_data = {}
+    
+    # Add default env vars
+    default_env = get_default_env()
+    for env_var in default_env:
+        env_data[env_var.name] = env_var.value
+    
+    # Add custom env vars from list
     if env_vars:
         for env_str in env_vars:
             if "=" in env_str:
                 key, value = env_str.split("=", 1)
-                container_env.append(V1EnvVar(name=key, value=value))
+                env_data[key] = value
+    
+    # Create or update Secret
+    create_secret(secret_name, env_data)
     
     # Resource limits
     resources = V1ResourceRequirements(
@@ -198,11 +211,15 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     volume_mounts = kwargs.get("volume_mounts", [])
     volumes = kwargs.get("volumes", [])
     
-    # Container definition
+    # Container definition with envFrom to load all env vars from Secret
     container = V1Container(
         name="engine",
         image=image,
-        env=container_env,
+        env_from=[
+            V1EnvFromSource(
+                secret_ref=V1SecretEnvSource(name=secret_name)
+            )
+        ],
         resources=resources,
         volume_mounts=volume_mounts if volume_mounts else None,
         ports=[V1ContainerPort(container_port=8000, protocol="TCP")],
@@ -256,7 +273,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
 
 
 def remove_deployment(deployment_name: str):
-    """Remove a Kubernetes deployment
+    """Remove a Kubernetes deployment and its associated Secret
     
     Args:
         deployment_name: Name of the deployment to remove
@@ -268,8 +285,15 @@ def remove_deployment(deployment_name: str):
         from kubernetes import client
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
+        
+        # Delete deployment
         apps_api.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
         logger.info("Removed deployment: %s", deployment_name)
+        
+        # Delete associated Secret
+        secret_name = f"{deployment_name}-env"
+        delete_secret(secret_name)
+        
         return True
     except Exception as e:
         logger.error("Error removing deployment %s: %s", deployment_name, e)
@@ -317,6 +341,79 @@ def create_configmap(name: str, data: dict):
     except ApiException as e:
         logger.error("Error managing ConfigMap %s: %s", name, e)
         raise
+
+
+def create_secret(name: str, data: dict):
+    """Create a Secret for storing sensitive environment variables
+    
+    Args:
+        name: Secret name
+        data: Dictionary of key-value pairs (will be base64 encoded automatically)
+        
+    Returns:
+        Created Secret object
+    """
+    from kubernetes.client import V1Secret, V1ObjectMeta
+    import base64
+    
+    api = get_k8s_client()
+    namespace = get_namespace()
+    
+    # Encode data to base64
+    encoded_data = {}
+    for key, value in data.items():
+        if isinstance(value, str):
+            encoded_data[key] = base64.b64encode(value.encode()).decode()
+        else:
+            encoded_data[key] = base64.b64encode(str(value).encode()).decode()
+    
+    secret = V1Secret(
+        api_version="v1",
+        kind="Secret",
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+        ),
+        type="Opaque",
+        data=encoded_data,
+    )
+    
+    try:
+        # Try to create, if exists update
+        try:
+            created = api.create_namespaced_secret(namespace=namespace, body=secret)
+            logger.info("Created Secret: %s", name)
+            return created
+        except ApiException as e:
+            if e.status == 409:  # Conflict - Secret already exists
+                # Update existing
+                updated = api.replace_namespaced_secret(name=name, namespace=namespace, body=secret)
+                logger.info("Updated Secret: %s", name)
+                return updated
+            raise
+    except ApiException as e:
+        logger.error("Error managing Secret %s: %s", name, e)
+        raise
+
+
+def delete_secret(name: str):
+    """Delete a Secret
+    
+    Args:
+        name: Secret name
+        
+    Returns:
+        bool: True if successful
+    """
+    try:
+        api = get_k8s_client()
+        namespace = get_namespace()
+        api.delete_namespaced_secret(name=name, namespace=namespace)
+        logger.info("Deleted Secret: %s", name)
+        return True
+    except Exception as e:
+        logger.error("Error deleting Secret %s: %s", name, e)
+        return False
 
 
 def delete_configmap(name: str):
