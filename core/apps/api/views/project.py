@@ -214,8 +214,6 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     def debug(self, request, pk):
         instance = self.get_object()
         debug = instance.debug
-        if debug.service_id:
-            remove_service(debug.service_id)
         service = deploy_service(
             instance,
             "debug",
