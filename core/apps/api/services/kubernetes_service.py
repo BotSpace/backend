@@ -6,6 +6,7 @@ This service manages Kubernetes deployments for engine instances.
 Engine instances are deployed as Kubernetes deployments with appropriate resource limits.
 """
 
+import datetime
 import logging
 import json
 import os
@@ -238,7 +239,12 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
 
     # Pod template
     pod_template = V1PodTemplateSpec(
-        metadata=V1ObjectMeta(labels=labels),
+        metadata=V1ObjectMeta(
+            labels=labels,
+            annotations={
+                "kubectl.kubernetes.io/restartedAt": datetime.utcnow().isoformat(),  # pod restart bo'lishi uchun
+            },
+        ),
         spec=V1PodSpec(
             containers=[container],
             restart_policy="Always",
@@ -275,7 +281,11 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     except ApiException as e:
         if e.status == 409:  # Conflict = already exists
             logger.info("Deployment exists, updating: %s", name)
-            updated = apps_api.patch_namespaced_deployment(name=name, namespace=namespace, body=deployment)
+            updated = apps_api.patch_namespaced_deployment(
+                name=name,
+                namespace=namespace,
+                body=deployment,
+            )
             return updated
         else:
             logger.error("Error creating deployment %s: %s", name, e)
