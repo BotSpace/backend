@@ -11,7 +11,6 @@ import json
 import os
 
 from config.env import env
-from core.apps.api.services.docker_service import remove_service
 from kubernetes.client.rest import ApiException
 
 from core.apps.api.enums.container import ContainerStatusEnum
@@ -270,7 +269,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     )
 
     try:
-        remove_service(name)
+        remove_deployment(name)
         created_deployment = apps_api.create_namespaced_deployment(namespace=namespace, body=deployment)
         logger.info("Created deployment: %s in namespace: %s", name, namespace)
         return created_deployment
