@@ -12,7 +12,6 @@ def sync_debug():
     last_time = timezone.now() - timedelta(minutes=30)
     containers = DebugModel.objects.filter(
         project__is_template=False,
-        is_template=False,
         status=ContainerStatusEnum.RUNNING.value,
         updated_at__lte=last_time,
     )
