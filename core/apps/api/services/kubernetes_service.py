@@ -15,6 +15,7 @@ from kubernetes.client.rest import ApiException
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.utils.settings import engine_version
+from tenacity import retry, stop_after_attempt, wait_exponential
 from kubernetes.client import (
     V1EnvVar,
     V1Deployment,
@@ -165,6 +166,7 @@ def get_pod_ips_by_label(label_selector, namespace=None):
     return ips
 
 
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=1, max=10))
 def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     """Create a Kubernetes Deployment for engine
 
