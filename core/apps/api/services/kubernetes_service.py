@@ -242,7 +242,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         metadata=V1ObjectMeta(
             labels=labels,
             annotations={
-                "kubectl.kubernetes.io/restartedAt": datetime.utcnow().isoformat(),  # pod restart bo'lishi uchun
+                "kubectl.kubernetes.io/restartedAt": datetime.datetime.utcnow().isoformat(),  # pod restart bo'lishi uchun
             },
         ),
         spec=V1PodSpec(
