@@ -1,0 +1,72 @@
+name: Run tests on PR to dev/main
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+env:
+  PROJECT_NAME: botmother
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy env
+        run: cp .env.example .env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.web
+          load: true
+          push: false
+          tags: ${{ env.PROJECT_NAME }}:test
+          no-cache: true
+
+      - name: Run migrations and tests
+        run: |
+          docker run --rm \
+            --network host \
+            -e DB_HOST=localhost \
+            -e DB_PORT=5432 \
+            -e DB_NAME=testdb \
+            -e DB_USER=postgres \
+            -e DB_PASSWORD=postgres \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e DJANGO_SETTINGS_MODULE=config.settings.test \
+            ${{ env.PROJECT_NAME }}:test \
+            sh -c "python manage.py migrate && pytest -v"
