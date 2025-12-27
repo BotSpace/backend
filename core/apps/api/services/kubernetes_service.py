@@ -269,13 +269,17 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     )
 
     try:
-        remove_deployment(name)
-        created_deployment = apps_api.create_namespaced_deployment(namespace=namespace, body=deployment)
-        logger.info("Created deployment: %s in namespace: %s", name, namespace)
-        return created_deployment
-    except Exception as e:
-        logger.error("Error creating deployment %s: %s", name, e)
-        raise
+        created = apps_api.create_namespaced_deployment(namespace=namespace, body=deployment)
+        logger.info("Created deployment: %s", name)
+        return created
+    except ApiException as e:
+        if e.status == 409:  # Conflict = already exists
+            logger.info("Deployment exists, updating: %s", name)
+            updated = apps_api.patch_namespaced_deployment(name=name, namespace=namespace, body=deployment)
+            return updated
+        else:
+            logger.error("Error creating deployment %s: %s", name, e)
+            raise
 
 
 def remove_deployment(deployment_name: str):
