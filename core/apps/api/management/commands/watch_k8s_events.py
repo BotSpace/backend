@@ -11,6 +11,7 @@ Usage:
 Note: For production deployment, this command should run as a single instance
 (e.g., Kubernetes Deployment with replicas=1) to avoid duplicate event processing.
 """
+
 from typing import Any
 from core.apps.api.models.project import DebugModel, RelaseModel
 from core.apps.api.services.kubernetes_service import (
@@ -37,35 +38,33 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--namespace',
+            "--namespace",
             type=str,
             default=None,
-            help='Kubernetes namespace to watch (default: from K8S_NAMESPACE env var)',
+            help="Kubernetes namespace to watch (default: from K8S_NAMESPACE env var)",
         )
         parser.add_argument(
-            '--label-selector',
+            "--label-selector",
             type=str,
-            default='app=botmother-engine',
-            help='Label selector for filtering deployments (default: app=botmother-engine)',
+            default="app=botmother-engine",
+            help="Label selector for filtering deployments (default: app=botmother-engine)",
         )
         parser.add_argument(
-            '--verbose',
-            action='store_true',
-            help='Enable verbose logging of all events',
+            "--verbose",
+            action="store_true",
+            help="Enable verbose logging of all events",
         )
 
     def handle(self, *args: Any, **options: Any) -> str | None:
-        namespace = options.get('namespace') or get_namespace()
-        label_selector = options.get('label_selector')
-        verbose = options.get('verbose', False)
+        namespace = options.get("namespace") or get_namespace()
+        label_selector = options.get("label_selector")
+        verbose = options.get("verbose", False)
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Starting Kubernetes deployment event watcher\n"
-                f"  Namespace: {namespace}\n"
-                f"  Label selector: {label_selector}\n"
-                f"  Note: Events from ALL nodes are received automatically"
-            )
+        print(
+            f"Starting Kubernetes deployment event watcher\n"
+            f"  Namespace: {namespace}\n"
+            f"  Label selector: {label_selector}\n"
+            f"  Note: Events from ALL nodes are received automatically"
         )
 
         try:
@@ -130,7 +129,7 @@ class Command(BaseCommand):
         status = deployment.status
         ready_replicas = status.ready_replicas if status else 0
         replicas = status.replicas if status else 0
-        
+
         # Determine the reason/status
         if ready_replicas and ready_replicas > 0:
             reason = "running"
@@ -160,10 +159,10 @@ class Command(BaseCommand):
         # Update service status
         old_status = service.status
         new_status = convert_k8s_event_status(event_type, reason)
-        
+
         if old_status != new_status:
             service.status = new_status
-            service.save(update_fields=['status', 'updated_at'])
+            service.save(update_fields=["status", "updated_at"])
 
             logger.info(
                 f"{service_type.upper()} status change: deployment={deployment_name}, "
