@@ -642,7 +642,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
             "engine-name": deployment_name,
         }
         try:
-            create_service(service_name, deployment_name, selector_labels, port=8000)
+            create_service(service_name, deployment_name, selector_labels, port=8080)
             logger.info("Created Service %s for deployment %s", service_name, deployment_name)
         except Exception as e:
             logger.error("Failed to create Service %s for deployment %s: %s", service_name, deployment_name, e)
