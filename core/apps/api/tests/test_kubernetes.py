@@ -172,6 +172,56 @@ class TestKubernetesService:
         assert count == 2
         assert mock_apps_api.delete_namespaced_deployment.call_count == 2
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
+    @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
+    def test_create_service(self, mock_get_namespace, mock_get_client):
+        """Test creating Kubernetes ClusterIP service"""
+        from core.apps.api.services.kubernetes_service import create_service
+        
+        mock_api = MagicMock()
+        mock_service = MagicMock()
+        mock_service.metadata.name = "bot-test-uuid-123"
+        mock_api.create_namespaced_service.return_value = mock_service
+        mock_get_client.return_value = mock_api
+        
+        # Create service
+        service = create_service(
+            name="bot-test-uuid-123",
+            deployment_name="test-deployment",
+            selector_labels={"app": "botmother-engine", "engine-name": "test-deployment"},
+            port=8000
+        )
+        
+        # Verify service creation was called
+        assert mock_api.create_namespaced_service.called
+        call_kwargs = mock_api.create_namespaced_service.call_args[1]
+        assert call_kwargs["namespace"] == "botmother"
+        
+        # Verify service spec
+        service_body = call_kwargs["body"]
+        assert service_body.spec.type == "ClusterIP"
+        assert service_body.spec.ports[0].port == 8000
+        assert service_body.spec.selector == {"app": "botmother-engine", "engine-name": "test-deployment"}
+
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
+    @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
+    def test_delete_service(self, mock_get_namespace, mock_get_client):
+        """Test deleting Kubernetes service"""
+        from core.apps.api.services.kubernetes_service import delete_service
+        
+        mock_api = MagicMock()
+        mock_get_client.return_value = mock_api
+        
+        result = delete_service("bot-test-uuid-123")
+        
+        # Verify delete was called
+        mock_api.delete_namespaced_service.assert_called_once_with(
+            name="bot-test-uuid-123",
+            namespace="botmother"
+        )
+        
+        assert result is True
+
 
 class TestDockerServiceWrapper:
     """Test Docker service wrapper functions that delegate to Kubernetes"""

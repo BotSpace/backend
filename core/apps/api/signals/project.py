@@ -84,6 +84,7 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
             instance.flow,
             "%s_%s" % (instance.project.pk, instance.version),
             [*list(project_enviroment(instance.project.id)), "IS_RELEASE=true"],
+            webhook_uuid=str(instance.project.release_webhook_uuid),
         )
         instance.service_id = service.metadata.name
         instance.status = ContainerStatusEnum.INIT.value

@@ -32,6 +32,9 @@ from kubernetes.client import (
     V1ContainerPort,
     V1LabelSelector,
     V1LocalObjectReference,
+    V1Service,
+    V1ServiceSpec,
+    V1ServicePort,
 )
 from kubernetes import client, config, watch
 
@@ -292,14 +295,21 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
             raise
 
 
-def remove_deployment(deployment_name: str):
-    """Remove a Kubernetes deployment and its associated Secret
+def remove_deployment(deployment_name: str, webhook_uuid: str = None):
+    """Remove a Kubernetes deployment and its associated Secret and Service
 
     Args:
         deployment_name: Name of the deployment to remove
+        webhook_uuid: Optional webhook UUID to delete the associated service.
+                     If not provided, service will be found by deployment label.
 
     Returns:
         bool: True if successful, False otherwise
+    
+    Note:
+        When webhook_uuid is not provided, the function will query for services
+        with label "deployment={deployment_name}" to find and delete the associated
+        service. This is less efficient but ensures cleanup in all cases.
     """
     try:
         apps_api = client.AppsV1Api()
@@ -312,6 +322,23 @@ def remove_deployment(deployment_name: str):
         # Delete associated Secret
         secret_name = f"{deployment_name}-env"
         delete_secret(secret_name)
+
+        # Delete associated Service if webhook_uuid provided
+        if webhook_uuid:
+            service_name = f"bot-{webhook_uuid}"
+            delete_service(service_name)
+        else:
+            # Try to find and delete service by deployment label
+            # This is a fallback for cleanup when webhook_uuid is not available
+            try:
+                api = get_k8s_client()
+                services = api.list_namespaced_service(
+                    namespace=namespace, label_selector=f"deployment={deployment_name}"
+                )
+                for service in services.items:
+                    delete_service(service.metadata.name)
+            except Exception as e:
+                logger.error("Error finding/deleting service for deployment %s: %s", deployment_name, e)
 
         return True
     except Exception as e:
@@ -454,7 +481,85 @@ def delete_configmap(name: str):
         return False
 
 
-def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None):
+def create_service(name: str, deployment_name: str, selector_labels: dict, port: int = 8000):
+    """Create a Kubernetes ClusterIP Service for a deployment
+
+    Args:
+        name: Service name (e.g., bot-{uuid})
+        deployment_name: Name of the deployment this service points to
+        selector_labels: Labels to select pods (should match deployment labels)
+        port: Service port (default: 8000)
+
+    Returns:
+        Created Service object
+    """
+    api = get_k8s_client()
+    namespace = get_namespace()
+
+    service = V1Service(
+        api_version="v1",
+        kind="Service",
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+            labels={
+                "app": "botmother-engine",
+                "deployment": deployment_name,
+            },
+        ),
+        spec=V1ServiceSpec(
+            type="ClusterIP",
+            selector=selector_labels,
+            ports=[
+                V1ServicePort(
+                    name="http",
+                    protocol="TCP",
+                    port=port,
+                    target_port=port,
+                )
+            ],
+        ),
+    )
+
+    try:
+        # Try to create, if exists update
+        try:
+            created = api.create_namespaced_service(namespace=namespace, body=service)
+            logger.info("Created Service: %s", name)
+            return created
+        except ApiException as e:
+            if e.status == 409:  # Conflict - Service already exists
+                # Update existing
+                updated = api.replace_namespaced_service(name=name, namespace=namespace, body=service)
+                logger.info("Updated Service: %s", name)
+                return updated
+            raise
+    except ApiException as e:
+        logger.error("Error managing Service %s: %s", name, e)
+        raise
+
+
+def delete_service(name: str):
+    """Delete a Kubernetes Service
+
+    Args:
+        name: Service name
+
+    Returns:
+        bool: True if successful
+    """
+    try:
+        api = get_k8s_client()
+        namespace = get_namespace()
+        api.delete_namespaced_service(name=name, namespace=namespace)
+        logger.info("Deleted Service: %s", name)
+        return True
+    except Exception as e:
+        logger.error("Error deleting Service %s: %s", name, e)
+        return False
+
+
+def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None, webhook_uuid: str = None):
     """Deploy an engine deployment for a project
 
     Args:
@@ -463,6 +568,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
         flow: Bot flow configuration
         key: Unique engine key
         _env: Additional environment variables
+        webhook_uuid: Webhook UUID for service name (project.release_webhook_uuid or project.debug_webhook_uuid)
 
     Returns:
         Created deployment object
@@ -519,7 +625,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
 
     image = f"registry.jscorp.uz/golang-engine:{engine_version()}"
 
-    return create_deployment(
+    deployment = create_deployment(
         image=image,
         name=deployment_name,
         env_vars=_env,
@@ -527,6 +633,24 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None)
         volumes=volumes,
         project_id=project.id,
     )
+
+    # Create Service if webhook_uuid is provided
+    if webhook_uuid:
+        service_name = f"bot-{webhook_uuid}"
+        selector_labels = {
+            "app": "botmother-engine",
+            "engine-name": deployment_name,
+        }
+        try:
+            create_service(service_name, deployment_name, selector_labels, port=8000)
+            logger.info("Created Service %s for deployment %s", service_name, deployment_name)
+        except Exception as e:
+            logger.error("Failed to create Service %s for deployment %s: %s", service_name, deployment_name, e)
+            # Don't fail the deployment if service creation fails
+            # The deployment can still function, and service can be created manually if needed
+            pass
+
+    return deployment
 
 
 def stop_project_deployments(project_id: int):

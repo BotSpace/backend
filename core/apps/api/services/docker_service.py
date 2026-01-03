@@ -87,7 +87,7 @@ def get_default_env():
     ]
 
 
-def deploy_service(project, prefix, flow, key, _env: list = []):
+def deploy_service(project, prefix, flow, key, _env: list = [], webhook_uuid: str = None):
     """Deploy engine deployment for project with MongoDB credentials
 
     Args:
@@ -96,13 +96,14 @@ def deploy_service(project, prefix, flow, key, _env: list = []):
         flow: Bot flow configuration
         key: Unique service key
         _env: Additional environment variables
+        webhook_uuid: Webhook UUID for service name (optional)
 
     Returns:
         Created Kubernetes deployment
     """
     # Add default env vars
     _env.extend(get_default_env())
-    return deploy_engine(project, prefix, flow, key, _env)
+    return deploy_engine(project, prefix, flow, key, _env, webhook_uuid=webhook_uuid)
 
 
 def stop_project_services(project_id: int):

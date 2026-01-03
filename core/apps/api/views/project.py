@@ -220,6 +220,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             instance.flow,
             instance.id,
             list(project_enviroment(instance.id)),
+            webhook_uuid=str(instance.debug_webhook_uuid),
         )
         debug.service_id = service.metadata.name
         debug.status = "initializing"
