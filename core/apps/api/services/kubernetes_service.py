@@ -300,10 +300,16 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
 
     Args:
         deployment_name: Name of the deployment to remove
-        webhook_uuid: Optional webhook UUID to delete the associated service
+        webhook_uuid: Optional webhook UUID to delete the associated service.
+                     If not provided, service will be found by deployment label.
 
     Returns:
         bool: True if successful, False otherwise
+    
+    Note:
+        When webhook_uuid is not provided, the function will query for services
+        with label "deployment={deployment_name}" to find and delete the associated
+        service. This is less efficient but ensures cleanup in all cases.
     """
     try:
         apps_api = client.AppsV1Api()
@@ -323,6 +329,7 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
             delete_service(service_name)
         else:
             # Try to find and delete service by deployment label
+            # This is a fallback for cleanup when webhook_uuid is not available
             try:
                 api = get_k8s_client()
                 services = api.list_namespaced_service(
@@ -640,6 +647,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
         except Exception as e:
             logger.error("Failed to create Service %s for deployment %s: %s", service_name, deployment_name, e)
             # Don't fail the deployment if service creation fails
+            # The deployment can still function, and service can be created manually if needed
             pass
 
     return deployment
