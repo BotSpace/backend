@@ -17,7 +17,9 @@ from core.apps.api.models import ProjectModel, RelaseModel
 def patch_docker_services():
     with patch("core.apps.api.signals.project.remove_service") as mock_remove, patch(
         "core.apps.api.signals.project.deploy_service"
-    ) as mock_deploy:
+    ) as mock_deploy, patch(
+        "core.apps.api.signals.project.invalidate_webhook_cache"
+    ):
         magic = MagicMock()
         magic.metadata.name = "test-deployment-123"
         mock_deploy.return_value = magic
