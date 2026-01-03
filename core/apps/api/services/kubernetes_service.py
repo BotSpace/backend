@@ -305,7 +305,7 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
 
     Returns:
         bool: True if successful, False otherwise
-    
+
     Note:
         When webhook_uuid is not provided, the function will query for services
         with label "deployment={deployment_name}" to find and delete the associated
@@ -481,7 +481,7 @@ def delete_configmap(name: str):
         return False
 
 
-def create_service(name: str, deployment_name: str, selector_labels: dict, port: int = 8000):
+def create_service(name: str, deployment_name: str, selector_labels: dict, port: int = 8080):
     """Create a Kubernetes ClusterIP Service for a deployment
 
     Args:
