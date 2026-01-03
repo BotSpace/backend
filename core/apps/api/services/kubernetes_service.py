@@ -19,6 +19,8 @@ from core.apps.shared.utils.settings import engine_version
 from tenacity import retry, stop_after_attempt, wait_exponential
 from kubernetes.client import (
     V1EnvVar,
+    V1EnvVarSource,
+    V1ObjectFieldSelector,
     V1Deployment,
     V1DeploymentSpec,
     V1PodTemplateSpec,
@@ -222,10 +224,24 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     volume_mounts = kwargs.get("volume_mounts", [])
     volumes = kwargs.get("volumes", [])
 
+    # Add environment variable for node IP using Downward API
+    # This allows each pod to get the IP of the node it's running on
+    env_vars = [
+        V1EnvVar(
+            name="NODE_IP",
+            value_from=V1EnvVarSource(
+                field_ref=V1ObjectFieldSelector(
+                    field_path="status.hostIP"
+                )
+            )
+        )
+    ]
+
     # Container definition with envFrom to load all env vars from Secret
     container = V1Container(
         name="engine",
         image=image,
+        env=env_vars,
         env_from=[V1EnvFromSource(secret_ref=V1SecretEnvSource(name=secret_name))],
         resources=resources,
         volume_mounts=volume_mounts if volume_mounts else None,
@@ -599,7 +615,9 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
     _env.append("REDIS_ENABLED=true")
-    _env.append(f"REDIS_ADDR={env.str('REDIS_HOST', default='redis')}:{env.str('REDIS_PORT', default='6379')}")
+    # Use NODE_IP environment variable (injected via Downward API) to connect to node-local Redis
+    # This allows each pod to connect to the Redis instance running on its own node
+    _env.append(f"REDIS_ADDR=${{NODE_IP}}:{env.str('REDIS_PORT', default='6379')}")
     _env.append(f"REDIS_PASSWORD={env.str("REDIS_PASSWORD")}")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
     _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
