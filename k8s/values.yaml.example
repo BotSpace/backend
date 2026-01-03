@@ -1,0 +1,133 @@
+# Example configuration values for the deployment
+# This file can be used as a reference or converted to Helm values.yaml
+
+# Namespace configuration
+namespace: botmother
+
+# Redis DaemonSet configuration
+redis:
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  # Data persistence
+  persistence:
+    enabled: true
+    hostPath: /var/lib/redis
+  
+  # Redis server configuration
+  config:
+    appendonly: "yes"
+    bind: "0.0.0.0"
+    port: 6379
+
+# API Deployment configuration
+api:
+  image:
+    repository: registry.jscorp.uz/botmother
+    tag: latest
+    pullPolicy: Always
+  
+  replicas: 1
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  # Environment configuration
+  env:
+    djangoSettingsModule: config.settings.production
+    debug: false
+    projectEnv: prod
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8000
+  
+  # Persistence
+  persistence:
+    logs:
+      enabled: true
+      size: 5Gi
+      storageClass: standard
+    media:
+      enabled: true
+      size: 10Gi
+      storageClass: standard
+    static:
+      enabled: true
+      size: 5Gi
+      storageClass: standard
+
+# Database configuration (PostgreSQL)
+database:
+  host: postgres
+  port: 5432
+  name: django
+  user: postgres
+  # password should be set in secrets
+
+# Storage configuration
+storage:
+  default: FILE
+  static: STATIC
+
+# Kubernetes configuration
+kubernetes:
+  namespace: botmother
+
+# Monitoring and observability
+monitoring:
+  enabled: false
+  # prometheus:
+  #   enabled: false
+  # grafana:
+  #   enabled: false
+
+# Autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Security
+security:
+  podSecurityPolicy:
+    enabled: false
+  networkPolicy:
+    enabled: false
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  # Example annotations:
+  # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts: []
+  # Example host:
+  # - host: api.example.com
+  #   paths:
+  #     - path: /
+  #       pathType: Prefix
+  tls: []
+  # Example TLS:
+  # - secretName: api-tls
+  #   hosts:
+  #     - api.example.com

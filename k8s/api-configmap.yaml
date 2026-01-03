@@ -9,31 +9,31 @@ data:
   DJANGO_SETTINGS_MODULE: "config.settings.production"
   PROJECT_ENV: "prod"
   PROTOCOL_HTTPS: "False"
-  
+
   # OTP configs
   OTP_SIZE: "4"
   OTP_PROD: "true"
-  
+
   # Database configs
   DB_ENGINE: "django.db.backends.postgresql_psycopg2"
   DB_NAME: "django"
   DB_USER: "postgres"
   DB_HOST: "postgres"
   DB_PORT: "5432"
-  
+
   # Cache - Redis will be configured via environment variables in deployment
   CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"
   REDIS_PORT: "6379"
   CACHE_ENABLED: "True"
   CACHE_TIMEOUT: "120"
-  
+
   # Kubernetes config
   K8S_NAMESPACE: "botmother"
-  
+
   # Storage
   STORAGE_DEFAULT: "FILE"
   STORAGE_STATIC: "STATIC"
-  
+
   # Pricing
   RAM_PRICE: "1000"
   CPU_PRICE: "1000"

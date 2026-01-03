@@ -20,12 +20,12 @@ spec:
         image: redis:7-alpine
         command: ["redis-server"]
         args:
-          - "--appendonly"
-          - "yes"
-          - "--bind"
-          - "0.0.0.0"
-          - "--port"
-          - "6379"
+        - "--appendonly"
+        - "yes"
+        - "--bind"
+        - "0.0.0.0"
+        - "--port"
+        - "6379"
         ports:
         - containerPort: 6379
           hostPort: 6379
