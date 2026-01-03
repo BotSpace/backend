@@ -102,7 +102,7 @@ class Command(BaseCommand):
                     release.project,
                     "release",
                     release.flow,
-                    "%s_%s" % (release.project.pk, release.version),
+                    f"{release.project.pk}_{release.version}",
                     [*list(project_enviroment(release.project.id)), "IS_RELEASE=true"],
                     webhook_uuid=str(release.project.release_webhook_uuid),
                 )
@@ -116,7 +116,7 @@ class Command(BaseCommand):
                 invalidate_webhook_cache(release.project, "release")
 
                 console.print(
-                    f"  [green]✓ Recreated:[/green] service_id={service.metadata.name}, " f"status={release.status}"
+                    f"  [green]✓ Recreated:[/green] service_id={service.metadata.name}, status={release.status}"
                 )
                 recreated += 1
 
