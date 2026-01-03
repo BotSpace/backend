@@ -244,7 +244,43 @@ For issues and questions:
 
 ## Kubernetes Deployment
 
-This project supports Kubernetes deployment with Flux GitOps.
+This project supports Kubernetes deployment with node-local Redis for optimal performance.
+
+### Architecture: Node-Local Redis
+
+The Kubernetes deployment uses a **DaemonSet** for Redis, ensuring each node runs its own Redis instance. API pods automatically connect to the Redis instance on their node using the node's IP address.
+
+**Benefits:**
+- Lower latency (local Redis access)
+- Better resource utilization
+- Automatic failover (each node has its own Redis)
+- Scales naturally with cluster nodes
+
+See [k8s/README.md](k8s/README.md) for detailed deployment guide and [k8s/QUICKSTART.md](k8s/QUICKSTART.md) for quick start in Uzbek.
+
+### Quick Deploy
+
+```bash
+cd k8s
+
+# 1. Copy and configure secrets
+cp api-secrets.yaml.example api-secrets.yaml
+# Edit api-secrets.yaml with your values
+
+# 2. Deploy everything
+./deploy.sh
+```
+
+Or deploy manually:
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/api-secrets.yaml
+kubectl apply -f k8s/api-configmap.yaml
+kubectl apply -f k8s/pvcs.yaml
+kubectl apply -f k8s/redis-daemonset.yaml
+kubectl apply -f k8s/api-deployment.yaml
+kubectl apply -f k8s/api-service.yaml
+```
 
 ### Kubernetes Event Watching
 
@@ -263,39 +299,20 @@ python manage.py watch_k8s_events --namespace=botmother
 
 **Note:** Only ONE instance of the watcher should run across the cluster to avoid duplicate event processing.
 
-### Flux GitOps Deployment
-
-This project uses Flux v2 for GitOps-based deployments. See [flux/README.md](flux/README.md) for detailed setup instructions.
-
-**Quick setup on server:**
+### Verification
 
 ```bash
-# 1. Set GitHub token
-export GITHUB_TOKEN=<your-github-pat>
+# Check all resources
+kubectl get all -n botmother
 
-# 2. Run setup script
-./flux/setup-flux.sh
-```
+# View Redis pods on each node
+kubectl get pods -n botmother -l app=redis -o wide
 
-**How it works:**
-1. CI/CD builds and pushes Docker image to registry
-2. Flux detects new image tag automatically
-3. Flux updates `k8s/kustomization.yaml` with new tag
-4. Flux applies changes to Kubernetes cluster
-
-**Useful commands:**
-```bash
-# Check Flux status
-flux check
-
-# Watch deployments
-flux get kustomizations --watch
-
-# Manual sync
-flux reconcile kustomization botmother
+# Check API connection to Redis
+kubectl exec -n botmother deployment/api -- env | grep REDIS_URL
 
 # View logs
-kubectl logs -n flux-system deployment/source-controller
+kubectl logs -n botmother -l app=api -f
 ```
 
 ---

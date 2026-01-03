@@ -162,3 +162,4 @@ cython_debug/
 
 # Kubernetes production secrets
 k8s/secret-production.yaml
+k8s/api-secrets.yaml

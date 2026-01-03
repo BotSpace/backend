@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: botmother
+  labels:
+    app: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: registry.jscorp.uz/botmother:latest
+        env:
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: REDIS_HOST
+          value: "$(NODE_IP)"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_URL
+          value: "redis://$(NODE_IP):6379"
+        - name: PYTHONPYCACHEPREFIX
+          value: "/var/cache/pycache"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "config.settings.production"
+        envFrom:
+        - configMapRef:
+            name: api-config
+        - secretRef:
+            name: api-secrets
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        - name: engine
+          mountPath: /mnt/engine/
+        - name: logs
+          mountPath: /code/resources/logs/
+        - name: media
+          mountPath: /code/resources/media/
+        - name: static
+          mountPath: /code/resources/staticfiles/
+        - name: pycache
+          mountPath: /var/cache/pycache
+        - name: tmp
+          mountPath: /tmp
+        - name: run
+          mountPath: /run
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 15
+          failureThreshold: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: engine
+        hostPath:
+          path: /mnt/engine/
+      - name: logs
+        persistentVolumeClaim:
+          claimName: logs-pvc
+      - name: media
+        persistentVolumeClaim:
+          claimName: media-pvc
+      - name: static
+        persistentVolumeClaim:
+          claimName: static-pvc
+      - name: pycache
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
