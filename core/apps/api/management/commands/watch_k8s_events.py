@@ -19,9 +19,11 @@ from core.apps.api.services.kubernetes_service import (
     convert_k8s_event_status,
 )
 import logging
+import time
 
 from django.core.management.base import BaseCommand
 from kubernetes import client, config, watch
+from kubernetes.client.rest import ApiException
 
 from core.apps.websocket.services.events import ws_publish
 from core.domain.ws import DebugContainerStatus, EventTypes, ReleaseContainerStatus
@@ -54,16 +56,24 @@ class Command(BaseCommand):
             action="store_true",
             help="Enable verbose logging of all events",
         )
+        parser.add_argument(
+            "--timeout",
+            type=int,
+            default=300,
+            help="Watch stream timeout in seconds (default: 300). Stream will reconnect after timeout.",
+        )
 
     def handle(self, *args: Any, **options: Any) -> str | None:
         namespace = options.get("namespace") or get_namespace()
         label_selector = options.get("label_selector")
         verbose = options.get("verbose", False)
+        timeout = options.get("timeout", 300)
 
         print(
             f"Starting Kubernetes deployment event watcher\n"
             f"  Namespace: {namespace}\n"
             f"  Label selector: {label_selector}\n"
+            f"  Watch timeout: {timeout}s (will auto-reconnect)\n"
             f"  Note: Events from ALL nodes are received automatically"
         )
 
@@ -76,31 +86,71 @@ class Command(BaseCommand):
                 config.load_kube_config()
                 logger.info("Loaded kubeconfig file")
 
-            apps_api = client.AppsV1Api()
-            w = watch.Watch()
+            # Run watcher with automatic reconnection
+            self._watch_with_reconnect(namespace, label_selector, verbose, timeout)
 
-            logger.info(
-                f"Kubernetes deployment event watcher started - namespace={namespace}, "
-                f"label_selector={label_selector}"
-            )
+        except KeyboardInterrupt:
+            self.stdout.write(self.style.WARNING("\nKubernetes deployment watcher stopped"))
+            logger.info("Kubernetes deployment watcher stopped by user")
 
+    def _watch_with_reconnect(self, namespace: str, label_selector: str, verbose: bool, timeout: int) -> None:
+        """Watch events with automatic reconnection on failures"""
+        retry_count = 0
+        max_backoff = 60  # Maximum backoff time in seconds
+
+        while True:
+            try:
+                # Calculate exponential backoff: 2^retry_count seconds, capped at max_backoff
+                if retry_count > 0:
+                    backoff = min(2 ** retry_count, max_backoff)
+                    logger.info(f"Reconnecting in {backoff} seconds... (attempt {retry_count + 1})")
+                    time.sleep(backoff)
+
+                # Reset retry count on successful connection
+                logger.info(
+                    f"Kubernetes deployment event watcher started - namespace={namespace}, "
+                    f"label_selector={label_selector}, timeout={timeout}s"
+                )
+                
+                self._watch_events(namespace, label_selector, verbose, timeout)
+                
+                # If we get here, the watch ended normally (not an error)
+                # Reset retry count
+                retry_count = 0
+                logger.info("Watch stream ended normally, reconnecting...")
+                
+            except ApiException as e:
+                retry_count += 1
+                if e.status == 410:
+                    # 410 Gone - resource version is too old
+                    logger.warning(f"Resource version expired (410 Gone), reconnecting immediately...")
+                    retry_count = 0  # Don't backoff for resource version issues
+                else:
+                    logger.error(f"Kubernetes API error (attempt {retry_count}): {e.status} - {e.reason}")
+                    
+            except Exception as e:
+                retry_count += 1
+                logger.error(f"Kubernetes watcher error (attempt {retry_count}): {e}")
+
+    def _watch_events(self, namespace: str, label_selector: str, verbose: bool, timeout: int) -> None:
+        """Watch events from Kubernetes API with timeout"""
+        apps_api = client.AppsV1Api()
+        w = watch.Watch()
+
+        try:
             for event in w.stream(
                 apps_api.list_namespaced_deployment,
                 namespace=namespace,
                 label_selector=label_selector,
+                timeout_seconds=timeout,
             ):
                 try:
                     self._process_event(event, verbose)
                 except Exception as e:
                     logger.error(f"Error processing deployment event: {e}")
-
-        except KeyboardInterrupt:
-            self.stdout.write(self.style.WARNING("\nKubernetes deployment watcher stopped"))
-            logger.info("Kubernetes deployment watcher stopped by user")
-        except Exception as e:
-            logger.error(f"Kubernetes watcher error: {e}")
-            self.stdout.write(self.style.ERROR(f"Error: {e}"))
-            raise
+        finally:
+            # Ensure watch is stopped properly
+            w.stop()
 
     def _process_event(self, event: dict, verbose: bool) -> None:
         """Process a single Kubernetes deployment event"""
