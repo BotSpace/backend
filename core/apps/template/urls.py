@@ -9,7 +9,7 @@ from .views import TemplateOrderView, TemplateView
 router = DefaultRouter()
 router.register("order", TemplateOrderView, basename="order")
 # router.register("my-template", UsertemplateView, basename="usertemplate")
-router.register("template/list", TemplateView, basename="template")
+router.register("list", TemplateView, basename="template")
 router.register("category", TemplateCategoryView, basename="category")
 router.register("feature", TemplateFeatureView, basename="feature")
 router.register("submission", TemplateSubmissionView, basename="submission")
