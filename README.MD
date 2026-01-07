@@ -251,7 +251,7 @@ This project supports Kubernetes deployment with Flux GitOps.
 Kubernetes automatically aggregates pod events from ALL nodes in the cluster. To watch these events:
 
 ```bash
-# Start the Kubernetes event watcher
+# Start the Kubernetes event watcher (with automatic reconnection)
 python manage.py watch_k8s_events
 
 # With verbose logging
@@ -259,7 +259,16 @@ python manage.py watch_k8s_events --verbose
 
 # Custom namespace
 python manage.py watch_k8s_events --namespace=botmother
+
+# Custom timeout (default: 300 seconds)
+python manage.py watch_k8s_events --timeout=600
 ```
+
+**Features:**
+- **Automatic reconnection**: The watcher automatically reconnects if the stream disconnects
+- **Exponential backoff**: On errors, waits 2^n seconds (max 60s) before reconnecting
+- **Resource version handling**: Handles 410 Gone errors gracefully with immediate reconnection
+- **Configurable timeout**: Prevents indefinite hangs with periodic reconnection
 
 **Note:** Only ONE instance of the watcher should run across the cluster to avoid duplicate event processing.
 

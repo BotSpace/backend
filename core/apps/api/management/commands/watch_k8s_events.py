@@ -111,23 +111,23 @@ class Command(BaseCommand):
                     f"Kubernetes deployment event watcher started - namespace={namespace}, "
                     f"label_selector={label_selector}, timeout={timeout}s"
                 )
-                
+
                 self._watch_events(namespace, label_selector, verbose, timeout)
-                
+
                 # If we get here, the watch ended normally (not an error)
                 # Reset retry count
                 retry_count = 0
                 logger.info("Watch stream ended normally, reconnecting...")
-                
+
             except ApiException as e:
                 retry_count += 1
                 if e.status == 410:
                     # 410 Gone - resource version is too old
-                    logger.warning(f"Resource version expired (410 Gone), reconnecting immediately...")
+                    logger.warning("Resource version expired (410 Gone), reconnecting immediately...")
                     retry_count = 0  # Don't backoff for resource version issues
                 else:
                     logger.error(f"Kubernetes API error (attempt {retry_count}): {e.status} - {e.reason}")
-                    
+
             except Exception as e:
                 retry_count += 1
                 logger.error(f"Kubernetes watcher error (attempt {retry_count}): {e}")
