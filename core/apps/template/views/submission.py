@@ -19,13 +19,13 @@ from core.apps.template.enums.template import TemplateSubmissionStatusEnum
 class TemplateSubmissionView(BaseViewSetMixin, ModelViewSet):
     """
     ViewSet for template submission requests.
-    
+
     Users can submit their projects as templates for approval.
     Admins can approve or reject submissions via Django admin panel.
     """
+
     serializer_class = ListTemplateSubmissionSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "patch", "delete"]
 
     action_permission_classes = {
         "list": [IsAuthenticated],
@@ -34,7 +34,7 @@ class TemplateSubmissionView(BaseViewSetMixin, ModelViewSet):
         "partial_update": [IsAuthenticated],
         "destroy": [IsAuthenticated],
     }
-    
+
     action_serializer_class = {
         "list": ListTemplateSubmissionSerializer,
         "retrieve": RetrieveTemplateSubmissionSerializer,
@@ -45,11 +45,11 @@ class TemplateSubmissionView(BaseViewSetMixin, ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         # Users can only see their own submissions
-        return TemplateSubmissionRequestModel.objects.filter(
-            user=user
-        ).select_related(
-            'user', 'project', 'template', 'reviewed_by'
-        ).prefetch_related('categories', 'features')
+        return (
+            TemplateSubmissionRequestModel.objects.filter(user=user)
+            .select_related("user", "project", "template", "reviewed_by")
+            .prefetch_related("categories", "features")
+        )
 
     def perform_create(self, serializer):
         """Create a new template submission request"""
