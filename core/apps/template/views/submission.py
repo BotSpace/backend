@@ -24,7 +24,6 @@ class TemplateSubmissionView(BaseViewSetMixin, ModelViewSet):
     Admins can approve or reject submissions via Django admin panel.
     """
 
-    queryset = TemplateSubmissionRequestModel.objects.all()
     serializer_class = ListTemplateSubmissionSerializer
     permission_classes = [IsAuthenticated]
 
