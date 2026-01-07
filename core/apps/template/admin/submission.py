@@ -24,7 +24,7 @@ class TemplateSubmissionRequestAdmin(ModelAdmin):
     )
     list_filter = ("status", "created_at", "reviewed_at")
     search_fields = ("name", "user__phone", "project__name")
-    readonly_fields = ("status", "template", "reviewed_by", "reviewed_at", "created_at", "updated_at")
+    readonly_fields = ("template", "reviewed_by", "reviewed_at", "created_at", "updated_at")
     autocomplete_fields = ["categories", "features"]
     
     fieldsets = (
@@ -73,6 +73,49 @@ class TemplateSubmissionRequestAdmin(ModelAdmin):
     @display(description="Project Name")
     def project_name(self, obj):
         return obj.project.name if obj.project else "-"
+
+    def save_model(self, request, obj, form, change):
+        """Override save_model to handle status changes"""
+        if change:  # Only for existing objects
+            # Get the original object from database
+            try:
+                original_obj = TemplateSubmissionRequestModel.objects.get(pk=obj.pk)
+                original_status = original_obj.status
+            except TemplateSubmissionRequestModel.DoesNotExist:
+                original_status = None
+            
+            # Check if status has changed
+            if original_status and original_status != obj.status:
+                # Status changed, update reviewed fields
+                obj.reviewed_by = request.user
+                obj.reviewed_at = timezone.now()
+                
+                # If status changed to APPROVED and template doesn't exist yet, create it
+                if obj.status == TemplateSubmissionStatusEnum.APPROVED.value and not obj.template:
+                    # Create the template from the submission
+                    template = TemplateModel.objects.create(
+                        author=obj.user,
+                        name=obj.name,
+                        image=obj.image,
+                        video=obj.video,
+                        project=obj.project,
+                        short_description=obj.short_description,
+                        description=obj.description,
+                        original_price=obj.original_price,
+                        discount=Decimal("0.00"),
+                        discount_type="percent",
+                        demo_url=obj.demo_url,
+                        is_verify=True,
+                    )
+                    
+                    # Set many-to-many relationships
+                    template.categories.set(obj.categories.all())
+                    template.features.set(obj.features.all())
+                    
+                    # Link template to submission
+                    obj.template = template
+        
+        super().save_model(request, obj, form, change)
 
     def approve_submissions(self, request, queryset):
         """Admin action to approve selected submissions"""
