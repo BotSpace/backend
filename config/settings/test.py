@@ -18,3 +18,11 @@ CACHEOPS_ENABLED = False
 
 # Flag to indicate we're in test mode
 TESTING = True
+
+# Use SQLite for testing
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
+    }
+}
