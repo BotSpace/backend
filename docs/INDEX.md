@@ -214,8 +214,8 @@ docs/
 | `POST /api/template/submission/` | TEMPLATE_SUBMISSION_API.md | Template → Yuborish |
 | `GET /api/template/submission/` | TEMPLATE_SUBMISSION_API.md | Template → Ro'yxat |
 | `GET /api/template/submission/{id}/` | TEMPLATE_SUBMISSION_API.md | Template → Ma'lumotlar |
-| `POST /api/template/submission/{id}/approve/` | TEMPLATE_SUBMISSION_API.md | Template → Tasdiqlash |
-| `POST /api/template/submission/{id}/reject/` | TEMPLATE_SUBMISSION_API.md | Template → Rad etish |
+| `PATCH /api/template/submission/{id}/` | TEMPLATE_SUBMISSION_API.md | Template → Tahrirlash |
+| `DELETE /api/template/submission/{id}/` | TEMPLATE_SUBMISSION_API.md | Template → O'chirish |
 
 ### Kod misollar
 
@@ -248,8 +248,7 @@ docs/
 | Postman setup | POSTMAN.md |
 | Testing | POSTMAN.md |
 | Template submission | TEMPLATE_SUBMISSION_API.md |
-| Template approval | TEMPLATE_SUBMISSION_API.md |
-| Template rejection | TEMPLATE_SUBMISSION_API.md |
+| Django Admin panel | TEMPLATE_SUBMISSION_API.md |
 
 ---
 

@@ -4,7 +4,6 @@ from rest_framework.test import APIClient
 from decimal import Decimal
 
 from core.apps.template.models.submission import TemplateSubmissionRequestModel
-from core.apps.template.models.template import TemplateModel
 from core.apps.template.enums.template import TemplateSubmissionStatusEnum
 from core.apps.accounts.models import User
 from core.apps.api.models import ProjectModel
@@ -21,12 +20,12 @@ def user(db):
 
 
 @pytest.fixture
-def admin_user(db):
-    """Create an admin user"""
-    return User.objects.create_superuser(
-        phone="+998901234568",
-        username="adminuser",
-        password="adminpass123"
+def another_user(db):
+    """Create another regular user"""
+    return User.objects.create_user(
+        phone="+998901234569",
+        username="anotheruser",
+        password="testpass123"
     )
 
 
@@ -100,19 +99,19 @@ def test_list_submissions_user(api_client, user, submission):
 
 
 @pytest.mark.django_db
-def test_list_submissions_admin(api_client, admin_user, user, project):
-    """Test that admins can see all submissions"""
-    # Create submission by regular user
-    submission = TemplateSubmissionRequestModel.objects.create(
-        user=user,
+def test_user_cannot_see_other_users_submissions(api_client, user, another_user, project):
+    """Test that users cannot see other users' submissions"""
+    # Create submission by another user
+    other_submission = TemplateSubmissionRequestModel.objects.create(
+        user=another_user,
         project=project,
-        name="Test Template",
+        name="Other User Template",
         short_description="Short description",
         description="Long description",
         original_price=Decimal("100.00")
     )
     
-    api_client.force_authenticate(user=admin_user)
+    api_client.force_authenticate(user=user)
     
     url = reverse("submission-list")
     response = api_client.get(url)
@@ -120,8 +119,9 @@ def test_list_submissions_admin(api_client, admin_user, user, project):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] is True
-    # Admin should see all submissions
-    assert len(data["data"]["results"]) >= 1
+    # User should only see their own submissions, not other users'
+    for submission in data["data"]["results"]:
+        assert submission["user_phone"] == user.phone
 
 
 @pytest.mark.django_db
@@ -137,81 +137,6 @@ def test_retrieve_submission(api_client, user, submission):
     assert data["status"] is True
     assert data["data"]["id"] == submission.id
     assert data["data"]["name"] == submission.name
-
-
-@pytest.mark.django_db
-def test_approve_submission(api_client, admin_user, user, submission):
-    """Test approving a template submission"""
-    api_client.force_authenticate(user=admin_user)
-    
-    url = reverse("submission-approve", kwargs={"pk": submission.id})
-    data = {
-        "discount": "10.00",
-        "discount_type": "percent"
-    }
-    
-    response = api_client.post(url, data=data)
-    assert response.status_code == 200
-    
-    # Check that submission was approved
-    submission.refresh_from_db()
-    assert submission.status == TemplateSubmissionStatusEnum.APPROVED.value
-    assert submission.template is not None
-    assert submission.reviewed_by == admin_user
-    
-    # Check that template was created
-    template = TemplateModel.objects.get(id=submission.template.id)
-    assert template.name == submission.name
-    assert template.author == user
-    assert template.is_verify is True
-    assert template.discount == Decimal("10.00")
-
-
-@pytest.mark.django_db
-def test_reject_submission(api_client, admin_user, submission):
-    """Test rejecting a template submission"""
-    api_client.force_authenticate(user=admin_user)
-    
-    url = reverse("submission-reject", kwargs={"pk": submission.id})
-    data = {
-        "rejection_reason": "Quality standards not met"
-    }
-    
-    response = api_client.post(url, data=data)
-    assert response.status_code == 200
-    
-    # Check that submission was rejected
-    submission.refresh_from_db()
-    assert submission.status == TemplateSubmissionStatusEnum.REJECTED.value
-    assert submission.rejection_reason == "Quality standards not met"
-    assert submission.reviewed_by == admin_user
-    assert submission.template is None
-
-
-@pytest.mark.django_db
-def test_approve_non_pending_submission_fails(api_client, admin_user, submission):
-    """Test that non-pending submissions cannot be approved"""
-    # First approve the submission
-    submission.status = TemplateSubmissionStatusEnum.APPROVED.value
-    submission.save()
-    
-    api_client.force_authenticate(user=admin_user)
-    
-    url = reverse("submission-approve", kwargs={"pk": submission.id})
-    response = api_client.post(url)
-    
-    assert response.status_code == 400
-
-
-@pytest.mark.django_db
-def test_non_admin_cannot_approve(api_client, user, submission):
-    """Test that non-admin users cannot approve submissions"""
-    api_client.force_authenticate(user=user)
-    
-    url = reverse("submission-approve", kwargs={"pk": submission.id})
-    response = api_client.post(url)
-    
-    assert response.status_code == 403
 
 
 @pytest.mark.django_db

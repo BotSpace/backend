@@ -8,7 +8,7 @@
 
 ## Kirish
 
-Ushbu API foydalanuvchilarga o'z loyihalarini template sifatida yuborishga imkon beradi. Administratorlar yuborilgan templatelarni tasdiqlashi yoki rad etishi mumkin. Tasdiqlangan templatelar umumiy templatelar ro'yxatida ko'rinadi.
+Ushbu API foydalanuvchilarga o'z loyihalarini template sifatida yuborishga imkon beradi. Administratorlar yuborilgan templatelarni Django Admin panel orqali tasdiqlashi yoki rad etishi mumkin. Tasdiqlangan templatelar umumiy templatelar ro'yxatida ko'rinadi.
 
 ---
 
@@ -21,15 +21,13 @@ Ushbu API foydalanuvchilarga o'z loyihalarini template sifatida yuborishga imkon
    - [Yuborish ma'lumotlari](#yuborish-malumotlari)
    - [Yuborishni tahrirlash](#yuborishni-tahrirlash)
    - [Yuborishni o'chirish](#yuborishni-ochirish)
-3. [Admin - Tasdiqlash/Rad etish](#admin-tasdiqlashrad-etish)
-   - [Template yuborishini tasdiqlash](#template-yuborishini-tasdiqlash)
-   - [Template yuborishini rad etish](#template-yuborishini-rad-etish)
+3. [Admin Panel - Tasdiqlash/Rad etish](#admin-panel-tasdiqlashrad-etish)
 
 ---
 
 ## Authentifikatsiya
 
-Barcha API so'rovlari uchun JWT token kerak (Admin amaliyotlari bundan mustasno ko'rsatiladi).
+Barcha API so'rovlari uchun JWT token kerak.
 
 **Header:**
 ```
@@ -293,111 +291,80 @@ Muvaffaqiyatli o'chirildi
 
 ---
 
-## Admin - Tasdiqlash/Rad etish
+## Admin Panel - Tasdiqlash/Rad etish
 
-### Template yuborishini tasdiqlash
+Administratorlar template yuborishlarini Django Admin panel orqali ko'rib chiqadi va tasdiqlaydi/rad etadi.
 
-Admin foydalanuvchi yuborishni tasdiqlaydi va template yaratadi.
+### Admin panelga kirish
 
-**Endpoint:**  
-`POST /api/template/submission/{id}/approve/`
+Admin panel URL: `http://localhost:8081/admin/`
 
-**Authentifikatsiya:** Majburiy (faqat Admin)
+Django Admin panel orqali:
+1. **Template Submission Request** modeliga kirish
+2. Yuborilgan templatelar ro'yxatini ko'rish
+3. Har bir yuborishni ko'rib chiqish
+4. Tasdiqlash yoki rad etish
 
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| id | integer | Yuborish ID raqami |
+### Tasdiqlash jarayoni
 
-**Request Body:**
-```json
-{
-  "discount": "10.00",
-  "discount_type": "percent"
-}
-```
+Admin panel orqali yuborishni tasdiqlash:
 
-**Request Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| discount | decimal | ❌ | Chegirma miqdori (default: 0) |
-| discount_type | string | ❌ | Chegirma turi: "percent" yoki "amount" (default: "percent") |
-
-**Response (200 OK):**
-```json
-{
-  "status": true,
-  "message": "Approved successfully",
-  "data": {
-    "id": 456,
-    "status": "approved",
-    "template": 789,
-    "reviewed_by_phone": "+998901234568",
-    "reviewed_at": "2024-01-16T14:20:00Z",
-    ...
-  }
-}
-```
+1. Django Admin panelga kirish
+2. **Template → Template Submission Requests** bo'limiga o'tish
+3. Kerakli yuborishni tanlash
+4. **Actions** dropdown dan "Approve selected submissions" tanlash
+5. "Go" tugmasini bosish
 
 **Natija:**
-- Yangi template yaratiladi va `is_verify=true` bo'ladi
+- Yangi template avtomatik yaratiladi (`is_verify=true`)
 - Template umumiy ro'yxatda ko'rinadi
-- Yuborish statusи "approved"ga o'zgaradi
+- Yuborish statusi "approved"ga o'zgaradi
+- Foydalanuvchi o'z yuborishlari ro'yxatida tasdiqlangan holatni ko'radi
 
-**Errors:**
-- `400 Bad Request` - Faqat "pending" yuborishlarni tasdiqlash mumkin
-- `403 Forbidden` - Admin emas
-- `404 Not Found` - Yuborish topilmadi
+### Rad etish jarayoni
 
----
+Admin panel orqali yuborishni rad etish:
 
-### Template yuborishini rad etish
+1. Django Admin panelga kirish
+2. **Template → Template Submission Requests** bo'limiga o'tish
+3. Kerakli yuborishni tanlash
+4. **Actions** dropdown dan "Reject selected submissions" tanlash
+5. "Go" tugmasini bosish
 
-Admin foydalanuvchi yuborishni rad etadi.
+**Natija:**
+- Yuborish statusi "rejected"ga o'zgaradi
+- Rejection reason avtomatik qo'yiladi: "Rejected by admin via bulk action"
+- Foydalanuvchi rad etilgan yuborishni ko'radi va sababni o'qiydi
 
-**Endpoint:**  
-`POST /api/template/submission/{id}/reject/`
+### Individual tasdiqlash/rad etish
 
-**Authentifikatsiya:** Majburiy (faqat Admin)
+Har bir yuborishni alohida ko'rib chiqish uchun:
 
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| id | integer | Yuborish ID raqami |
+1. Yuborishni ochish (ID yoki nom orqali)
+2. Barcha ma'lumotlarni tekshirish:
+   - Template nomi va tavsifi
+   - Rasm va video
+   - Narx
+   - Kategoriyalar va xususiyatlar
+3. Yuborish formasi pastida:
+   - **Tasdiqlash uchun**: "Approve selected submissions" actionni ishlatish
+   - **Rad etish uchun**: "Reject selected submissions" actionni ishlatish yoki `rejection_reason` maydoniga sabab yozib, statusni "rejected"ga o'zgartirish
 
-**Request Body:**
-```json
-{
-  "rejection_reason": "Template sifati yetarli emas. Iltimos, quyidagi masalalarni to'g'irlang: 1) UI/UX yaxshilash, 2) Kod sifati, 3) Dokumentatsiya qo'shish"
-}
-```
+### Admin panel funksiyalari
 
-**Request Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| rejection_reason | string | ✅ | Rad etish sababi |
+**Filtrlash:**
+- Status bo'yicha (pending, approved, rejected)
+- Yaratilgan sana
+- Ko'rib chiqilgan sana
 
-**Response (200 OK):**
-```json
-{
-  "status": true,
-  "message": "Rejected successfully",
-  "data": {
-    "id": 456,
-    "status": "rejected",
-    "rejection_reason": "Template sifati yetarli emas...",
-    "template": null,
-    "reviewed_by_phone": "+998901234568",
-    "reviewed_at": "2024-01-16T14:25:00Z",
-    ...
-  }
-}
-```
+**Qidirish:**
+- Template nomi
+- Foydalanuvchi telefon raqami
+- Loyiha nomi
 
-**Errors:**
-- `400 Bad Request` - Faqat "pending" yuborishlarni rad etish mumkin
-- `403 Forbidden` - Admin emas
-- `404 Not Found` - Yuborish topilmadi
+**Ko'rish:**
+- Ro'yxat ko'rinishi: ID, nom, foydalanuvchi, loyiha, narx, status, sanalar
+- Batafsil ko'rinish: Barcha ma'lumotlar, rasim, video, kategoriyalar va xususiyatlar
 
 ---
 
@@ -412,13 +379,15 @@ Admin foydalanuvchi yuborishni rad etadi.
 5. **Agar "approved"**: Template umumiy ro'yxatda paydo bo'ladi
 6. **Agar "rejected"**: `rejection_reason`ni o'qib, muammolarni hal qilish va qayta yuborish
 
-### Admin uchun:
+### Admin uchun (Django Admin Panel):
 
-1. **Barcha yuborishlarni ko'rish**: `GET /api/template/submission/` (Admin barcha yuborishlarni ko'radi)
-2. **Yuborishni ko'rib chiqish**: `GET /api/template/submission/{id}/`
-3. **Qaror qabul qilish**:
-   - Tasdiqlash: `POST /api/template/submission/{id}/approve/`
-   - Rad etish: `POST /api/template/submission/{id}/reject/`
+1. **Admin panelga kirish**: `http://localhost:8081/admin/`
+2. **Yuborishlar ro'yxati**: Template Submission Requests bo'limiga o'tish
+3. **Filtrlash**: Faqat "pending" statusdagi yuborishlarni ko'rish
+4. **Ko'rib chiqish**: Har bir yuborishning ma'lumotlarini tekshirish
+5. **Qaror qabul qilish**:
+   - Tasdiqlash: Bulk action "Approve selected submissions"
+   - Rad etish: Bulk action "Reject selected submissions" yoki individual ravishda rejection_reason yozish
 
 ---
 
@@ -489,60 +458,13 @@ async function getMySubmissions(page = 1) {
 }
 ```
 
-#### Yuborishni tasdiqlash (Admin):
-
-```javascript
-async function approveSubmission(submissionId, discount = 0, discountType = 'percent') {
-  const response = await fetch(
-    `http://localhost:8081/api/template/submission/${submissionId}/approve/`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        discount: discount,
-        discount_type: discountType
-      })
-    }
-  );
-  
-  const result = await response.json();
-  return result;
-}
-```
-
-#### Yuborishni rad etish (Admin):
-
-```javascript
-async function rejectSubmission(submissionId, reason) {
-  const response = await fetch(
-    `http://localhost:8081/api/template/submission/${submissionId}/reject/`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        rejection_reason: reason
-      })
-    }
-  );
-  
-  const result = await response.json();
-  return result;
-}
-```
-
 ---
 
 ## Muhim eslatmalar
 
 1. **Rasm va video yuklash**: Multipart/form-data formatida yuboriladi
 2. **Faqat o'z yuborishlarini ko'rish**: Oddiy foydalanuvchilar faqat o'z yuborishlarini ko'radi
-3. **Admin huquqlari**: Tasdiqlash/rad etish faqat admin uchun
+3. **Admin panel**: Tasdiqlash/rad etish Django Admin panel orqali amalga oshiriladi
 4. **Tahrirlash**: Faqat "pending" statusdagi yuborishlar tahrirlanadi
 5. **Status o'zgarishi**: Tasdiqlash/rad etishdan keyin status o'zgarmaydi
 
@@ -556,6 +478,10 @@ Kategoriyalar va xususiyatlarni olish uchun:
 
 Template'lar ro'yxatini ko'rish:
 - `GET /api/template/template/` - Tasdiqlangan templatelar ro'yxati
+
+Django Admin Panel:
+- `http://localhost:8081/admin/` - Admin panel URL
+- Template → Template Submission Requests - Yuborishlar ro'yxati
 
 ---
 
