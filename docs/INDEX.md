@@ -113,6 +113,26 @@ Postman orqali API bilan ishlash uchun to'liq qo'llanma.
 
 ---
 
+### 6. [TEMPLATE_SUBMISSION_API.md](./TEMPLATE_SUBMISSION_API.md) - Template Submission API
+**To'liq qo'llanma**
+
+Foydalanuvchilar tomonidan template yuborish va admin tasdiqlash API'lari.
+
+**Qamrab oladi:**
+- 📤 Template yuborish (submission)
+- 📋 Yuborishlar ro'yxati
+- ✅ Admin tasdiqlash
+- ❌ Admin rad etish
+- ✏️ Yuborishni tahrirlash
+- 🗑️ Yuborishni o'chirish
+- 🔄 Ish jarayoni (workflow)
+- 💻 Frontend kod misollar (JavaScript)
+- 📝 To'liq API spetsifikatsiyasi
+
+**Kimga mo'ljallangan:** Frontend dasturchilar, Product owners
+
+---
+
 ## 🎯 Qaysi fayldan boshlash kerak?
 
 ### Siz Frontend dasturchisiz va yangi boshlayapsiz?
@@ -134,6 +154,9 @@ Postman orqali API bilan ishlash uchun to'liq qo'llanma.
 ### Kod misollar kerak?
 👉 O'qing: [EXAMPLES.md](./EXAMPLES.md)
 
+### Template submission API kerak?
+👉 O'qing: [TEMPLATE_SUBMISSION_API.md](./TEMPLATE_SUBMISSION_API.md)
+
 ---
 
 ## 📊 Statistika
@@ -145,7 +168,8 @@ Postman orqali API bilan ishlash uchun to'liq qo'llanma.
 | AUTHENTICATION.md | 430 | 9KB | Auth qo'llanmasi |
 | EXAMPLES.md | 756 | 18KB | Kod misollar |
 | POSTMAN.md | 882 | 15KB | Postman collection |
-| **JAMI** | **3,984** | **84KB** | **5 fayl** |
+| TEMPLATE_SUBMISSION_API.md | ~400 | 15KB | Template submission API |
+| **JAMI** | **~4,400** | **~99KB** | **6 fayl** |
 
 ---
 
@@ -153,12 +177,13 @@ Postman orqali API bilan ishlash uchun to'liq qo'llanma.
 
 ```
 docs/
-├── INDEX.md              # Ushbu fayl - dokumentatsiya indexi
-├── README.md             # Asosiy API dokumentatsiya
-├── QUICK_START.md        # Tezkor boshlash qo'llanmasi
-├── AUTHENTICATION.md     # Autentifikatsiya va security
-├── EXAMPLES.md           # Kod misollar (JS, TS, Python, cURL)
-└── POSTMAN.md           # Postman collection va testing
+├── INDEX.md                      # Ushbu fayl - dokumentatsiya indexi
+├── README.md                     # Asosiy API dokumentatsiya
+├── QUICK_START.md                # Tezkor boshlash qo'llanmasi
+├── AUTHENTICATION.md             # Autentifikatsiya va security
+├── EXAMPLES.md                   # Kod misollar (JS, TS, Python, cURL)
+├── POSTMAN.md                    # Postman collection va testing
+└── TEMPLATE_SUBMISSION_API.md    # Template submission API
 ```
 
 ---
@@ -186,6 +211,11 @@ docs/
 | `POST /api/collection/` | README.md | CMS → Collection yaratish |
 | `POST /api/collection/{name}/query/` | README.md | CMS → Query operatsiyalar |
 | `GET /sse/api/project/{id}/logs/` | README.md | SSE → Real-time logs |
+| `POST /api/template/submission/` | TEMPLATE_SUBMISSION_API.md | Template → Yuborish |
+| `GET /api/template/submission/` | TEMPLATE_SUBMISSION_API.md | Template → Ro'yxat |
+| `GET /api/template/submission/{id}/` | TEMPLATE_SUBMISSION_API.md | Template → Ma'lumotlar |
+| `POST /api/template/submission/{id}/approve/` | TEMPLATE_SUBMISSION_API.md | Template → Tasdiqlash |
+| `POST /api/template/submission/{id}/reject/` | TEMPLATE_SUBMISSION_API.md | Template → Rad etish |
 
 ### Kod misollar
 
@@ -217,6 +247,9 @@ docs/
 | Security | AUTHENTICATION.md |
 | Postman setup | POSTMAN.md |
 | Testing | POSTMAN.md |
+| Template submission | TEMPLATE_SUBMISSION_API.md |
+| Template approval | TEMPLATE_SUBMISSION_API.md |
+| Template rejection | TEMPLATE_SUBMISSION_API.md |
 
 ---
 
