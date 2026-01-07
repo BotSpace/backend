@@ -30,6 +30,7 @@ from core.apps.template.serializers.template.feature import (
 
 @extend_schema(tags=["template"])
 class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
+    queryset = TemplateModel.objects.filter(is_verify=True)
     serializer_class = ListTemplateSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
@@ -57,6 +58,7 @@ class TemplateView(BaseViewSetMixin, ReadOnlyModelViewSet):
 
 @extend_schema(tags=["template"])
 class TemplateCategoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
+    queryset = TemplateCategoryModel.objects.all()
     serializer_class = ListTemplateCategorySerializer
     permission_classes = [AllowAny]
 
@@ -73,6 +75,7 @@ class TemplateCategoryView(BaseViewSetMixin, ReadOnlyModelViewSet):
 
 @extend_schema(tags=["template"])
 class TemplateFeatureView(BaseViewSetMixin, ReadOnlyModelViewSet):
+    queryset = TemplateFeatureModel.objects.all()
     serializer_class = ListTemplateFeatureSerializer
     permission_classes = [AllowAny]
 
