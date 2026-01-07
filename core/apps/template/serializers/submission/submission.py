@@ -6,18 +6,20 @@ from core.apps.template.serializers.template.feature import ListTemplateFeatureS
 
 class BaseTemplateSubmissionSerializer(serializers.ModelSerializer):
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    categories = serializers.PrimaryKeyRelatedField(
-        queryset=None, many=True, required=False
-    )
-    features = serializers.PrimaryKeyRelatedField(
-        queryset=None, many=True, required=False
-    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from core.apps.template.models.template import TemplateCategoryModel, TemplateFeatureModel
-        self.fields['categories'].queryset = TemplateCategoryModel.objects.all()
-        self.fields['features'].queryset = TemplateFeatureModel.objects.all()
+        self.fields['categories'] = serializers.PrimaryKeyRelatedField(
+            queryset=TemplateCategoryModel.objects.all(), 
+            many=True, 
+            required=False
+        )
+        self.fields['features'] = serializers.PrimaryKeyRelatedField(
+            queryset=TemplateFeatureModel.objects.all(), 
+            many=True, 
+            required=False
+        )
 
     class Meta:
         model = TemplateSubmissionRequestModel
