@@ -11,13 +11,13 @@ class BaseTemplateSubmissionSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         from core.apps.template.models.template import TemplateCategoryModel, TemplateFeatureModel
         self.fields['categories'] = serializers.PrimaryKeyRelatedField(
-            queryset=TemplateCategoryModel.objects.all(), 
-            many=True, 
+            queryset=TemplateCategoryModel.objects.all(),
+            many=True,
             required=False
         )
         self.fields['features'] = serializers.PrimaryKeyRelatedField(
-            queryset=TemplateFeatureModel.objects.all(), 
-            many=True, 
+            queryset=TemplateFeatureModel.objects.all(),
+            many=True,
             required=False
         )
 
