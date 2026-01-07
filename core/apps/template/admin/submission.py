@@ -90,8 +90,8 @@ class TemplateSubmissionRequestAdmin(ModelAdmin):
                 obj.reviewed_by = request.user
                 obj.reviewed_at = timezone.now()
                 
-                # If status changed to APPROVED, create template
-                if obj.status == TemplateSubmissionStatusEnum.APPROVED.value and original_status == TemplateSubmissionStatusEnum.PENDING.value:
+                # If status changed to APPROVED and template doesn't exist yet, create it
+                if obj.status == TemplateSubmissionStatusEnum.APPROVED.value and not obj.template:
                     # Create the template from the submission
                     template = TemplateModel.objects.create(
                         author=obj.user,

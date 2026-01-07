@@ -69,21 +69,24 @@ def submission_admin(admin_site):
     return TemplateSubmissionRequestAdmin(TemplateSubmissionRequestModel, admin_site)
 
 
-@pytest.mark.django_db
-def test_status_change_to_approved_creates_template(admin_user, pending_submission, submission_admin):
-    """Test that changing status to approved creates a template and sets review fields"""
-    # Create a mock request object
+@pytest.fixture
+def mock_request(admin_user):
+    """Create a mock request object with admin user"""
     class MockRequest:
         def __init__(self, user):
             self.user = user
     
-    request = MockRequest(admin_user)
-    
+    return MockRequest(admin_user)
+
+
+@pytest.mark.django_db
+def test_status_change_to_approved_creates_template(pending_submission, submission_admin, mock_request):
+    """Test that changing status to approved creates a template and sets review fields"""
     # Change status to approved
     pending_submission.status = TemplateSubmissionStatusEnum.APPROVED.value
     
     # Call save_model (simulating admin save)
-    submission_admin.save_model(request, pending_submission, None, change=True)
+    submission_admin.save_model(mock_request, pending_submission, None, change=True)
     
     # Refresh from database
     pending_submission.refresh_from_db()
@@ -92,7 +95,7 @@ def test_status_change_to_approved_creates_template(admin_user, pending_submissi
     assert pending_submission.status == TemplateSubmissionStatusEnum.APPROVED.value
     
     # Verify reviewed fields are set
-    assert pending_submission.reviewed_by == admin_user
+    assert pending_submission.reviewed_by == mock_request.user
     assert pending_submission.reviewed_at is not None
     
     # Verify template was created
@@ -110,21 +113,14 @@ def test_status_change_to_approved_creates_template(admin_user, pending_submissi
 
 
 @pytest.mark.django_db
-def test_status_change_to_rejected_sets_review_fields(admin_user, pending_submission, submission_admin):
+def test_status_change_to_rejected_sets_review_fields(pending_submission, submission_admin, mock_request):
     """Test that changing status to rejected sets review fields"""
-    # Create a mock request object
-    class MockRequest:
-        def __init__(self, user):
-            self.user = user
-    
-    request = MockRequest(admin_user)
-    
     # Change status to rejected
     pending_submission.status = TemplateSubmissionStatusEnum.REJECTED.value
     pending_submission.rejection_reason = "Does not meet quality standards"
     
     # Call save_model (simulating admin save)
-    submission_admin.save_model(request, pending_submission, None, change=True)
+    submission_admin.save_model(mock_request, pending_submission, None, change=True)
     
     # Refresh from database
     pending_submission.refresh_from_db()
@@ -133,7 +129,7 @@ def test_status_change_to_rejected_sets_review_fields(admin_user, pending_submis
     assert pending_submission.status == TemplateSubmissionStatusEnum.REJECTED.value
     
     # Verify reviewed fields are set
-    assert pending_submission.reviewed_by == admin_user
+    assert pending_submission.reviewed_by == mock_request.user
     assert pending_submission.reviewed_at is not None
     
     # Verify rejection reason is preserved
@@ -144,20 +140,13 @@ def test_status_change_to_rejected_sets_review_fields(admin_user, pending_submis
 
 
 @pytest.mark.django_db
-def test_no_changes_when_status_unchanged(admin_user, pending_submission, submission_admin):
+def test_no_changes_when_status_unchanged(pending_submission, submission_admin, mock_request):
     """Test that review fields are not changed when status is unchanged"""
-    # Create a mock request object
-    class MockRequest:
-        def __init__(self, user):
-            self.user = user
-    
-    request = MockRequest(admin_user)
-    
     # Don't change status, just update other fields
     pending_submission.name = "Updated Name"
     
     # Call save_model (simulating admin save)
-    submission_admin.save_model(request, pending_submission, None, change=True)
+    submission_admin.save_model(mock_request, pending_submission, None, change=True)
     
     # Refresh from database
     pending_submission.refresh_from_db()
