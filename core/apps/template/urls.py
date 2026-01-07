@@ -13,4 +13,4 @@ router.register("template", TemplateView, basename="template")
 router.register("category", TemplateCategoryView, basename="category")
 router.register("feature", TemplateFeatureView, basename="feature")
 router.register("submission", TemplateSubmissionView, basename="submission")
-urlpatterns = [path("", include(router.urls))]
+urlpatterns = [path("template/", include(router.urls))]
