@@ -266,8 +266,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             instance.save()
             
             return Response(data={"detail": _("Flow updated")})
-        except Exception as e:
-            raise exceptions.ValidationError(detail={"payload": f"Decryption error: {str(e)}"})
+        except Exception:
+            # Don't expose sensitive error details
+            raise exceptions.ValidationError(detail={"payload": "Invalid encrypted data or decryption failed"})
 
     @extend_schema(
         summary="Shifrlangan flow ma'lumotlarini olish",
@@ -289,8 +290,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             encrypted_payload = encrypt_flow_payload(instance.flow)
             
             return Response(data={"payload": encrypted_payload})
-        except Exception as e:
-            raise exceptions.ValidationError(detail={"error": f"Encryption error: {str(e)}"})
+        except Exception:
+            # Don't expose sensitive error details
+            raise exceptions.ValidationError(detail={"error": "Encryption failed"})
 
 
 @extend_schema(tags=["relase"])
