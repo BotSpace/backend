@@ -43,10 +43,11 @@ class TestKubernetesService:
         call_kwargs = mock_apps_api.create_namespaced_deployment.call_args[1]
         assert call_kwargs["namespace"] == "botmother"
 
+    @patch('core.apps.api.services.kubernetes_service.delete_configmap')
     @patch('core.apps.api.services.kubernetes_service.delete_secret')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret):
+    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret, mock_delete_configmap):
         """Test removing Kubernetes deployment"""
         from core.apps.api.services.kubernetes_service import remove_deployment
         
@@ -63,6 +64,9 @@ class TestKubernetesService:
         
         # Verify Secret deletion was called
         mock_delete_secret.assert_called_once_with("test-deployment-env")
+        
+        # Verify ConfigMap deletion was called
+        mock_delete_configmap.assert_called_once_with("test-deployment-flow")
         
         assert result is True
 

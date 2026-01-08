@@ -296,7 +296,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
 
 
 def remove_deployment(deployment_name: str, webhook_uuid: str = None):
-    """Remove a Kubernetes deployment and its associated Secret and Service
+    """Remove a Kubernetes deployment and its associated Secret, ConfigMap and Service
 
     Args:
         deployment_name: Name of the deployment to remove
@@ -322,6 +322,10 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
         # Delete associated Secret
         secret_name = f"{deployment_name}-env"
         delete_secret(secret_name)
+
+        # Delete associated ConfigMap
+        configmap_name = f"{deployment_name}-flow"
+        delete_configmap(configmap_name)
 
         # Delete associated Service if webhook_uuid provided
         if webhook_uuid:
@@ -674,7 +678,8 @@ def stop_project_deployments(project_id: int):
         count = 0
         for deployment in deployments.items:
             try:
-                apps_api.delete_namespaced_deployment(name=deployment.metadata.name, namespace=namespace)
+                # Use remove_deployment to ensure all resources (deployment, secret, configmap, service) are cleaned up
+                remove_deployment(deployment.metadata.name)
                 logger.info("Stopped deployment %s for project %s", deployment.metadata.name, project_id)
                 count += 1
             except Exception as e:
