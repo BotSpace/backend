@@ -14,11 +14,13 @@ class CustomUserAdmin(admin.UserAdmin, ModelAdmin):
         "last_name",
         "phone",
         "role",
+        "balance",
+        "template_balance",
     )
     autocomplete_fields = ["groups", "user_permissions"]
     fieldsets = ((None, {"fields": ("phone",)}),) + (
         (None, {"fields": ("username", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name", "email", "balance")}),
+        (_("Personal info"), {"fields": ("first_name", "last_name", "email", "balance", "template_balance")}),
         (
             _("Permissions"),
             {

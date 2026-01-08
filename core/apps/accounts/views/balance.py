@@ -14,4 +14,10 @@ class BalanceView(BaseViewSetMixin, ViewSet):
         Args:
             request ([TODO:type]): [TODO:description]
         """
-        return Response(data={"balance": request.user.balance}, status=200)
+        return Response(
+            data={
+                "balance": request.user.balance,
+                "template_balance": str(request.user.template_balance),
+            },
+            status=200
+        )

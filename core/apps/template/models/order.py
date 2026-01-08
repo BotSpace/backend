@@ -18,6 +18,7 @@ class TemplateOrderModel(AbstractBaseModel):
         _("status"), choices=TemplateOrderStatusEnum.choices, default=TemplateOrderStatusEnum.PENDING.value
     )
     payment_status = models.BooleanField(default=False)
+    commission_paid = models.BooleanField(default=False)
 
     def __str__(self):
         return "%s" % self.user.first_name
