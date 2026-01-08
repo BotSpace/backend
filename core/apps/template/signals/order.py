@@ -16,7 +16,12 @@ def OrderSignal(sender, instance, created, **kwargs):
     Signal to handle commission distribution when a template is sold.
     Takes 20% commission and gives 80% to the template author.
     """
-    # Only process if payment is confirmed, status is CONFIRM, and commission hasn't been paid yet
+    # Check if update_fields is specified and doesn't include commission_paid
+    update_fields = kwargs.get('update_fields')
+    if update_fields is not None and 'commission_paid' in update_fields:
+        return
+        
+    # Process on creation or update if payment is confirmed, status is CONFIRM, and commission hasn't been paid yet
     if (instance.payment_status and 
         instance.status == TemplateOrderStatusEnum.CONFIRM.value and 
         not instance.commission_paid):
@@ -32,5 +37,5 @@ def OrderSignal(sender, instance, created, **kwargs):
             )
             
             # Mark commission as paid to avoid double-processing
-            # Use update to avoid triggering the signal again
-            TemplateOrderModel.objects.filter(pk=instance.pk).update(commission_paid=True)
+            instance.commission_paid = True
+            instance.save(update_fields=['commission_paid'])
