@@ -151,6 +151,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         )
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
         copy_collections(template.project, instance)
+        set_webhook(instance, "release")
         return Response(data=ListProjectSerializer(instance=instance).data)
 
     @extend_schema(
