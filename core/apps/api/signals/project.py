@@ -109,7 +109,8 @@ def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
 
 @receiver(post_delete, sender=RelaseModel)
 def delete_release(sender, instance, **kwargs):
-    remove_service(instance.service_id)
+    if instance.service_id:
+        remove_service(instance.service_id)
 
 
 @receiver(post_save, sender=DebugModel)
@@ -122,7 +123,8 @@ def DebugSignal(sender, instance: DebugModel, created, **kwargs):
 
 @receiver(post_delete, sender=DebugModel)
 def delete_debug(sender, instance, **kwargs):
-    remove_service(instance.service_id)
+    if instance.service_id:
+        remove_service(instance.service_id)
 
 
 def invalidate_webhook_cache(project: ProjectModel, mode: str):
