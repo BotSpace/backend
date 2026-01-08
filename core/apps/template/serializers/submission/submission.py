@@ -13,12 +13,16 @@ class BaseTemplateSubmissionSerializer(serializers.ModelSerializer):
         self.fields['categories'] = serializers.PrimaryKeyRelatedField(
             queryset=TemplateCategoryModel.objects.all(),
             many=True,
-            required=False
+            required=False,
+            allow_empty=True,
+            default=list
         )
         self.fields['features'] = serializers.PrimaryKeyRelatedField(
             queryset=TemplateFeatureModel.objects.all(),
             many=True,
-            required=False
+            required=False,
+            allow_empty=True,
+            default=list
         )
 
     class Meta:
