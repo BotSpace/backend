@@ -73,9 +73,16 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
     if created:
         releases = RelaseModel.objects.filter(
             project=instance.project, status__in=[ContainerStatusEnum.INIT.value, ContainerStatusEnum.RUNNING.value]
-        )
+        ).exclude(id=instance.id)
         for release in releases:
-            remove_service(release.service_id)
+            if release.service_id:
+                success = remove_service(release.service_id)
+                if not success:
+                    logging.warning(
+                        "Failed to remove deployment for release_id=%s service_id=%s",
+                        release.id,
+                        release.service_id,
+                    )
             release.status = ContainerStatusEnum.STOPPING.value
             release.save()
         service = deploy_service(
@@ -102,7 +109,8 @@ def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
 
 @receiver(post_delete, sender=RelaseModel)
 def delete_release(sender, instance, **kwargs):
-    remove_service(instance.service_id)
+    if instance.service_id:
+        remove_service(instance.service_id)
 
 
 @receiver(post_save, sender=DebugModel)
@@ -115,7 +123,8 @@ def DebugSignal(sender, instance: DebugModel, created, **kwargs):
 
 @receiver(post_delete, sender=DebugModel)
 def delete_debug(sender, instance, **kwargs):
-    remove_service(instance.service_id)
+    if instance.service_id:
+        remove_service(instance.service_id)
 
 
 def invalidate_webhook_cache(project: ProjectModel, mode: str):
