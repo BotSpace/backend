@@ -1,10 +1,15 @@
 from django.contrib import admin
+from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 
 from core.apps.template.models.withdrawal import TemplateWithdrawalRequestModel
 from core.apps.template.enums.withdrawal import WithdrawalStatusEnum
+
+User = get_user_model()
 
 
 @admin.register(TemplateWithdrawalRequestModel)
@@ -72,41 +77,50 @@ class TemplateWithdrawalRequestAdmin(ModelAdmin):
                 
                 # If status changed to APPROVED, deduct from user's template balance
                 if obj.status == WithdrawalStatusEnum.APPROVED.value and original_status != WithdrawalStatusEnum.APPROVED.value:
-                    user = obj.user
-                    if user.template_balance >= obj.amount:
-                        user.template_balance -= obj.amount
-                        user.save()
-                    else:
-                        # If insufficient balance, reject the withdrawal
-                        obj.status = WithdrawalStatusEnum.REJECTED.value
-                        obj.rejection_reason = "Insufficient template balance at approval time"
+                    # Use atomic transaction to prevent race conditions
+                    with transaction.atomic():
+                        # Lock the user row for update
+                        user = User.objects.select_for_update().get(pk=obj.user.pk)
+                        if user.template_balance >= obj.amount:
+                            # Use F() expression for atomic update
+                            User.objects.filter(pk=user.pk).update(
+                                template_balance=F('template_balance') - obj.amount
+                            )
+                        else:
+                            # If insufficient balance, reject the withdrawal
+                            obj.status = WithdrawalStatusEnum.REJECTED.value
+                            obj.rejection_reason = "Insufficient template balance at approval time"
         
         super().save_model(request, obj, form, change)
 
     def approve_withdrawals(self, request, queryset):
         """Admin action to approve selected withdrawal requests"""
         approved_count = 0
-        for withdrawal in queryset:
+        for withdrawal in queryset.select_for_update():
             if withdrawal.status == WithdrawalStatusEnum.PENDING.value:
-                user = withdrawal.user
-                if user.template_balance >= withdrawal.amount:
-                    # Deduct from template balance
-                    user.template_balance -= withdrawal.amount
-                    user.save()
-                    
-                    # Update withdrawal status
-                    withdrawal.status = WithdrawalStatusEnum.APPROVED.value
-                    withdrawal.reviewed_by = request.user
-                    withdrawal.reviewed_at = timezone.now()
-                    withdrawal.save()
-                    approved_count += 1
-                else:
-                    # Mark as rejected due to insufficient balance
-                    withdrawal.status = WithdrawalStatusEnum.REJECTED.value
-                    withdrawal.rejection_reason = "Insufficient template balance"
-                    withdrawal.reviewed_by = request.user
-                    withdrawal.reviewed_at = timezone.now()
-                    withdrawal.save()
+                # Use atomic transaction to prevent race conditions
+                with transaction.atomic():
+                    # Lock the user row for update
+                    user = User.objects.select_for_update().get(pk=withdrawal.user.pk)
+                    if user.template_balance >= withdrawal.amount:
+                        # Deduct from template balance using F() expression
+                        User.objects.filter(pk=user.pk).update(
+                            template_balance=F('template_balance') - withdrawal.amount
+                        )
+                        
+                        # Update withdrawal status
+                        withdrawal.status = WithdrawalStatusEnum.APPROVED.value
+                        withdrawal.reviewed_by = request.user
+                        withdrawal.reviewed_at = timezone.now()
+                        withdrawal.save()
+                        approved_count += 1
+                    else:
+                        # Mark as rejected due to insufficient balance
+                        withdrawal.status = WithdrawalStatusEnum.REJECTED.value
+                        withdrawal.rejection_reason = "Insufficient template balance"
+                        withdrawal.reviewed_by = request.user
+                        withdrawal.reviewed_at = timezone.now()
+                        withdrawal.save()
         
         self.message_user(request, f"{approved_count} withdrawal request(s) approved successfully.")
     
