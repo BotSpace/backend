@@ -13,22 +13,63 @@ from django.conf import settings
 
 
 def load_private_key():
-    """Load private key from FLOW_PRIVATE_KEY environment variable or default location"""
-    key_path = os.environ.get("FLOW_PRIVATE_KEY", os.path.join(settings.BASE_DIR, "keys", "private.pem"))
+    """
+    Load private key from FLOW_PRIVATE_KEY environment variable
     
-    with open(key_path, "rb") as f:
-        return serialization.load_pem_private_key(
-            f.read(),
-            password=None,
-        )
+    FLOW_PRIVATE_KEY can be:
+    - Direct PEM content (from Kubernetes secrets) - recommended
+    - File path (for local development)
+    
+    If not set, defaults to keys/private.pem file
+    """
+    flow_key_env = os.environ.get("FLOW_PRIVATE_KEY")
+    
+    if flow_key_env:
+        # Check if it's PEM content (starts with -----BEGIN)
+        if flow_key_env.strip().startswith("-----BEGIN"):
+            # Direct PEM content from environment (Kubernetes secret)
+            key_bytes = flow_key_env.encode('utf-8')
+        else:
+            # File path
+            with open(flow_key_env, "rb") as f:
+                key_bytes = f.read()
+    else:
+        # Default file path
+        default_path = os.path.join(settings.BASE_DIR, "keys", "private.pem")
+        with open(default_path, "rb") as f:
+            key_bytes = f.read()
+    
+    return serialization.load_pem_private_key(key_bytes, password=None)
 
 
 def load_public_key():
-    """Load public key from FLOW_PUBLIC_KEY environment variable or default location"""
-    key_path = os.environ.get("FLOW_PUBLIC_KEY", os.path.join(settings.BASE_DIR, "keys", "public.pem"))
+    """
+    Load public key from FLOW_PUBLIC_KEY environment variable
     
-    with open(key_path, "rb") as f:
-        return serialization.load_pem_public_key(f.read())
+    FLOW_PUBLIC_KEY can be:
+    - Direct PEM content (from Kubernetes secrets) - recommended
+    - File path (for local development)
+    
+    If not set, defaults to keys/public.pem file
+    """
+    flow_key_env = os.environ.get("FLOW_PUBLIC_KEY")
+    
+    if flow_key_env:
+        # Check if it's PEM content (starts with -----BEGIN)
+        if flow_key_env.strip().startswith("-----BEGIN"):
+            # Direct PEM content from environment (Kubernetes secret)
+            key_bytes = flow_key_env.encode('utf-8')
+        else:
+            # File path
+            with open(flow_key_env, "rb") as f:
+                key_bytes = f.read()
+    else:
+        # Default file path
+        default_path = os.path.join(settings.BASE_DIR, "keys", "public.pem")
+        with open(default_path, "rb") as f:
+            key_bytes = f.read()
+    
+    return serialization.load_pem_public_key(key_bytes)
 
 
 def decrypt_flow_payload(payload: dict) -> dict:

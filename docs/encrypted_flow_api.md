@@ -186,8 +186,59 @@ print(json.dumps(flow_data, indent=2))
 
 The backend uses the following environment variables for key management:
 
-- `FLOW_PRIVATE_KEY` - Path to RSA private key (default: `keys/private.pem`)
-- `FLOW_PUBLIC_KEY` - Path to RSA public key (default: `keys/public.pem`)
+- `FLOW_PRIVATE_KEY` - RSA private key (can be PEM content or file path)
+- `FLOW_PUBLIC_KEY` - RSA public key (can be PEM content or file path)
+
+### Setting Keys
+
+There are three ways to provide keys:
+
+#### 1. Direct PEM Content (Recommended for Kubernetes)
+
+Set the environment variable to the actual PEM content:
+
+```bash
+export FLOW_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQE...
+-----END PRIVATE KEY-----"
+
+export FLOW_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQE...
+-----END PUBLIC KEY-----"
+```
+
+In Kubernetes, use secrets:
+
+```yaml
+env:
+  - name: FLOW_PRIVATE_KEY
+    valueFrom:
+      secretKeyRef:
+        name: flow-keys
+        key: private.pem
+  - name: FLOW_PUBLIC_KEY
+    valueFrom:
+      secretKeyRef:
+        name: flow-keys
+        key: public.pem
+```
+
+See [Kubernetes Deployment Guide](kubernetes_flow_keys.md) for detailed instructions.
+
+#### 2. File Path
+
+Set the environment variable to a file path:
+
+```bash
+export FLOW_PRIVATE_KEY=/path/to/keys/private.pem
+export FLOW_PUBLIC_KEY=/path/to/keys/public.pem
+```
+
+#### 3. Default (No Environment Variable)
+
+If not set, defaults to:
+- `keys/private.pem`
+- `keys/public.pem`
 
 ## Security Notes
 
