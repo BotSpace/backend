@@ -12,19 +12,20 @@ def OrderSignal(sender, instance, created, **kwargs):
     Signal to handle commission distribution when a template is sold.
     Takes 20% commission and gives 80% to the template author.
     """
-    if instance.payment_status and instance.status == TemplateOrderStatusEnum.CONFIRM.value:
+    # Only process if payment is confirmed, status is CONFIRM, and commission hasn't been paid yet
+    if (instance.payment_status and 
+        instance.status == TemplateOrderStatusEnum.CONFIRM.value and 
+        not instance.commission_paid):
+        
         if instance.template and instance.template.author:
-            # Check if we've already processed this order
-            # by seeing if the author already has template_balance credited
-            # We use a flag to avoid double-processing
-            if not hasattr(instance, '_commission_processed'):
-                # Calculate 80% for the author (20% commission for platform)
-                author_share = instance.amount * Decimal('0.80')
-                
-                # Add to author's template balance
-                author = instance.template.author
-                author.template_balance += author_share
-                author.save()
-                
-                # Mark as processed to avoid double-processing
-                instance._commission_processed = True
+            # Calculate 80% for the author (20% commission for platform)
+            author_share = instance.amount * Decimal('0.80')
+            
+            # Add to author's template balance
+            author = instance.template.author
+            author.template_balance += author_share
+            author.save()
+            
+            # Mark commission as paid to avoid double-processing
+            # Use update to avoid triggering the signal again
+            TemplateOrderModel.objects.filter(pk=instance.pk).update(commission_paid=True)
