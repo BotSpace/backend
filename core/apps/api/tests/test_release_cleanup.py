@@ -1,7 +1,7 @@
 """
-Test for release deployment cleanup fix.
+Tests for release deployment cleanup fix.
 
-This test verifies that when a new release is created:
+These tests verify that when a new release is created:
 1. Old releases with INIT or RUNNING status are cleaned up
 2. The current release is not included in the cleanup
 3. Null service_id values are handled gracefully
