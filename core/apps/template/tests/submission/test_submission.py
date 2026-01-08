@@ -183,3 +183,57 @@ def test_delete_pending_submission(api_client, user, submission):
     
     assert response.status_code == 204
     assert not TemplateSubmissionRequestModel.objects.filter(id=submission.id).exists()
+
+
+@pytest.mark.django_db
+def test_create_submission_without_categories_and_features(api_client, user, project):
+    """Test creating a template submission without categories and features"""
+    api_client.force_authenticate(user=user)
+    
+    url = reverse("submission-list")
+    data = {
+        "project": project.id,
+        "name": "Template Without Categories",
+        "short_description": "Short desc",
+        "description": "Long desc",
+        "original_price": "100.00"
+    }
+    
+    response = api_client.post(url, data=data)
+    assert response.status_code == 201
+    
+    # Check that submission was created without categories and features
+    submission = TemplateSubmissionRequestModel.objects.get(name="Template Without Categories")
+    assert submission.user == user
+    assert submission.project == project
+    assert submission.status == TemplateSubmissionStatusEnum.PENDING.value
+    assert submission.categories.count() == 0
+    assert submission.features.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_submission_with_empty_categories_and_features(api_client, user, project):
+    """Test creating a template submission with explicitly empty categories and features"""
+    api_client.force_authenticate(user=user)
+    
+    url = reverse("submission-list")
+    data = {
+        "project": project.id,
+        "name": "Template With Empty Lists",
+        "short_description": "Short desc",
+        "description": "Long desc",
+        "original_price": "100.00",
+        "categories": [],
+        "features": []
+    }
+    
+    response = api_client.post(url, data=data)
+    assert response.status_code == 201
+    
+    # Check that submission was created with empty categories and features
+    submission = TemplateSubmissionRequestModel.objects.get(name="Template With Empty Lists")
+    assert submission.user == user
+    assert submission.project == project
+    assert submission.status == TemplateSubmissionStatusEnum.PENDING.value
+    assert submission.categories.count() == 0
+    assert submission.features.count() == 0
