@@ -45,14 +45,14 @@ class TestKubernetesService:
 
     @patch('core.apps.api.services.kubernetes_service.delete_configmap')
     @patch('core.apps.api.services.kubernetes_service.delete_secret')
-    @patch('kubernetes.client.AppsV1Api')
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret, mock_delete_configmap):
+    def test_remove_deployment(self, mock_get_namespace, mock_get_k8s_client, mock_delete_secret, mock_delete_configmap):
         """Test removing Kubernetes deployment"""
         from core.apps.api.services.kubernetes_service import remove_deployment
         
         mock_apps_api = MagicMock()
-        mock_apps_api_class.return_value = mock_apps_api
+        mock_get_k8s_client.return_value = mock_apps_api
         
         result = remove_deployment("test-deployment")
         
@@ -156,7 +156,8 @@ class TestKubernetesService:
 
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_stop_project_deployments(self, mock_get_namespace, mock_apps_api_class):
+    @patch('core.apps.api.services.kubernetes_service.remove_deployment')
+    def test_stop_project_deployments(self, mock_remove_deployment, mock_get_namespace, mock_apps_api_class):
         """Test stopping all deployments for a project"""
         from core.apps.api.services.kubernetes_service import stop_project_deployments
         
@@ -174,7 +175,7 @@ class TestKubernetesService:
         count = stop_project_deployments(123)
         
         assert count == 2
-        assert mock_apps_api.delete_namespaced_deployment.call_count == 2
+        assert mock_remove_deployment.call_count == 2
 
     @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
