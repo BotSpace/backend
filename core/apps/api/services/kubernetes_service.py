@@ -305,14 +305,14 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
 
     Returns:
         bool: True if successful, False otherwise
-    
+
     Note:
         When webhook_uuid is not provided, the function will query for services
         with label "deployment={deployment_name}" to find and delete the associated
         service. This is less efficient but ensures cleanup in all cases.
     """
     try:
-        apps_api = client.AppsV1Api()
+        apps_api = get_k8s_client()
         namespace = get_namespace()
 
         # Delete deployment
