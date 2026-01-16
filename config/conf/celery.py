@@ -5,10 +5,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.bot.sync_bot",
         "schedule": crontab(hour="*/1", minute="0"),
     },
-    "sync_storage": {
-        "task": "core.apps.api.tasks.project.sync_storage",
-        "schedule": crontab(minute="*/10"),
-    },
+    # "sync_storage": {
+    #     "task": "core.apps.api.tasks.project.sync_storage",
+    #     "schedule": crontab(minute="*/10"),
+    # },
     "sync_debug": {
         "task": "core.apps.api.tasks.debug.sync_debug",
         "schedule": crontab(minute="*/5"),
