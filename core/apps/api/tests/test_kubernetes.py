@@ -134,7 +134,7 @@ class TestKubernetesService:
         mock_apps_api.read_namespaced_deployment.return_value = mock_deployment
         mock_apps_api_class.return_value = mock_apps_api
         
-        status = get_deployment_status("test_deployment")
+        status = get_deployment_status("test-deployment")
         
         # Verify k8s client initialization was called
         mock_get_k8s_client.assert_called_once()
