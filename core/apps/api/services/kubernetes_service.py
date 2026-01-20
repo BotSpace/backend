@@ -312,8 +312,7 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
         service. This is less efficient but ensures cleanup in all cases.
     """
     try:
-        config.load_incluster_config()
-        apps_api = config.AppsV1Api()
+        apps_api = client.AppsV1Api()
         namespace = get_namespace()
 
         # Delete deployment

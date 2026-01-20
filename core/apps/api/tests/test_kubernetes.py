@@ -45,14 +45,14 @@ class TestKubernetesService:
 
     @patch('core.apps.api.services.kubernetes_service.delete_configmap')
     @patch('core.apps.api.services.kubernetes_service.delete_secret')
-    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
+    @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_remove_deployment(self, mock_get_namespace, mock_get_k8s_client, mock_delete_secret, mock_delete_configmap):
+    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret, mock_delete_configmap):
         """Test removing Kubernetes deployment"""
         from core.apps.api.services.kubernetes_service import remove_deployment
         
         mock_apps_api = MagicMock()
-        mock_get_k8s_client.return_value = mock_apps_api
+        mock_apps_api_class.return_value = mock_apps_api
         
         result = remove_deployment("test-deployment")
         
