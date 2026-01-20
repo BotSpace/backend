@@ -97,6 +97,8 @@ def get_deployment_status(deployment_name: str) -> str:
         str: Container status enum value
     """
     try:
+        # Ensure k8s config is loaded before creating AppsV1Api
+        get_k8s_client()
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
         deployment = apps_api.read_namespaced_deployment(name=deployment_name, namespace=namespace)
@@ -184,6 +186,8 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         Created deployment object
     """
 
+    # Ensure k8s config is loaded before creating AppsV1Api
+    get_k8s_client()
     apps_api = client.AppsV1Api()
     namespace = get_namespace()
 
@@ -312,6 +316,8 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
         service. This is less efficient but ensures cleanup in all cases.
     """
     try:
+        # Ensure k8s config is loaded before creating AppsV1Api
+        get_k8s_client()
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
 
@@ -667,6 +673,8 @@ def stop_project_deployments(project_id: int):
         int: Number of deployments stopped
     """
     try:
+        # Ensure k8s config is loaded before creating AppsV1Api
+        get_k8s_client()
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
 

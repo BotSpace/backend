@@ -10,10 +10,11 @@ from core.apps.api.enums.container import ContainerStatusEnum
 class TestKubernetesService:
     """Test Kubernetes engine deployment management"""
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('core.apps.api.services.kubernetes_service.create_secret')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_create_deployment(self, mock_get_namespace, mock_apps_api_class, mock_create_secret):
+    def test_create_deployment(self, mock_get_namespace, mock_apps_api_class, mock_create_secret, mock_get_k8s_client):
         """Test creating Kubernetes deployment for engine"""
         from core.apps.api.services.kubernetes_service import create_deployment
         
@@ -31,6 +32,9 @@ class TestKubernetesService:
             env_vars=["API_URL=http://localhost:8000", "BOT_TOKEN=test123"]
         )
         
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
+        
         # Verify Secret was created
         assert mock_create_secret.called
         secret_call_args = mock_create_secret.call_args
@@ -45,9 +49,10 @@ class TestKubernetesService:
 
     @patch('core.apps.api.services.kubernetes_service.delete_configmap')
     @patch('core.apps.api.services.kubernetes_service.delete_secret')
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_delete_secret, mock_delete_configmap):
+    def test_remove_deployment(self, mock_get_namespace, mock_apps_api_class, mock_get_k8s_client, mock_delete_secret, mock_delete_configmap):
         """Test removing Kubernetes deployment"""
         from core.apps.api.services.kubernetes_service import remove_deployment
         
@@ -55,6 +60,9 @@ class TestKubernetesService:
         mock_apps_api_class.return_value = mock_apps_api
         
         result = remove_deployment("test-deployment")
+        
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
         
         # Verify delete was called
         mock_apps_api.delete_namespaced_deployment.assert_called_once_with(
@@ -70,9 +78,10 @@ class TestKubernetesService:
         
         assert result is True
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_get_deployment_status_running(self, mock_get_namespace, mock_apps_api_class):
+    def test_get_deployment_status_running(self, mock_get_namespace, mock_apps_api_class, mock_get_k8s_client):
         """Test getting deployment status when running"""
         from core.apps.api.services.kubernetes_service import get_deployment_status
         
@@ -85,11 +94,15 @@ class TestKubernetesService:
         
         status = get_deployment_status("test-deployment")
         
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
+        
         assert status == ContainerStatusEnum.RUNNING.value
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_get_deployment_status_pending(self, mock_get_namespace, mock_apps_api_class):
+    def test_get_deployment_status_pending(self, mock_get_namespace, mock_apps_api_class, mock_get_k8s_client):
         """Test getting deployment status when pending"""
         from core.apps.api.services.kubernetes_service import get_deployment_status
         
@@ -102,11 +115,15 @@ class TestKubernetesService:
         
         status = get_deployment_status("test-deployment")
         
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
+        
         assert status == ContainerStatusEnum.INIT.value
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
-    def test_get_deployment_status_stopped(self, mock_get_namespace, mock_apps_api_class):
+    def test_get_deployment_status_stopped(self, mock_get_namespace, mock_apps_api_class, mock_get_k8s_client):
         """Test getting deployment status when stopped"""
         from core.apps.api.services.kubernetes_service import get_deployment_status
         
@@ -117,7 +134,10 @@ class TestKubernetesService:
         mock_apps_api.read_namespaced_deployment.return_value = mock_deployment
         mock_apps_api_class.return_value = mock_apps_api
         
-        status = get_deployment_status("test-deployment")
+        status = get_deployment_status("test_deployment")
+        
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
         
         assert status == ContainerStatusEnum.STOPPED.value
 
@@ -154,10 +174,11 @@ class TestKubernetesService:
         # Verify ConfigMap creation was called
         assert mock_api.create_namespaced_config_map.called
 
+    @patch('core.apps.api.services.kubernetes_service.get_k8s_client')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.services.kubernetes_service.get_namespace', return_value='botmother')
     @patch('core.apps.api.services.kubernetes_service.remove_deployment')
-    def test_stop_project_deployments(self, mock_remove_deployment, mock_get_namespace, mock_apps_api_class):
+    def test_stop_project_deployments(self, mock_remove_deployment, mock_get_namespace, mock_apps_api_class, mock_get_k8s_client):
         """Test stopping all deployments for a project"""
         from core.apps.api.services.kubernetes_service import stop_project_deployments
         
@@ -173,6 +194,9 @@ class TestKubernetesService:
         mock_apps_api_class.return_value = mock_apps_api
         
         count = stop_project_deployments(123)
+        
+        # Verify k8s client initialization was called
+        mock_get_k8s_client.assert_called_once()
         
         assert count == 2
         assert mock_remove_deployment.call_count == 2
