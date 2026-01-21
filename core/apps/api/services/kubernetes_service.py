@@ -317,7 +317,7 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
     """
     try:
         # Ensure k8s config is loaded before creating AppsV1Api
-        get_k8s_client()
+        api = get_k8s_client()
         apps_api = client.AppsV1Api()
         namespace = get_namespace()
 
@@ -341,7 +341,6 @@ def remove_deployment(deployment_name: str, webhook_uuid: str = None):
             # Try to find and delete service by deployment label
             # This is a fallback for cleanup when webhook_uuid is not available
             try:
-                api = get_k8s_client()
                 services = api.list_namespaced_service(
                     namespace=namespace, label_selector=f"deployment={deployment_name}"
                 )
