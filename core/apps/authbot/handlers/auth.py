@@ -30,10 +30,17 @@ def phone_handler(message: types.Message):
             },
         )
         code = Code.objects.get_or_create_code(user.id)
+        markup = types.InlineKeyboardMarkup()
+        button = types.InlineKeyboardButton(
+            text="Kirish 🔐", url=f"https://botspace.uz/uz/auth/google?callbackUrl=%2F&code={code.code}"
+        )
+        markup.add(button)
+
         sent_message = bot.send_message(
             message.chat.id,
             messages.you_otp.format(code.code),
-            parse_mode="markdown",
+            parse_mode="Markdown",
+            reply_markup=markup,
         )
         code.message_id = sent_message.id
         code.save()
