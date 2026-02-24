@@ -21,14 +21,14 @@ class MongoDBClient:
     def client(self) -> pymongo.MongoClient:
         """Get MongoDB client instance (lazy loading)"""
         if self._client is None:
-            self._client = pymongo.MongoClient(self.connection_string)
+            self._client = pymongo.MongoClient(self.connection_string, maxPoolSize=20, minPoolSize=2)
         return self._client
 
     @property
     def admin_client(self) -> pymongo.MongoClient:
         """Get admin MongoDB client for user management"""
         if self._admin_client is None:
-            self._admin_client = pymongo.MongoClient(self.connection_string)
+            self._admin_client = pymongo.MongoClient(self.connection_string, maxPoolSize=5)
         return self._admin_client
 
     def get_project_database(self, project_id: int):

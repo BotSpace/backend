@@ -79,24 +79,29 @@ class TestChatAPI:
             }
         ]
 
-        mock_messages = [
+        # Aggregation result: one entry per chat_id with last_message, counts
+        mock_chat_agg = [
             {
-                "_id": "507f191e810c19729de860ea",
-                "chat_id": "123456789",
-                "message": "Test message",
-                "message_type": "text",
-                "is_read": False,
+                "_id": "123456789",
+                "last_message": {
+                    "_id": "507f191e810c19729de860ea",
+                    "chat_id": "123456789",
+                    "message": "Test message",
+                    "message_type": "text",
+                    "is_read": False,
+                },
+                "total_messages": 1,
+                "unread_count": 1,
             }
         ]
 
-        # Setup mock repository - we need TWO instances (users_repo and chat_repo)
+        # Setup mock repositories
         mock_users_repo = MagicMock()
-        mock_users_repo.find.return_value = iter(mock_users)  # Return iterator
+        mock_users_repo.find.return_value = mock_users
         mock_users_repo.count.return_value = 1
 
         mock_chat_repo = MagicMock()
-        mock_chat_repo.find.return_value = mock_messages
-        mock_chat_repo.count.side_effect = [1, 1]  # unread_count, total_message_count
+        mock_chat_repo.aggregate.return_value = mock_chat_agg
 
         # MongoRepository is called twice - first for users, then for chat
         mock_mongo_repo.side_effect = [mock_users_repo, mock_chat_repo]

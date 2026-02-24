@@ -110,61 +110,63 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             users_repo = MongoRepository(users_collection, mongo_client)
             chat_repo = MongoRepository(chat_collection, mongo_client)
 
-            # Get all users (without pagination first, to sort by last message)
-            users = users_repo.find(where={}, limit=0)
+            # Single aggregation: get last message, unread count and total per chat_id
+            chat_pipeline = [
+                {"$sort": {"_id": -1}},
+                {
+                    "$group": {
+                        "_id": "$chat_id",
+                        "last_message": {"$first": "$$ROOT"},
+                        "total_messages": {"$sum": 1},
+                        "unread_count": {
+                            "$sum": {
+                                "$cond": {
+                                    "if": {"$eq": [{"$ifNull": ["$is_read", False]}, False]},
+                                    "then": 1,
+                                    "else": 0,
+                                }
+                            }
+                        },
+                    }
+                },
+                {"$sort": {"last_message._id": -1}},
+            ]
+            chat_stats_list = chat_repo.aggregate(chat_pipeline)
+            chat_stats_by_id = {item["_id"]: item for item in chat_stats_list}
 
-            # Get total count
+            # Get all users and total count
+            users = users_repo.find(where={}, limit=0)
             total_users = users_repo.count({})
 
-            # For each user, get their last message and count unread ones
+            # Merge users with chat stats in Python
             result = []
             for user in users:
                 chat_id = user.get("chat_id")
+                stats = chat_stats_by_id.get(chat_id, {})
+                last_message = stats.get("last_message")
 
-                # Get only the last message for this user
-                messages = chat_repo.find(
-                    where={"chat_id": chat_id}, sort=[("_id", -1)], limit=1  # Get only last message
-                )
-
-                # Count unread messages (messages without 'is_read' field or is_read=False)
-                unread_count = chat_repo.count(
-                    {"chat_id": chat_id, "$or": [{"is_read": {"$exists": False}}, {"is_read": False}]}
-                )
-
-                # Get total message count for this user
-                total_message_count = chat_repo.count({"chat_id": chat_id})
-
-                # Convert ObjectId to string for JSON serialization
-                for msg in messages:
-                    if "_id" in msg:
-                        msg["_id"] = str(msg["_id"])
-
-                # Convert user _id to string
+                if last_message and "_id" in last_message:
+                    last_message["_id"] = str(last_message["_id"])
                 if "_id" in user:
                     user["_id"] = str(user["_id"])
 
-                # Get last message timestamp for sorting and the message itself
-                last_message = messages[0] if messages else None
                 last_message_time = last_message.get("_id") if last_message else None
-
                 result.append(
                     {
                         "user": user,
                         "last_message": last_message,
-                        "unread_count": unread_count,
-                        "total_messages": total_message_count,
+                        "unread_count": stats.get("unread_count", 0),
+                        "total_messages": stats.get("total_messages", 0),
                         "last_message_time": last_message_time,
                     }
                 )
 
-            # Sort users by last message time (newest first)
+            # Sort by last message time (newest first), users without messages go last
             result.sort(key=lambda x: x.get("last_message_time") or "", reverse=True)
 
-            # Remove the temporary sorting field and apply pagination
             for item in result:
                 item.pop("last_message_time", None)
 
-            # Apply pagination after sorting
             paginated_result = result[skip : skip + limit] if limit > 0 else result[skip:]
 
             return Response({"users": paginated_result, "total": total_users, "limit": limit, "skip": skip})
@@ -314,6 +316,10 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             # Update messages to mark as read
             result = chat_repo.update(where=query, data={"$set": {"is_read": True, "updated_at": datetime.utcnow()}})
 
+            # Invalidate chat stats cache since read counts changed
+            from django.core.cache import cache
+            cache.delete(f"chat_stats_{project_id}")
+
             return Response({"success": True, "modified_count": result.modified_count})
 
         finally:
@@ -347,6 +353,13 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
         """
         Get chat statistics for a project
         """
+        from django.core.cache import cache
+
+        cache_key = f"chat_stats_{project_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         project, users_collection, chat_collection = self.get_collections(project_id)
 
         if not users_collection or not chat_collection:
@@ -366,14 +379,14 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             # Get unread messages count
             unread_messages = chat_repo.count({"$or": [{"is_read": {"$exists": False}}, {"is_read": False}]})
 
-            return Response(
-                {
-                    "total_users": total_users,
-                    "total_messages": total_messages,
-                    "unread_messages": unread_messages,
-                    "read_messages": total_messages - unread_messages,
-                }
-            )
+            result_data = {
+                "total_users": total_users,
+                "total_messages": total_messages,
+                "unread_messages": unread_messages,
+                "read_messages": total_messages - unread_messages,
+            }
+            cache.set(cache_key, result_data, 120)  # 2 daqiqa
+            return Response(result_data)
 
         finally:
             mongo_client.close()
