@@ -32,7 +32,7 @@ def phone_handler(message: types.Message):
         code = Code.objects.get_or_create_code(user.id)
         markup = types.InlineKeyboardMarkup()
         button = types.InlineKeyboardButton(
-            text="Kirish 🔐", url=f"https://botspace.uz/uz/auth/google?callbackUrl=%2F&code={code.code}"
+            text="Kirish 🔐", url=f"https://botspace.uz/uz/auth?callbackUrl=%2F&code={code.code}"
         )
         markup.add(button)
 
