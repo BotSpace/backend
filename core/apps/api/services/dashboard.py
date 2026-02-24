@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict
 
+from django.core.cache import cache
+
 from core.apps.cms.services.mongo import MongoRepository, MongoService
+
+DASHBOARD_CACHE_TTL = 300  # 5 daqiqa
 
 
 class DashboardService:
@@ -44,19 +48,26 @@ class DashboardService:
         
         return self._repository
 
+    def _cache_key(self, metric: str) -> str:
+        return f"dashboard_{self._collection_model.pk}_{metric}"
+
     def users_count(self) -> int:
         """Get total users count
 
         Returns:
             int: Total users count
         """
+        key = self._cache_key("users_count")
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+
         users = self.repository.aggregate([
             {"$group": {"_id": None, "total": {"$sum": 1}}}
         ])
-        
-        if len(users) <= 0:
-            return 0
-        return users[0].get("total", 0)
+        result = 0 if len(users) <= 0 else users[0].get("total", 0)
+        cache.set(key, result, DASHBOARD_CACHE_TTL)
+        return result
 
     def daily_users(self) -> int:
         """Get today's new users count
@@ -64,18 +75,25 @@ class DashboardService:
         Returns:
             int: Today's users count
         """
+        key = self._cache_key("daily_users")
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+
         utc5 = timezone(timedelta(hours=5))
         today_local = datetime.now(utc5).replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow_local = today_local + timedelta(days=1)
         today = today_local.astimezone(timezone.utc)
         tomorrow = tomorrow_local.astimezone(timezone.utc)
         
-        return self.repository.count({
+        result = self.repository.count({
             "created_at": {
                 "$gte": today,
                 "$lt": tomorrow,
             }
         })
+        cache.set(key, result, DASHBOARD_CACHE_TTL)
+        return result
 
     def get_user_chart(self) -> List[Dict[str, any]]:
         """Get new users chart data grouped by date
@@ -83,6 +101,11 @@ class DashboardService:
         Returns:
             List of dicts with 'date' and 'value' keys
         """
+        key = self._cache_key("user_chart")
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+
         data = self.repository.aggregate([
             {
                 "$project": {
@@ -105,7 +128,9 @@ class DashboardService:
             },
         ])
 
-        return [
+        result = [
             {"date": item.get("_id"), "value": item.get("total")}
             for item in data
         ]
+        cache.set(key, result, DASHBOARD_CACHE_TTL)
+        return result

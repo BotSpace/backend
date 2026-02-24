@@ -32,8 +32,8 @@ class TestMongoDBClient:
         # Access client property
         _ = client.client
 
-        # Now client should be created
-        mock_mongo_client.assert_called_once_with("mongodb://test:27017")
+        # Now client should be created (with connection pool settings)
+        mock_mongo_client.assert_called_once_with("mongodb://test:27017", maxPoolSize=20, minPoolSize=2)
 
     @patch("core.apps.cms.services.mongo.pymongo.MongoClient")
     def test_get_project_database(self, mock_mongo_client):
