@@ -4,6 +4,7 @@ All urls configurations tree
 
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
@@ -38,12 +39,25 @@ urlpatterns += [
 ]
 if env.bool("SILK_ENABLED", False):
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
-if env.str("PROJECT_ENV") == "debug":
-    urlpatterns += [
-        path("schema/", SpectacularAPIView.as_view(), name="schema"),
-        path("swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-        path("redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    ]
+
+urlpatterns += [
+    path(
+        "schema/",
+        staff_member_required(SpectacularAPIView.as_view(), login_url="/admin/login/"),
+        name="schema",
+    ),
+    path(
+        "swagger/",
+        staff_member_required(SpectacularSwaggerView.as_view(url_name="schema"), login_url="/admin/login/"),
+        name="swagger-ui",
+    ),
+    path(
+        "redoc/",
+        staff_member_required(SpectacularRedocView.as_view(url_name="schema"), login_url="/admin/login/"),
+        name="redoc",
+    ),
+]
+
 urlpatterns += [
     re_path("static/(?P<path>.*)", serve, {"document_root": settings.STATIC_ROOT}),
     re_path("media/(?P<path>.*)", serve, {"document_root": settings.MEDIA_ROOT}),
