@@ -147,7 +147,10 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
 
     def perform_create(self, serializer):
-        free_plan = PlanModel.objects.filter(name="free", is_active=True).first()
+        free_plan, _ = PlanModel.objects.get_or_create(
+            name="free",
+            defaults={"is_active": True, "price": 0},
+        )
 
         project = serializer.save(owner=self.request.user)
         project.flow = default_flow()
@@ -203,7 +206,10 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
 
-        free_plan = PlanModel.objects.filter(name="free", is_active=True).first()
+        free_plan, _ = PlanModel.objects.get_or_create(
+            name="free",
+            defaults={"is_active": True, "price": 0},
+        )
 
         instance = ProjectModel.objects.create(
             name=data.get("name"),
