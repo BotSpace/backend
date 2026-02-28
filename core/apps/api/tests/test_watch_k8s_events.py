@@ -23,23 +23,23 @@ class TestWatchK8sEventsCommand:
         mock_apps_api = MagicMock()
         mock_apps_api_class.return_value = mock_apps_api
 
-        # Simulate stream ending after timeout (3 times then raise KeyboardInterrupt)
         call_count = [0]
 
         def stream_side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] >= 3:
                 raise KeyboardInterrupt()
-            return iter([])  # Empty iterator simulates timeout
+            return iter([])
 
-        with patch('kubernetes.watch.Watch.stream', side_effect=stream_side_effect):
+        mock_watch_instance = MagicMock()
+        mock_watch_instance.stream.side_effect = stream_side_effect
+        with patch('kubernetes.watch.Watch', return_value=mock_watch_instance):
             cmd = Command()
             try:
                 cmd.handle(namespace='botmother', label_selector='app=test', verbose=False, timeout=300)
             except KeyboardInterrupt:
                 pass
 
-        # Should have called stream 3 times (2 reconnects)
         assert call_count[0] == 3
 
     @patch('core.apps.api.management.commands.watch_k8s_events.time.sleep')
@@ -60,23 +60,21 @@ class TestWatchK8sEventsCommand:
         def stream_side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
-                # First call raises 410 error
                 raise ApiException(status=410, reason="Gone")
             elif call_count[0] >= 2:
-                # Second call succeeds then we stop
                 raise KeyboardInterrupt()
             return iter([])
 
-        with patch('kubernetes.watch.Watch.stream', side_effect=stream_side_effect):
+        mock_watch_instance = MagicMock()
+        mock_watch_instance.stream.side_effect = stream_side_effect
+        with patch('kubernetes.watch.Watch', return_value=mock_watch_instance):
             cmd = Command()
             try:
                 cmd.handle(namespace='botmother', label_selector='app=test', verbose=False, timeout=300)
             except KeyboardInterrupt:
                 pass
 
-        # Should have reconnected after 410 error
         assert call_count[0] >= 2
-        # Should not have slept on first reconnect (410 errors get immediate retry)
         assert mock_sleep.call_count == 0
 
     @patch('core.apps.api.management.commands.watch_k8s_events.time.sleep')
@@ -98,20 +96,19 @@ class TestWatchK8sEventsCommand:
             call_count[0] += 1
             if call_count[0] >= 4:
                 raise KeyboardInterrupt()
-            # Raise a different error to trigger backoff
             raise ApiException(status=500, reason="Internal Server Error")
 
-        with patch('kubernetes.watch.Watch.stream', side_effect=stream_side_effect):
+        mock_watch_instance = MagicMock()
+        mock_watch_instance.stream.side_effect = stream_side_effect
+        with patch('kubernetes.watch.Watch', return_value=mock_watch_instance):
             cmd = Command()
             try:
                 cmd.handle(namespace='botmother', label_selector='app=test', verbose=False, timeout=300)
             except KeyboardInterrupt:
                 pass
 
-        # Should have called sleep with exponential backoff: 2, 4, 8 seconds
         assert mock_sleep.call_count >= 3
         sleep_calls = [call_args[0][0] for call_args in mock_sleep.call_args_list]
-        # Verify exponential backoff: 2^1=2, 2^2=4, 2^3=8
         assert sleep_calls[0] == 2
         assert sleep_calls[1] == 4
         assert sleep_calls[2] == 8
@@ -252,29 +249,28 @@ class TestWatchK8sEventsCommand:
         cmd._process_event(event, verbose=False)
         # Test passes if no exception is raised
 
-    @patch('kubernetes.watch.Watch.stop')
     @patch('kubernetes.config.load_incluster_config')
     @patch('kubernetes.client.AppsV1Api')
     @patch('core.apps.api.management.commands.watch_k8s_events.get_namespace',
            return_value='botmother')
     def test_watch_stops_properly(
-            self, mock_get_namespace, mock_apps_api_class, mock_load_config, mock_watch_stop):
+            self, mock_get_namespace, mock_apps_api_class, mock_load_config):
         """Test that watch is stopped properly even on errors"""
         from core.apps.api.management.commands.watch_k8s_events import Command
 
         mock_apps_api = MagicMock()
         mock_apps_api_class.return_value = mock_apps_api
 
-        # Simulate an error during streaming
         def stream_side_effect(*args, **kwargs):
             raise RuntimeError("Test error")
 
-        with patch('kubernetes.watch.Watch.stream', side_effect=stream_side_effect):
+        mock_watch_instance = MagicMock()
+        mock_watch_instance.stream.side_effect = stream_side_effect
+        with patch('kubernetes.watch.Watch', return_value=mock_watch_instance):
             cmd = Command()
             try:
                 cmd._watch_events('botmother', 'app=test', False, 300)
             except RuntimeError:
                 pass
 
-        # Watch should have been stopped
-        mock_watch_stop.assert_called_once()
+        mock_watch_instance.stop.assert_called_once()
