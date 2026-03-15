@@ -69,6 +69,11 @@ class FieldModel(AbstractBaseModel):
     type = models.CharField(_("name"), max_length=255, default=FieldType.TEXT.value, choices=FieldType.choices)
     required = models.BooleanField(_("required"), default=False)
     default = models.CharField(_("default"), max_length=255, null=True, blank=True)
+    is_primary = models.BooleanField(
+        _("is primary"),
+        default=False,
+        help_text=_("Marks this field as the primary display field for the collection"),
+    )
     relation_collection = models.ForeignKey(
         "CollectionModel",
         on_delete=models.SET_NULL,

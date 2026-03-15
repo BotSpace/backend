@@ -13,14 +13,15 @@ class BaseFieldSerializer(serializers.ModelSerializer):
             "type",
             "required",
             "default",
+            "is_primary",
             "relation_collection",
         ]
-    
+
     def validate(self, data):
         """Validate that relation_collection is set only for RELATION type"""
         field_type = data.get('type')
         relation_collection = data.get('relation_collection')
-        
+
         if field_type == FieldType.RELATION.value:
             if not relation_collection:
                 raise serializers.ValidationError({
@@ -29,7 +30,7 @@ class BaseFieldSerializer(serializers.ModelSerializer):
         else:
             # Clear relation_collection for non-relation fields
             data['relation_collection'] = None
-        
+
         return data
 
 
@@ -39,7 +40,7 @@ class ListFieldSerializer(BaseFieldSerializer):
 
 class RetrieveFieldSerializer(BaseFieldSerializer):
     relation_collection = serializers.CharField(source='relation_collection.name', read_only=True, allow_null=True)
-    
+
     class Meta(BaseFieldSerializer.Meta):
         fields = [
             "id",
@@ -47,7 +48,8 @@ class RetrieveFieldSerializer(BaseFieldSerializer):
             "type",
             "required",
             "default",
-            "relation_collection",  # Now returns name instead of ID
+            "is_primary",
+            "relation_collection",  # Returns name instead of ID
         ]
 
 
@@ -59,5 +61,6 @@ class CreateFieldSerializer(BaseFieldSerializer):
             "type",
             "required",
             "default",
+            "is_primary",
             "relation_collection",
         ]

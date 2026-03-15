@@ -110,6 +110,10 @@ class UpdateCollectionSerializer(BaseCollectionSerializer):
                         defaults["type"] = field.get("type", FieldType.TEXT.value)
                     if "default" in field:
                         defaults["default"] = field.get("default", None)
+                    if "is_primary" in field:
+                        defaults["is_primary"] = field.get("is_primary", False)
+                    if "relation_collection" in field:
+                        defaults["relation_collection"] = field["relation_collection"]
                     FieldModel.objects.update_or_create(collection=instance, name=field["name"], defaults=defaults)
                 FieldModel.objects.filter(collection=instance).exclude(name__in=[f["name"] for f in fields]).delete()
         return super().update(instance, validated_data)
