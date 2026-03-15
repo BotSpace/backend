@@ -31,6 +31,7 @@ from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
+from core.throttle.ip_throttle import DebugContainerThrottle, ReleaseCreateThrottle
 from core.apps.api.services.webhook import set_webhook
 from core.apps.cms.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
@@ -319,7 +320,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             404: _error_response("Loyiha topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
         },
     )
-    @action(methods=["GET"], detail=True, url_name="debug", url_path="debug")
+    @action(methods=["GET"], detail=True, url_name="debug", url_path="debug", throttle_classes=[DebugContainerThrottle])
     def debug(self, request, pk):
         instance = self.get_object()
         debug = instance.debug
@@ -357,6 +358,11 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
                 raise exceptions.ValidationError(detail={"project": [_("project is required")]})
             queryset = queryset.filter(project_id=project_id)
         return queryset
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [ReleaseCreateThrottle()]
+        return super().get_throttles()
 
     @extend_schema(
         summary="Releaselar ro'yxati",
