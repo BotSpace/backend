@@ -9,6 +9,9 @@ volumes:
   pg_data: null
   pycache: null
   mongo_data: null
+  cms_mongo_data: null
+  template_pg_data: null
+  payment_pg_data: null
 
 services:
   nginx:
@@ -80,3 +83,108 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  # -------------------------------------------------------------------------
+  # Go microservices
+  # -------------------------------------------------------------------------
+
+  # CMS service — uses its own MongoDB database
+  cms-mongo:
+    networks:
+      - django
+    image: mongo:7
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${CMS_MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${CMS_MONGO_PASSWORD:-admin123}
+    volumes:
+      - cms_mongo_data:/data/db
+
+  cms-service:
+    networks:
+      - django
+    build:
+      context: ./services/cms-service
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HTTP_PORT: "8081"
+      MONGO_URI: mongodb://${CMS_MONGO_USER:-admin}:${CMS_MONGO_PASSWORD:-admin123}@cms-mongo:27017
+      MONGO_DB: cms_service
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      STREAM_GROUP: cms-group
+    ports:
+      - "8081:8081"
+    depends_on:
+      - cms-mongo
+      - redis
+
+  # Template service — uses its own PostgreSQL database
+  template-db:
+    networks:
+      - django
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: template_service
+      POSTGRES_USER: ${TEMPLATE_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEMPLATE_DB_PASSWORD:-2309}
+    volumes:
+      - template_pg_data:/var/lib/postgresql/data
+
+  template-service:
+    networks:
+      - django
+    build:
+      context: ./services/template-service
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HTTP_PORT: "8082"
+      DATABASE_URL: host=template-db user=${TEMPLATE_DB_USER:-postgres} password=${TEMPLATE_DB_PASSWORD:-2309} dbname=template_service sslmode=disable
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      STREAM_GROUP: template-group
+    ports:
+      - "8082:8082"
+    depends_on:
+      - template-db
+      - redis
+
+  # Payment service — uses its own PostgreSQL database
+  payment-db:
+    networks:
+      - django
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: payment_service
+      POSTGRES_USER: ${PAYMENT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-2309}
+    volumes:
+      - payment_pg_data:/var/lib/postgresql/data
+
+  payment-service:
+    networks:
+      - django
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HTTP_PORT: "8083"
+      DATABASE_URL: host=payment-db user=${PAYMENT_DB_USER:-postgres} password=${PAYMENT_DB_PASSWORD:-2309} dbname=payment_service sslmode=disable
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      STREAM_GROUP: payment-group
+      CLICK_SERVICE_ID: ${CLICK_SERVICE_ID:-}
+      CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID:-}
+      PAYME_ID: ${PAYME_ID:-}
+      PAYTECH_API_KEY: ${PAYTECH_API_KEY:-}
+    ports:
+      - "8083:8083"
+    depends_on:
+      - payment-db
+      - redis
+
