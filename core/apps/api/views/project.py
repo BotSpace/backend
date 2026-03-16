@@ -28,6 +28,11 @@ from core.apps.api.serializers.project import (
 )
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListDebugSerializer
 from core.apps.api.serializers.project.project import CreateProjectFromTemplate
+from core.apps.api.serializers.project.flow import (
+    UpdateEncryptedFlowSerializer,
+    EncryptedFlowResponseSerializer,
+)
+from core.apps.api.services.encryption import decrypt_flow_payload, encrypt_flow_payload
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
@@ -57,6 +62,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         "debug": CreateDebugSerializer,
         "info": ListDebugSerializer,
         "create_from_template": CreateProjectFromTemplate,
+        "update_encrypted_flow": UpdateEncryptedFlowSerializer,
+        "get_encrypted_flow": EncryptedFlowResponseSerializer,
     }
 
     def __init__(self, **kwargs) -> None:
@@ -336,6 +343,65 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug.status = "initializing"
         debug.save()
         return Response(data={"detail": _("Updated")})
+
+    @extend_schema(
+        summary="Shifrlangan flow ma'lumotlarini yangilash",
+        description="Loyiha flowini shifrlangan ko'rinishda yangilaydi. Ma'lumot RSA-OAEP + AES-256-GCM bilan shifrlangan bo'lishi kerak.",
+        request=UpdateEncryptedFlowSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Flow muvaffaqiyatli yangilandi",
+                response={"type": "object", "properties": {"detail": {"type": "string", "example": "Flow updated"}}},
+            ),
+            400: OpenApiResponse(
+                description="Shifrlash xatosi yoki noto'g'ri ma'lumot",
+            ),
+        },
+    )
+    @action(methods=["POST"], detail=True, url_path="update-encrypted-flow", url_name="update-encrypted-flow")
+    def update_encrypted_flow(self, request, pk):
+        """Update project flow with encrypted data"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Decrypt the payload
+            encrypted_payload = serializer.validated_data["payload"]
+            decrypted_flow = decrypt_flow_payload(encrypted_payload)
+            
+            # Update the project flow
+            instance = self.get_object()
+            instance.flow = decrypted_flow
+            instance.save()
+            
+            return Response(data={"detail": _("Flow updated")})
+        except Exception:
+            # Don't expose sensitive error details
+            raise exceptions.ValidationError(detail={"payload": "Invalid encrypted data or decryption failed"})
+
+    @extend_schema(
+        summary="Shifrlangan flow ma'lumotlarini olish",
+        description="Loyiha flowini shifrlangan ko'rinishda qaytaradi. Backend RSA-OAEP + AES-256-GCM yordamida ma'lumotni shifrlaydi.",
+        responses={
+            200: EncryptedFlowResponseSerializer,
+            400: OpenApiResponse(
+                description="Shifrlash xatosi",
+            ),
+        },
+    )
+    @action(methods=["GET"], detail=True, url_path="get-encrypted-flow", url_name="get-encrypted-flow")
+    def get_encrypted_flow(self, request, pk):
+        """Get project flow as encrypted data"""
+        try:
+            instance = self.get_object()
+            
+            # Encrypt the flow data
+            encrypted_payload = encrypt_flow_payload(instance.flow)
+            
+            return Response(data={"payload": encrypted_payload})
+        except Exception:
+            # Don't expose sensitive error details
+            raise exceptions.ValidationError(detail={"error": "Encryption failed"})
 
 
 @extend_schema(tags=["relase"])
