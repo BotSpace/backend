@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
 // Config holds all configuration for the template service.
 type Config struct {
@@ -12,12 +15,23 @@ type Config struct {
 }
 
 // Load reads configuration from environment variables with sensible defaults.
+// It terminates the process if mandatory secrets are not provided.
 func Load() *Config {
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		log.Fatal("[template] JWT_SECRET environment variable is required")
+	}
+
+	dbURL := getEnv("DATABASE_URL", "")
+	if dbURL == "" {
+		log.Fatal("[template] DATABASE_URL environment variable is required")
+	}
+
 	return &Config{
 		HTTPPort:    getEnv("HTTP_PORT", "8082"),
-		DBURL:       getEnv("DATABASE_URL", "host=template-db user=postgres password=2309 dbname=template_service sslmode=disable"),
+		DBURL:       dbURL,
 		RedisURL:    getEnv("REDIS_URL", "redis://redis:6379"),
-		JWTSecret:   getEnv("JWT_SECRET", "secret"),
+		JWTSecret:   jwtSecret,
 		StreamGroup: getEnv("STREAM_GROUP", "template-group"),
 	}
 }

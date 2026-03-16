@@ -169,11 +169,15 @@ func (c *Consumer) handlePaymentSuccess(ctx context.Context, payload map[string]
 	log.Printf("[streams] order %d confirmed via payment_success", orderID)
 
 	// Publish order_confirmed back to the stream
-	if userIDRaw, ok := payload["user_id"]; ok {
-		if templateIDRaw, ok := payload["template_id"]; ok {
-			userID := uint(userIDRaw.(float64))
-			templateID := uint(templateIDRaw.(float64))
-			_ = c.producer.PublishOrderConfirmed(ctx, orderID, userID, templateID)
+	userIDRaw, userOK := payload["user_id"]
+	templateIDRaw, templateOK := payload["template_id"]
+	if userOK && templateOK {
+		userIDFloat, uok := userIDRaw.(float64)
+		templateIDFloat, tok := templateIDRaw.(float64)
+		if uok && tok {
+			_ = c.producer.PublishOrderConfirmed(ctx, orderID, uint(userIDFloat), uint(templateIDFloat))
+		} else {
+			log.Printf("[streams] payment_success: unexpected type for user_id or template_id")
 		}
 	}
 }

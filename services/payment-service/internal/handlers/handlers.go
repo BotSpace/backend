@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -197,14 +198,18 @@ func (h *ClickWebhookHandler) Update(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		_ = h.producer.PublishPaymentSuccess(c.Request.Context(), txn.ID, txn.UserID, txn.Amount, txn.OrderID)
+		if err := h.producer.PublishPaymentSuccess(c.Request.Context(), txn.ID, txn.UserID, txn.Amount, txn.OrderID); err != nil {
+			log.Printf("[click] failed to publish payment_success for txn %d: %v", txn.ID, err)
+		}
 	} else {
 		// Payment failed/cancelled
 		if err := h.repo.SubtractBalance(txn.UserID, txn.Amount, "click payment cancelled"); err != nil {
-			// Non-fatal: balance may already be 0
-			_ = err
+			// Non-fatal: balance may already be 0, but log for observability
+			log.Printf("[click] SubtractBalance for txn %d (user %d): %v", txn.ID, txn.UserID, err)
 		}
-		_ = h.producer.PublishPaymentFailed(c.Request.Context(), txn.ID, txn.UserID, txn.Amount)
+		if err := h.producer.PublishPaymentFailed(c.Request.Context(), txn.ID, txn.UserID, txn.Amount); err != nil {
+			log.Printf("[click] failed to publish payment_failed for txn %d: %v", txn.ID, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"error": 0, "error_note": "Success"})
@@ -263,7 +268,9 @@ func (h *PaymeWebhookHandler) handleSuccess(c *gin.Context, params map[string]in
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	_ = h.producer.PublishPaymentSuccess(c.Request.Context(), txn.ID, txn.UserID, txn.Amount, txn.OrderID)
+	if err := h.producer.PublishPaymentSuccess(c.Request.Context(), txn.ID, txn.UserID, txn.Amount, txn.OrderID); err != nil {
+		log.Printf("[payme] failed to publish payment_success for txn %d: %v", txn.ID, err)
+	}
 	c.JSON(http.StatusOK, gin.H{"result": map[string]interface{}{"transaction": txn.ID}})
 }
 
@@ -278,8 +285,11 @@ func (h *PaymeWebhookHandler) handleCancel(c *gin.Context, params map[string]int
 	}
 
 	if err := h.repo.SubtractBalance(txn.UserID, txn.Amount, "payme payment cancelled"); err != nil {
-		_ = err
+		// Non-fatal: balance may already be 0, but log for observability
+		log.Printf("[payme] SubtractBalance for txn %d (user %d): %v", txn.ID, txn.UserID, err)
 	}
-	_ = h.producer.PublishPaymentFailed(c.Request.Context(), txn.ID, txn.UserID, txn.Amount)
+	if err := h.producer.PublishPaymentFailed(c.Request.Context(), txn.ID, txn.UserID, txn.Amount); err != nil {
+		log.Printf("[payme] failed to publish payment_failed for txn %d: %v", txn.ID, err)
+	}
 	c.JSON(http.StatusOK, gin.H{"result": map[string]interface{}{"transaction": txn.ID}})
 }
