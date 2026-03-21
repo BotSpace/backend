@@ -47,6 +47,9 @@ def ProjectSignal(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=ProjectModel)
 def ProjectDeleteSignal(sender, instance, **kwargs):
     """Delete MongoDB database and user when project is deleted"""
+    if getattr(settings, "TESTING", False):
+        return
+
     from core.apps.cms.services.mongo import MongoDBClient
 
     try:
