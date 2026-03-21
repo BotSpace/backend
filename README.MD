@@ -1,3 +1,4 @@
+[![Build and Push Docker Image](https://github.com/BotSpace/backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/BotSpace/backend/actions/workflows/deploy.yml)
 # JST-Django Template Documentation
 
 **Language:** [O'zbek](README.MD) | English
