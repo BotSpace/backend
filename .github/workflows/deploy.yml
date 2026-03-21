@@ -32,7 +32,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: redis
+        image: redis:7
         options: >-
           --health-cmd "redis-cli ping || exit 1"
           --health-interval 10s
@@ -40,6 +40,16 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
+
+      mongodb:
+        image: mongo:7
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
 
     steps:
       - name: Checkout code
@@ -74,6 +84,7 @@ jobs:
             -e DB_PASSWORD=postgres \
             -e REDIS_URL=redis://localhost:6379 \
             -e REDIS_HOST=localhost \
+            -e MONGO_URL=mongodb://localhost:27017 \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
             ${{ env.PROJECT_NAME }}:test \
             sh -c "python manage.py migrate && pytest -v"
