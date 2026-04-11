@@ -1,4 +1,6 @@
+from datetime import timedelta
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from core.apps.payment.services.balance import subtract_balance
 from core.apps.api.models import ProjectPlanModel
 from core.apps.api.enums.plan import PlanStatus
@@ -485,6 +487,8 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
     def perform_create(self, serializer):
         project = serializer.validated_data.get("project")
         plan = serializer.validated_data.pop("_plan", None)
+        months = serializer.validated_data.pop("_months", 1)
+        total_price = serializer.validated_data.pop("_total_price", 0)
 
         set_webhook(project, "release")
         relase = RelaseModel.objects.filter(project=project).last()
@@ -492,12 +496,16 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
 
         # Birinchi release: plan biriktiriladi va kerak bo'lsa pul yechiladi
         if plan is not None:
-            if plan.price > 0:
+            if total_price > 0:
                 subtract_balance(
-                    self.request.user, plan.price, comment=f"Tarif to'lovi: {plan.get_name_display()}"
+                    self.request.user, total_price,
+                    comment=f"Tarif to'lovi: {plan.get_name_display()} ({months} oy)"
                 )
-            project.plan_subscription.plan = plan
-            project.plan_subscription.save(update_fields=["plan"])
+            subscription = project.plan_subscription
+            subscription.plan = plan
+            subscription.started_at = timezone.now()
+            subscription.expires_at = timezone.now() + timedelta(days=months * 30)
+            subscription.save(update_fields=["plan", "started_at", "expires_at"])
 
         serializer.save(version=version + 1, flow=project.flow)
 
@@ -521,7 +529,15 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        key = serializer.validated_data["key"]
+        project = serializer.validated_data["project"]
+        value = serializer.validated_data["value"]
+        obj, _ = EnviromentModel.objects.update_or_create(
+            key=key,
+            project=project,
+            defaults={"value": value, "user": self.request.user},
+        )
+        serializer.instance = obj
 
     def get_queryset(self):
         project = self.request.query_params.get("project")

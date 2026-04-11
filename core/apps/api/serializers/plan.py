@@ -4,6 +4,7 @@ Plan serializers
 """
 from rest_framework import serializers
 from core.apps.api.models import PlanModel, ProjectPlanModel
+from core.apps.api.serializers.project.relase import BILLING_MONTHS_DISCOUNTS, calculate_total_price
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -91,6 +92,7 @@ class ProjectPlanUpgradeSerializer(serializers.Serializer):
     """Tarif yangilash serializer"""
 
     plan_id = serializers.IntegerField(required=True)
+    months = serializers.IntegerField(required=False, default=1)
 
     def validate_plan_id(self, value):
         """Validate plan exists and is active"""
@@ -100,15 +102,22 @@ class ProjectPlanUpgradeSerializer(serializers.Serializer):
         except PlanModel.DoesNotExist:
             raise serializers.ValidationError("Invalid or inactive plan")
 
+    def validate_months(self, value):
+        if value not in BILLING_MONTHS_DISCOUNTS:
+            raise serializers.ValidationError(
+                "Noto'g'ri muddat. Quyidagilardan birini tanlang: 1, 3, 6, 12."
+            )
+        return value
+
     def validate(self, attrs):
         """Validate upgrade is allowed"""
         plan = attrs["plan_id"]
+        months = attrs.get("months", 1)
         project_plan = self.context.get("project_plan")
 
         if not project_plan:
             raise serializers.ValidationError("Project plan not found")
 
-        # Check if it's actually an upgrade
         current_plan = project_plan.plan
 
         if plan.id == current_plan.id:
@@ -123,4 +132,5 @@ class ProjectPlanUpgradeSerializer(serializers.Serializer):
                 )
 
         attrs["plan"] = plan
+        attrs["total_price"] = calculate_total_price(plan.price, months)
         return attrs

@@ -3,6 +3,7 @@
 Plan API Views
 """
 import logging
+from datetime import timedelta
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -80,30 +81,36 @@ class ProjectPlanViewSet(viewsets.ViewSet):
 
         # Perform upgrade
         new_plan = serializer.validated_data["plan"]
+        months = serializer.validated_data.get("months", 1)
+        total_price = serializer.validated_data["total_price"]
         old_plan = project_plan.plan
 
-        if request.user.balance < new_plan.price:
-            return error_response({"detail": "balanceda yetarli mablag' mavjud emas"}, 403)
+        if request.user.balance < total_price:
+            return error_response({"detail": "Balanceda yetarli mablag' mavjud emas"}, 403)
 
         project_plan.plan = new_plan
 
         # Reset status if upgrading from suspended/grace period
         if project_plan.status in [PlanStatus.SUSPENDED, PlanStatus.GRACE_PERIOD]:
-            # Check if new plan can handle current users
             if new_plan.max_users >= project_plan.current_users:
                 project_plan.status = PlanStatus.ACTIVE
                 project_plan.limit_exceeded_at = None
                 project_plan.grace_period_notified = False
 
         project_plan.started_at = timezone.now()
+        project_plan.expires_at = timezone.now() + timedelta(days=months * 30)
         project_plan.save()
 
         logging.info(
-            f"Project {project.id} plan upgraded: " f"{old_plan.get_name_display()} → {new_plan.get_name_display()}"
+            f"Project {project.id} plan upgraded: "
+            f"{old_plan.get_name_display()} → {new_plan.get_name_display()} ({months} oy)"
         )
 
         response_serializer = ProjectPlanSerializer(project_plan)
-        subtract_balance(request.user, new_plan.price, "Tarif yangilandi")
+        subtract_balance(
+            request.user, total_price,
+            f"Tarif yangilandi: {new_plan.get_name_display()} ({months} oy)"
+        )
         return success_response(
             {
                 "message": "Plan successfully upgraded",

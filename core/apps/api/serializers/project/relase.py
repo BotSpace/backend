@@ -3,6 +3,16 @@ from rest_framework import serializers
 from core.apps.api.enums.plan import PlanType
 from core.apps.api.models import PlanModel, RelaseModel
 
+# Billing period discounts (matches frontend BILLING_PERIODS)
+BILLING_MONTHS_DISCOUNTS = {1: 0, 3: 12, 6: 20, 12: 30}
+
+
+def calculate_total_price(monthly_price, months):
+    """Calculate total price with discount for a given billing period."""
+    discount = BILLING_MONTHS_DISCOUNTS.get(months, 0)
+    discounted_monthly = round(float(monthly_price) * (1 - discount / 100))
+    return discounted_monthly * months
+
 
 class BaseRelaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,10 +50,24 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
             "Loyihada allaqachon release bo'lsa, bu maydon e'tiborga olinmaydi."
         ),
     )
+    months = serializers.IntegerField(
+        required=False,
+        write_only=True,
+        default=1,
+        help_text="To'lov muddati (oy): 1, 3, 6, yoki 12.",
+    )
+
+    def validate_months(self, value):
+        if value not in BILLING_MONTHS_DISCOUNTS:
+            raise serializers.ValidationError(
+                "Noto'g'ri muddat. Quyidagilardan birini tanlang: 1, 3, 6, 12."
+            )
+        return value
 
     def validate(self, attrs):
         project = attrs.get("project")
         plan_id = attrs.get("plan_id")
+        months = attrs.pop("months", 1)
 
         # Loyihada allaqachon release bor bo'lsa, plan so'ralmaydi
         has_release = RelaseModel.objects.filter(project=project).exists()
@@ -73,17 +97,21 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
                 {"plan_id": "Siz allaqachon bepul tarifdan foydalangansiz. Pulli tarif tanlash majburiy"}
             )
 
-        if plan.price > 0:
-            if user.balance < plan.price:
+        total_price = calculate_total_price(plan.price, months)
+
+        if total_price > 0:
+            if user.balance < total_price:
                 raise serializers.ValidationError(
                     {
                         "plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(
-                            plan.price, user.balance
+                            total_price, user.balance
                         )
                     }
                 )
 
         attrs["_plan"] = plan
+        attrs["_months"] = months
+        attrs["_total_price"] = total_price
         return attrs
 
     class Meta(BaseRelaseSerializer.Meta):
@@ -92,5 +120,6 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
             "project",
             "version",
             "plan_id",
+            "months",
         ]
         extra_kwargs = {"version": {"read_only": True}}
