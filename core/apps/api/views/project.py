@@ -489,6 +489,7 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
         plan = serializer.validated_data.pop("_plan", None)
         months = serializer.validated_data.pop("_months", 1)
         total_price = serializer.validated_data.pop("_total_price", 0)
+        serializer.validated_data.pop("plan_id", None)  # model field emas
 
         set_webhook(project, "release")
         relase = RelaseModel.objects.filter(project=project).last()
