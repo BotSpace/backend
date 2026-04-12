@@ -6,7 +6,7 @@ from ..managers import UserManager
 
 
 class User(auth_models.AbstractUser):
-    phone = models.CharField(max_length=255, unique=True)
+    phone = models.CharField(max_length=255, unique=True, blank=True, default="")
     username = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -30,4 +30,4 @@ class User(auth_models.AbstractUser):
         )[0]
 
     def __str__(self):
-        return self.phone
+        return self.phone or self.email or f"User #{self.pk}"

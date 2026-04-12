@@ -1,13 +1,23 @@
+from django import forms
 from django.contrib.auth import admin
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
 
+class CustomUserChangeForm(UserChangeForm):
+    """Phone fieldi bo'sh bo'lishi mumkin bo'lgan foydalanuvchilar uchun."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "phone" in self.fields:
+            self.fields["phone"].required = False
+
+
 class CustomUserAdmin(admin.UserAdmin, ModelAdmin):
     change_password_form = AdminPasswordChangeForm
     add_form = UserCreationForm
-    form = UserChangeForm
+    form = CustomUserChangeForm
     list_display = (
         "first_name",
         "last_name",
