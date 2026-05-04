@@ -6,6 +6,11 @@ def convert_empty_phone_to_null(apps, schema_editor):
     User.objects.filter(phone="").update(phone=None)
 
 
+def convert_null_phone_to_empty(apps, schema_editor):
+    User = apps.get_model("accounts", "User")
+    User.objects.filter(phone__isnull=True).update(phone="")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,7 +18,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(convert_empty_phone_to_null, migrations.RunPython.noop),
+        migrations.RunPython(convert_empty_phone_to_null, convert_null_phone_to_empty),
         migrations.AlterField(
             model_name="user",
             name="phone",
