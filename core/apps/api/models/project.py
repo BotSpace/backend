@@ -8,11 +8,12 @@ from django_core.models import AbstractBaseModel
 from model_bakery import baker
 
 from core.apps.api.enums.container import ContainerStatusEnum
+from core.apps.shared.models import SoftDeleteModel
 
 User = get_user_model()
 
 
-class ProjectModel(AbstractBaseModel):
+class ProjectModel(SoftDeleteModel):
     name = models.CharField(verbose_name=_("name"), max_length=255)
     description = models.TextField(null=True, blank=True)
     username = models.CharField(max_length=255, null=True, blank=True)

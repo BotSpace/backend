@@ -1,14 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django_core.models import AbstractBaseModel
 from model_bakery import baker
+
+from core.apps.shared.models import SoftDeleteModel
 
 
 User = get_user_model()
 
 
-class HistoryModel(AbstractBaseModel):
+class HistoryModel(SoftDeleteModel):
     TYPES = (
         ("income", "income"),
         ("expense", "expense"),

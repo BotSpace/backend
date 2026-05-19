@@ -1,14 +1,15 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django_core.models import AbstractBaseModel
 from model_bakery import baker
-from django.contrib.auth import get_user_model
+
+from core.apps.shared.models import SoftDeleteModel
 
 
 User = get_user_model()
 
 
-class TransactionModel(AbstractBaseModel):
+class TransactionModel(SoftDeleteModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=20, decimal_places=2)
     status = models.BooleanField(default=False)
