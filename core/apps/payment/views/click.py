@@ -5,6 +5,8 @@ from core.apps.payment.services.balance import add_balance, subtract_balance
 
 
 class ClickWebhookAPIView(ClickWebhook):
+    # DRF auth disabled — signature is verified by ClickWebhook.check_auth()
+    # using CLICK_SERVICE_ID + CLICK_SECRET_KEY from settings.
     permission_classes = []
 
     def successfully_payment(self, params):

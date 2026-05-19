@@ -1,4 +1,4 @@
-import traceback
+import logging
 from urllib.parse import parse_qs
 
 from channels.auth import AuthMiddlewareStack
@@ -9,6 +9,8 @@ from django.contrib.auth.models import AnonymousUser
 from django.db import close_old_connections
 from jwt import DecodeError, ExpiredSignatureError, InvalidSignatureError
 from jwt import decode as jwt_decode
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -28,15 +30,11 @@ class JWTAuthMiddleware:
                 scope["user"] = user
             else:
                 scope["user"] = AnonymousUser()
-        except (
-            InvalidSignatureError,
-            KeyError,
-            ExpiredSignatureError,
-            DecodeError,
-        ):
-            traceback.print_exc()
-        except Exception as e:
-            print(e)
+        except (InvalidSignatureError, KeyError, ExpiredSignatureError, DecodeError) as exc:
+            logger.warning("WebSocket JWT auth rejected: %s", exc.__class__.__name__)
+            scope["user"] = AnonymousUser()
+        except Exception:
+            logger.exception("Unexpected WebSocket auth error")
             scope["user"] = AnonymousUser()
         return await self.app(scope, receive, send)
 

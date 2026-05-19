@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Type
 
@@ -29,6 +30,8 @@ from rest_framework.permissions import IsAuthenticated
 from ..serializers import ChangePasswordSerializer
 
 from .. import models
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(tags=["register"])
@@ -79,9 +82,10 @@ class RegisterView(BaseViewSetMixin, GenericViewSet, UserService):
                     status=status.HTTP_202_ACCEPTED,
                 )
         except exceptions.SmsException as e:
-            raise PermissionDenied(e)  # Response exception for APIException
-        except Exception as e:
-            raise PermissionDenied(e)  # Api exception for APIException
+            raise PermissionDenied(str(e))
+        except Exception:
+            logger.exception("Confirm failed for phone=%s", phone)
+            raise PermissionDenied(_("Tasdiqlash amalga oshmadi"))
 
     @action(methods=["POST"], detail=False, url_path="resend")
     def resend(self, rq: Type[request.Request]):
@@ -138,8 +142,9 @@ class ResetPasswordView(BaseViewSetMixin, GenericViewSet, UserService):
             )
         except exceptions.SmsException as e:
             raise PermissionDenied(str(e))
-        except Exception as e:
-            raise PermissionDenied(str(e))
+        except Exception:
+            logger.exception("Reset confirm failed for phone=%s", phone)
+            raise PermissionDenied(_("Tasdiqlash amalga oshmadi"))
 
     @action(methods=["POST"], detail=False, url_path="reset-password-set")
     def reset_password_set(self, request):

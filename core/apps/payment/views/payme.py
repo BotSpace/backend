@@ -6,6 +6,8 @@ from core.apps.payment.services.balance import add_balance, subtract_balance
 
 
 class PaymeCallBackAPIView(PaymeWebHookAPIView):
+    # DRF auth disabled — signature is verified by PaymeWebHookAPIView.check_authorize()
+    # using PAYME_ID + PAYME_KEY from settings.
     permission_classes = [AllowAny]
 
     def handle_successfully_payment(self, params, result, *args, **kwargs):
@@ -28,6 +30,6 @@ class PaymeCallBackAPIView(PaymeWebHookAPIView):
             transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
         except TransactionModel.DoesNotExist:
             raise ValueError("Transaction not found")
-        subtract_balance(transaction.user, transaction.amount, "Clickdan to'lov bekor qilindi")
+        subtract_balance(transaction.user, transaction.amount, "Paymeda to'lov bekor qilindi")
         transaction.status = True
         transaction.save()

@@ -13,8 +13,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.debug.sync_debug",
         "schedule": crontab(minute="*/5"),
     },
-    # "proccess_payment": {
-    #     "task": "core.apps.payment.tasks.payment.proccess_payment",
+    # "process_resource_usage": {
+    #     "task": "payment.process_resource_usage",
     #     "schedule": crontab(minute="0", hour="*/1"),
     # },
     "monitor_plan_limits": {

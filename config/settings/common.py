@@ -1,7 +1,7 @@
 # type: ignore
 import os
 import pathlib
-from typing import List, Union
+from typing import List
 
 from config.conf import *  # noqa
 from config.conf.apps import APPS
@@ -18,7 +18,7 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = env.str("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DEBUG")
 
-ALLOWED_HOSTS: Union[List[str]] = ["*"]
+ALLOWED_HOSTS: List[str] = []
 
 if env.bool("PROTOCOL_HTTPS", False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -135,7 +135,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "resources/static"),
 ]
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in env.str("CORS_ALLOWED_ORIGINS", default="").split(",") if origin.strip()]
+CORS_ALLOW_CREDENTIALS = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, "resources/staticfiles")
 VITE_APP_DIR = os.path.join(BASE_DIR, "resources/static/vite")

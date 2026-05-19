@@ -1,40 +1,57 @@
+from decimal import Decimal
+from typing import Optional, Union
+
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import F
 
 from core.apps.payment.models.history import HistoryModel
 
 
 User = get_user_model()
 
+Amount = Union[int, float, str, Decimal]
 
-def add_balance(user, amount, comment=None):
-    """User hisobiga pul qo'shish
+
+@transaction.atomic
+def add_balance(user, amount: Amount, comment: Optional[str] = None) -> None:
+    """User hisobiga pulni atomic tarzda qo'shadi.
+
+    F() expression yordamida race condition'lardan himoyalangan.
 
     Args:
-        user ([TODO:type]): [TODO:description]
-        amount ([TODO:type]): [TODO:description]
+        user: User instansiyasi (yangilanadi).
+        amount: qo'shiladigan summa.
+        comment: tarix yozuvi izohi.
     """
-    user.balance += int(amount)
-    user.save()
+    delta = int(Decimal(amount))
+    User.objects.filter(pk=user.pk).update(balance=F("balance") + delta)
+    user.refresh_from_db(fields=["balance"])
     HistoryModel.objects.create(
         user=user,
-        amount=amount,
+        amount=Decimal(amount),
         type="income",
-        comment=None,
+        comment=comment,
     )
 
 
-def subtract_balance(user, amount, comment=None):
-    """user hisobidan pul yechish
+@transaction.atomic
+def subtract_balance(user, amount: Amount, comment: Optional[str] = None) -> None:
+    """User hisobidan pulni atomic tarzda yechadi.
+
+    F() expression yordamida race condition'lardan himoyalangan.
 
     Args:
-        user ([TODO:type]): [TODO:description]
-        amount ([TODO:type]): [TODO:description]
+        user: User instansiyasi (yangilanadi).
+        amount: yechiladigan summa.
+        comment: tarix yozuvi izohi.
     """
-    user.balance -= int(amount)
-    user.save()
+    delta = int(Decimal(amount))
+    User.objects.filter(pk=user.pk).update(balance=F("balance") - delta)
+    user.refresh_from_db(fields=["balance"])
     HistoryModel.objects.create(
         user=user,
-        amount=amount,
+        amount=Decimal(amount),
         type="expense",
-        comment=None,
+        comment=comment,
     )

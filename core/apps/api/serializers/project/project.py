@@ -49,20 +49,18 @@ class ListProjectSerializer(BaseProjectSerializer):
     plan = serializers.SerializerMethodField()
 
     def get_plan(self, obj):
-        """Get project plan info"""
-        from core.apps.api.models import ProjectPlanModel
-
-        try:
-            project_plan = ProjectPlanModel.objects.select_related("plan").get(project=obj)
-            return {
-                "id": project_plan.plan.id,
-                "name": project_plan.plan.get_name_display(),
-                "status": project_plan.status,
-                "current_users": project_plan.current_users,
-                "max_users": project_plan.plan.max_users,
-            }
-        except ProjectPlanModel.DoesNotExist:
+        """Get project plan info (relies on prefetched plan_subscription__plan)."""
+        project_plan = getattr(obj, "plan_subscription", None)
+        if project_plan is None:
             return None
+        plan = project_plan.plan
+        return {
+            "id": plan.id,
+            "name": plan.get_name_display(),
+            "status": project_plan.status,
+            "current_users": project_plan.current_users,
+            "max_users": plan.max_users,
+        }
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [*BaseProjectSerializer.Meta.fields, "release", "plan"]
@@ -85,23 +83,21 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
         return EnviromentModel.objects.filter(project=obj, key="RELEASE_BOT_TOKEN").exists()
 
     def get_plan(self, obj):
-        """Get detailed project plan info"""
-        from core.apps.api.models import ProjectPlanModel
-
-        try:
-            project_plan = ProjectPlanModel.objects.select_related("plan").get(project=obj)
-            return {
-                "id": project_plan.plan.id,
-                "name": project_plan.plan.get_name_display(),
-                "price": str(project_plan.plan.price),
-                "status": project_plan.status,
-                "current_users": project_plan.current_users,
-                "max_users": project_plan.plan.max_users,
-                "powered_by_botmother": project_plan.plan.powered_by_botmother,
-                "limit_exceeded": project_plan.is_limit_exceeded(),
-            }
-        except ProjectPlanModel.DoesNotExist:
+        """Get detailed project plan info (relies on prefetched plan_subscription__plan)."""
+        project_plan = getattr(obj, "plan_subscription", None)
+        if project_plan is None:
             return None
+        plan = project_plan.plan
+        return {
+            "id": plan.id,
+            "name": plan.get_name_display(),
+            "price": str(plan.price),
+            "status": project_plan.status,
+            "current_users": project_plan.current_users,
+            "max_users": plan.max_users,
+            "powered_by_botmother": plan.powered_by_botmother,
+            "limit_exceeded": project_plan.is_limit_exceeded(),
+        }
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [

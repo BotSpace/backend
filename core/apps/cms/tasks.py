@@ -119,11 +119,11 @@ def export_collection_to_excel(self, task_id: str):
                     column_letter = column[0].column_letter
                     for cell in column:
                         try:
-                            if len(str(cell.value)) > max_length:
+                            if cell.value is not None and len(str(cell.value)) > max_length:
                                 max_length = len(str(cell.value))
-                        except:
-                            pass
-                    adjusted_width = min(max_length + 2, 50)  # Max width 50
+                        except (TypeError, ValueError):
+                            continue
+                    adjusted_width = min(max_length + 2, 50)
                     ws.column_dimensions[column_letter].width = adjusted_width
                 
                 # Save workbook
@@ -166,8 +166,10 @@ def export_collection_to_excel(self, task_id: str):
             export_task.status = ExportTaskModel.Status.FAILED
             export_task.error_message = str(e)
             export_task.save(update_fields=["status", "error_message", "updated_at"])
-        except:
-            pass
+        except ExportTaskModel.DoesNotExist:
+            logger.error("Export task %s not found while marking failed", task_id)
+        except Exception:
+            logger.exception("Failed to mark export task %s as FAILED", task_id)
         
         # Retry if not max retries
         if self.request.retries < self.max_retries:
