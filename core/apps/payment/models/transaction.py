@@ -13,6 +13,13 @@ class TransactionModel(SoftDeleteModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=20, decimal_places=2)
     status = models.BooleanField(default=False)
+    idempotency_key = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text=_("Client-supplied idempotency key — duplicate POSTs with the same key return the original transaction."),
+    )
 
     def __str__(self):
         return str(self.pk)

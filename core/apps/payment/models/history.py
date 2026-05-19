@@ -18,6 +18,13 @@ class HistoryModel(SoftDeleteModel):
     comment = models.CharField(max_length=255, null=True, blank=True)
     type = models.CharField(choices=TYPES, default="cpu")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=False)
+    idempotency_key = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text=_("External idempotency key — duplicate requests with the same key are ignored."),
+    )
 
     def __str__(self):
         return str(self.pk)

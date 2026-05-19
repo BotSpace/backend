@@ -11,25 +11,27 @@ class PaymeCallBackAPIView(PaymeWebHookAPIView):
     permission_classes = [AllowAny]
 
     def handle_successfully_payment(self, params, result, *args, **kwargs):
-        """
-        Handle the successful payment. You can override this method
-        """
         try:
             transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
         except TransactionModel.DoesNotExist:
             raise ValueError("Transaction not found")
-        add_balance(transaction.user, transaction.amount, "Payme orqali hisob to'ldirildi")
-        transaction.status = True
-        transaction.save()
+        add_balance(
+            transaction.user,
+            transaction.amount,
+            "Payme orqali hisob to'ldirildi",
+            idempotency_key=f"payme:credit:{params.merchant_trans_id}",
+        )
+        TransactionModel.objects.filter(pk=transaction.pk, status=False).update(status=True)
 
     def handle_cancelled_payment(self, params, result, *args, **kwargs):
-        """
-        Handle the cancelled payment. You can override this method
-        """
         try:
             transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
         except TransactionModel.DoesNotExist:
             raise ValueError("Transaction not found")
-        subtract_balance(transaction.user, transaction.amount, "Paymeda to'lov bekor qilindi")
-        transaction.status = True
-        transaction.save()
+        subtract_balance(
+            transaction.user,
+            transaction.amount,
+            "Paymeda to'lov bekor qilindi",
+            idempotency_key=f"payme:debit:{params.merchant_trans_id}",
+        )
+        TransactionModel.objects.filter(pk=transaction.pk, status=True).update(status=False)
