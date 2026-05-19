@@ -5,6 +5,7 @@ REST_FRAMEWORK: Dict[str, Any] = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "django_core.paginations.CustomPagination",
+    "EXCEPTION_HANDLER": "core.apps.shared.exceptions.custom_exception_handler",
     "PAGE_SIZE": 10,
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",

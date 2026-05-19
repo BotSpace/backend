@@ -9,6 +9,7 @@ from model_bakery import baker
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.shared.models import SoftDeleteModel
+from core.apps.shared.validators import image_extension_validator, validate_avatar_size
 
 User = get_user_model()
 
@@ -17,7 +18,12 @@ class ProjectModel(SoftDeleteModel):
     name = models.CharField(verbose_name=_("name"), max_length=255)
     description = models.TextField(null=True, blank=True)
     username = models.CharField(max_length=255, null=True, blank=True)
-    avatar = models.FileField(upload_to="avatar/", null=True, blank=True)
+    avatar = models.FileField(
+        upload_to="avatar/",
+        null=True,
+        blank=True,
+        validators=[image_extension_validator, validate_avatar_size],
+    )
     avatar_file_id = models.CharField(max_length=200, null=True, blank=True)
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="projects")
     flow = models.JSONField(default=list)

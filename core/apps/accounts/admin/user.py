@@ -72,5 +72,11 @@ class GroupAdmin(ModelAdmin):
 
 
 class SmsConfirmAdmin(ModelAdmin):
-    list_display = ["phone", "code", "resend_count", "try_count"]
-    search_fields = ["phone", "code"]
+    # ``code`` removed from list/search to avoid leaking active OTPs to staff.
+    list_display = ["phone", "masked_code", "resend_count", "try_count"]
+    search_fields = ["phone"]
+    readonly_fields = ["phone", "resend_count", "try_count"]
+
+    @staticmethod
+    def masked_code(obj):
+        return "*" * len(obj.code) if getattr(obj, "code", None) else ""

@@ -4,6 +4,12 @@ from django_core.models import AbstractBaseModel
 from django.contrib.auth import get_user_model
 from model_bakery import baker
 
+from core.apps.shared.validators import (
+    image_extension_validator,
+    validate_image_size,
+    validate_video_size,
+    video_extension_validator,
+)
 from core.apps.template.enums.template import TemplateSubmissionStatusEnum
 
 User = get_user_model()
@@ -38,13 +44,15 @@ class TemplateSubmissionRequestModel(AbstractBaseModel):
         verbose_name=_("image"),
         upload_to="template-submissions/",
         null=True,
-        blank=True
+        blank=True,
+        validators=[image_extension_validator, validate_image_size],
     )
     video = models.FileField(
         upload_to="template-submission-videos/",
         null=True,
         blank=True,
-        verbose_name=_("video")
+        verbose_name=_("video"),
+        validators=[video_extension_validator, validate_video_size],
     )
     demo_url = models.URLField(
         null=True,
