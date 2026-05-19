@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from django.db import connections
 from django.http import JsonResponse
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
@@ -50,17 +51,34 @@ def _check_mongo() -> Dict[str, Any]:
         return {"status": "down", "error": exc.__class__.__name__}
 
 
+@extend_schema(
+    tags=["health"],
+    summary="Liveness probe",
+    description="Returns 200 if the Django process is alive. No dependencies are checked.",
+    responses={200: OpenApiResponse(description="Process is alive")},
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def liveness(_request):
-    """Process is alive — used by Kubernetes liveness probe."""
     return JsonResponse({"status": "ok"})
 
 
+@extend_schema(
+    tags=["health"],
+    summary="Readiness probe",
+    description=(
+        "Returns 200 only when the database, Redis cache, and MongoDB are all "
+        "reachable. Returns 503 with the failing dependency in the body when "
+        "any check fails. Intended for Kubernetes readiness probes."
+    ),
+    responses={
+        200: OpenApiResponse(description="All critical dependencies reachable"),
+        503: OpenApiResponse(description="At least one dependency is down or degraded"),
+    },
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def readiness(_request):
-    """All critical dependencies (DB, Redis, Mongo) reachable — readiness probe."""
     checks = {
         "database": _check_database(),
         "redis": _check_redis(),
