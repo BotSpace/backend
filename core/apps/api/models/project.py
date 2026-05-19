@@ -47,54 +47,24 @@ class ProjectModel(SoftDeleteModel):
         return RelaseModel.objects.filter(project_id=self.pk).order_by("id").last()
 
     def get_mongo_credentials(self):
-        """Get MongoDB credentials for this project
+        """Get-or-create per-project MongoDB credentials.
 
-        Creates credentials if they don't exist yet.
-
-        Returns:
-            Dict with connection_string, database, username, and password
+        Thin wrapper around
+        :class:`core.apps.cms.services.credentials.ProjectMongoCredentialsService`
+        kept for call-site compatibility.
         """
-        from core.apps.cms.services.mongo import MongoDBClient
-        from django.db import transaction
+        from core.apps.cms.services.credentials import project_mongo_credentials
 
-        # If credentials already exist, return them
-        if self.mongo_username and self.mongo_password and self.mongo_database:
-            mongo_client = MongoDBClient()
-            try:
-                connection_string = mongo_client._build_connection_string(
-                    self.mongo_username, self.mongo_password, self.mongo_database
-                )
-            finally:
-                mongo_client.close()
-
-            return {
-                "username": self.mongo_username,
-                "password": self.mongo_password,
-                "database": self.mongo_database,
-                "connection_string": connection_string,
-            }
-
-        # Create new credentials
-        mongo_client = MongoDBClient()
-        try:
-            credentials = mongo_client.create_project_user(self.id)
-
-            # Save credentials to project using update to avoid triggering signals again
-            # Use update() instead of save() to avoid transaction conflicts
-            type(self).objects.filter(pk=self.pk).update(
-                mongo_username=credentials["username"],
-                mongo_password=credentials["password"],
-                mongo_database=credentials["database"],
-            )
-
-            # Refresh instance to get updated values
-            self.mongo_username = credentials["username"]
-            self.mongo_password = credentials["password"]
-            self.mongo_database = credentials["database"]
-
-            return credentials
-        finally:
-            mongo_client.close()
+        creds = project_mongo_credentials.get_or_create(self.pk)
+        self.mongo_username = creds.username
+        self.mongo_password = creds.password
+        self.mongo_database = creds.database
+        return {
+            "username": creds.username,
+            "password": creds.password,
+            "database": creds.database,
+            "connection_string": creds.connection_string,
+        }
 
     class Meta:
         db_table = "project"
