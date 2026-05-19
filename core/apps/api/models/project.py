@@ -44,7 +44,19 @@ class ProjectModel(SoftDeleteModel):
 
     @property
     def release(self):
-        return RelaseModel.objects.filter(project_id=self.pk).order_by("id").last()
+        """Latest release for this project.
+
+        When the queryset prefetches ``relases`` with ``Prefetch(..., to_attr=
+        "prefetched_relases")``, that cached list is used (no extra query).
+        Otherwise falls back to a single SQL query.
+        """
+        cached = getattr(self, "_prefetched_release", None)
+        if cached is not None:
+            return cached or None
+        prefetched_list = getattr(self, "prefetched_relases", None)
+        if prefetched_list is not None:
+            return prefetched_list[0] if prefetched_list else None
+        return RelaseModel.objects.filter(project_id=self.pk).order_by("-id").first()
 
     def get_mongo_credentials(self):
         """Get-or-create per-project MongoDB credentials.

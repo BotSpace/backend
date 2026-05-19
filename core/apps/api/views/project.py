@@ -144,10 +144,14 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
+        from django.db.models import Prefetch
+
+        latest_release_qs = RelaseModel.objects.order_by("-id")
         return (
             ProjectModel.objects
             .filter(owner=self.request.user)
             .select_related("plan_subscription__plan", "debug")
+            .prefetch_related(Prefetch("relases", queryset=latest_release_qs, to_attr="prefetched_relases"))
             .order_by("-id")
         )
 
