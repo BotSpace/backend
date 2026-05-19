@@ -58,6 +58,7 @@ kubernetes
 
 #INFO: Monitoring
 django-prometheus
+python-json-logger>=2.0,<3.0
 
 
 click-pkg

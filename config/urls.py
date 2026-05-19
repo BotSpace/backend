@@ -16,6 +16,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from config.env import env
 from core.apps.accounts.views import BalanceView
 from core.apps.api.views.docker import logs
+from core.apps.shared.views.health import liveness, readiness
 
 
 def home(request):
@@ -34,6 +35,8 @@ api_v1_patterns = [
 
 urlpatterns = [
     path("health/", home, name="health"),
+    path("healthz/", liveness, name="liveness"),
+    path("readyz/", readiness, name="readiness"),
     path("authbot/", include("core.apps.authbot.urls")),
     path("api/v1/", include((api_v1_patterns, "v1"), namespace="v1")),
     path("sse/api/v1/project/<str:service_id>/logs/", logs, name="project-logs"),
