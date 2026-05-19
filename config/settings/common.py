@@ -69,6 +69,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.apps.shared.middleware.deprecation.LegacyApiDeprecationMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 if env.bool("SILK_ENABLED", False):
