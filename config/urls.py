@@ -1,5 +1,8 @@
-"""
-All urls configurations tree
+"""All URL configurations.
+
+API surface is exposed under ``/api/v1/``. Legacy paths (``/api/…``,
+``/auth/…``, etc.) are kept as aliases pointing to the same view set so
+existing clients continue to work; new code should target ``/api/v1/``.
 """
 
 from django.conf import settings
@@ -11,24 +14,43 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from config.env import env
+from core.apps.accounts.views import BalanceView
 from core.apps.api.views.docker import logs
+from core.apps.shared.views.health import liveness, readiness
 
 
 def home(request):
     return HttpResponse("OK: #1.0.14-prod")
 
 
+api_v1_patterns = [
+    path("", include("core.apps.accounts.urls")),
+    path("", include("core.apps.shared.urls")),
+    path("", include("core.apps.api.urls")),
+    path("", include("core.apps.cms.urls")),
+    path("", include("core.apps.payment.urls")),
+    path("", include("core.apps.template.urls")),
+]
+
+
 urlpatterns = [
-    path("health/", home),
+    path("health/", home, name="health"),
+    path("healthz/", liveness, name="liveness"),
+    path("readyz/", readiness, name="readiness"),
     path("authbot/", include("core.apps.authbot.urls")),
+    path("api/v1/", include((api_v1_patterns, "v1"), namespace="v1")),
+    path("sse/api/v1/project/<str:service_id>/logs/", logs, name="project-logs"),
+    path("", include("django_prometheus.urls")),
+    # ---- Legacy aliases (DEPRECATED). Clients should migrate to /api/v1/. ----
     path("", include("core.apps.accounts.urls")),
     path("api/", include("core.apps.shared.urls")),
     path("api/", include("core.apps.api.urls")),
-    path("sse/api/project/<str:service_id>/logs/", logs),
     path("api/", include("core.apps.cms.urls")),
-    path("", include("django_prometheus.urls")),
     path("api/", include("core.apps.payment.urls")),
     path("api/", include("core.apps.template.urls")),
+    # Old custom paths preserved verbatim
+    path("api/user/balance/", BalanceView.as_view({"get": "get_balance"}), name="legacy-get-balance"),
+    path("sse/api/project/<str:service_id>/logs/", logs, name="legacy-project-logs"),
 ]
 urlpatterns += [
     path("admin/", admin.site.urls),

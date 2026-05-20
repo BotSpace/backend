@@ -26,10 +26,16 @@ class Command(BaseCommand):
             action="store_true",
             help="Recreate existing users (updates password)",
         )
+        parser.add_argument(
+            "--show-passwords",
+            action="store_true",
+            help="Print generated passwords to stdout (DANGEROUS — disabled by default)",
+        )
 
     def handle(self, *args, **options):
         project_id = options.get("project_id")
         recreate = options.get("recreate")
+        show_passwords = options.get("show_passwords")
 
         # Get projects
         if project_id:
@@ -81,7 +87,10 @@ class Command(BaseCommand):
                     )
                     console.print(f"  Username: {credentials['username']}")
                     console.print(f"  Database: {credentials['database']}")
-                    console.print(f"  Password: {credentials['password']}")
+                    if show_passwords:
+                        console.print(f"  Password: {credentials['password']}")
+                    else:
+                        console.print("  Password: [hidden — use --show-passwords]")
                     created_count += 1
 
             except Exception as e:
