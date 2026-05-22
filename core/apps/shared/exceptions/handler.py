@@ -15,6 +15,7 @@ from typing import Any
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.http import Http404
 from rest_framework import exceptions, status
+from rest_framework.exceptions import ErrorDetail
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_default_handler
 
@@ -44,13 +45,40 @@ def custom_exception_handler(exc: Exception, context: dict[str, Any]):
     )
 
 
+def _extract_codes(data: Any) -> Any:
+    """Walk DRF error structure and pull `ErrorDetail.code` into a parallel
+    tree of `{field: [code, ...]}`.
+
+    Keeps stable, machine-readable identifiers (e.g. ``paid_plan_required``)
+    alongside the human messages so SDK callers and the AI agent can branch
+    on them without scraping localized strings.
+    """
+    if isinstance(data, ErrorDetail):
+        return data.code
+    if isinstance(data, dict):
+        return {k: _extract_codes(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_extract_codes(x) for x in data]
+    return None
+
+
 def _shape(exc: Exception, data: Any) -> Any:
+    codes = _extract_codes(data) if isinstance(exc, exceptions.ValidationError) else None
     if isinstance(data, dict) and "status" in data:
         return data
     if isinstance(data, dict) and "detail" in data and len(data) == 1:
-        return {"status": False, "detail": data["detail"]}
+        out = {"status": False, "detail": data["detail"]}
+        if isinstance(data["detail"], ErrorDetail) and data["detail"].code:
+            out["code"] = data["detail"].code
+        return out
     if isinstance(data, dict):
-        return {"status": False, "detail": exc.__class__.__name__, "errors": data}
+        out = {"status": False, "detail": exc.__class__.__name__, "errors": data}
+        if codes:
+            out["codes"] = codes
+        return out
     if isinstance(data, list):
-        return {"status": False, "detail": exc.__class__.__name__, "errors": data}
+        out = {"status": False, "detail": exc.__class__.__name__, "errors": data}
+        if codes:
+            out["codes"] = codes
+        return out
     return {"status": False, "detail": str(data)}

@@ -60,7 +60,8 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
     def validate_months(self, value):
         if value not in BILLING_MONTHS_DISCOUNTS:
             raise serializers.ValidationError(
-                "Noto'g'ri muddat. Quyidagilardan birini tanlang: 1, 3, 6, 12."
+                "Noto'g'ri muddat. Quyidagilardan birini tanlang: 1, 3, 6, 12.",
+                code="invalid_billing_months",
             )
         return value
 
@@ -77,12 +78,18 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
 
         # Birinchi release: plan_id majburiy
         if not plan_id:
-            raise serializers.ValidationError({"plan_id": "Birinchi release uchun tarif tanlash majburiy"})
+            raise serializers.ValidationError(
+                {"plan_id": "Birinchi release uchun tarif tanlash majburiy"},
+                code="plan_required",
+            )
 
         try:
             plan = PlanModel.objects.get(id=plan_id, is_active=True)
         except PlanModel.DoesNotExist:
-            raise serializers.ValidationError({"plan_id": "Noto'g'ri yoki nofaol tarif"})
+            raise serializers.ValidationError(
+                {"plan_id": "Noto'g'ri yoki nofaol tarif"},
+                code="plan_inactive",
+            )
 
         user = self.context["request"].user
 
@@ -94,7 +101,8 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
 
         if user_has_free_release and plan.name == PlanType.FREE.value:
             raise serializers.ValidationError(
-                {"plan_id": "Siz allaqachon bepul tarifdan foydalangansiz. Pulli tarif tanlash majburiy"}
+                {"plan_id": "Siz allaqachon bepul tarifdan foydalangansiz. Pulli tarif tanlash majburiy"},
+                code="paid_plan_required",
             )
 
         total_price = calculate_total_price(plan.price, months)
@@ -106,7 +114,8 @@ class CreateRelaseSerializer(BaseRelaseSerializer):
                         "plan_id": "Balansingiz yetarli emas. Kerakli: {}, Mavjud: {}".format(
                             total_price, user.balance
                         )
-                    }
+                    },
+                    code="insufficient_balance",
                 )
 
         attrs["_plan"] = plan
