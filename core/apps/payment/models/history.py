@@ -31,7 +31,9 @@ class HistoryModel(SoftDeleteModel):
 
     @classmethod
     def _baker(cls):
-        return baker.make(cls, _fill_optional=True)
+        # `_fill_optional=True` would populate `deleted_at` and hide the row
+        # behind the SoftDeleteManager — pin it to None.
+        return baker.make(cls, _fill_optional=True, deleted_at=None)
 
     class Meta:
         db_table = "history"

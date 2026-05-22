@@ -63,8 +63,6 @@ class DjangoBalanceService:
         comment: Optional[str],
         idempotency_key: Optional[str],
     ) -> None:
-        # idempotency_key is honored once HistoryModel carries the field (phase 5).
-        # The constraint there ensures the unique-violation path replaces this check.
         history_kwargs = {
             "user": user,
             "amount": Decimal(abs(signed_delta)),
@@ -74,17 +72,23 @@ class DjangoBalanceService:
         if idempotency_key and "idempotency_key" in {f.name for f in HistoryModel._meta.get_fields()}:
             history_kwargs["idempotency_key"] = idempotency_key
 
-        User.objects.filter(pk=user.pk).update(balance=F("balance") + signed_delta)
-        user.refresh_from_db(fields=["balance"])
-
+        # Insert history FIRST inside a savepoint so an idempotency_key
+        # collision rolls back the inner block (without poisoning the outer
+        # @transaction.atomic) and we treat the call as a no-op.
         try:
-            HistoryModel.objects.create(**history_kwargs)
+            with transaction.atomic():
+                HistoryModel.objects.create(**history_kwargs)
+                User.objects.filter(pk=user.pk).update(balance=F("balance") + signed_delta)
         except IntegrityError:
-            User.objects.filter(pk=user.pk).update(balance=F("balance") - signed_delta)
             logger.warning(
-                "balance idempotency race: user=%s key=%s — reverted", user.pk, idempotency_key
+                "balance idempotency: user=%s key=%s already applied — skipping",
+                user.pk,
+                idempotency_key,
             )
+            user.refresh_from_db(fields=["balance"])
             return
+
+        user.refresh_from_db(fields=["balance"])
 
 
 balance_service: BalanceService = DjangoBalanceService()
