@@ -1,0 +1,203 @@
+replicaCount: 1
+
+image:
+  repository: registry.iprogrammer.uz/botspace/botmother
+  tag: "2.4.9-prod"
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: iprogrammer-registry
+
+fullnameOverride: "web"
+
+serviceAccount:
+  create: false
+  name: "backend-sa"
+
+podLabels:
+  app: botmother
+  component: web
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+service:
+  enabled: true
+  type: NodePort
+  port: 8000
+  targetPort: 8000
+  nodePort: 30002
+
+# These configMaps are managed BY this chart and will be named {fullname}-{key}
+# i.e. web-config and web-k8s
+configMaps:
+  config:
+    DEBUG: "False"
+    DJANGO_SETTINGS_MODULE: "config.settings.production"
+    PROJECT_ENV: "prod"
+    PROTOCOL_HTTPS: "True"
+    SILK_ENABLED: "False"
+    OTP_SIZE: "4"
+    OTP_PROD: "true"
+    OTP_MODULE: "core.services.otp"
+    OTP_SERVICE: "EskizService"
+    DB_ENGINE: "django.db.backends.postgresql_psycopg2"
+    CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"
+    REDIS_PORT: "6379"
+    CACHE_ENABLED: "true"
+    CACHE_TIMEOUT: "120"
+    VITE_LIVE: "false"
+    VITE_PORT: "5173"
+    VITE_HOST: "127.0.0.1"
+    STORAGE_DEFAULT: "FILE"
+    STORAGE_STATIC: "STATIC"
+    RAM_PRICE: "1000"
+    CPU_PRICE: "1000"
+    NET_RX_PRICE: "1000"
+    NET_TX_PRICE: "1000"
+    STORAGE_PRICE: "1000"
+    PROMETHEUS_MULTIPROC_DIR: "/tmp/prometheus_metrics"
+  k8s:
+    K8S_NAMESPACE: "botmother"
+
+# envFrom references EXISTING secrets/configmaps NOT managed by this chart
+envFrom:
+  - secretRef:
+      name: botmother-secret
+  - secretRef:
+      name: database-secret
+  - secretRef:
+      name: mongo-secret
+  - secretRef:
+      name: redis-secret
+  - secretRef:
+      name: django-secret
+  - secretRef:
+      name: click-secret
+  - secretRef:
+      name: bot-secret
+  - secretRef:
+      name: jwt-secret
+
+env:
+  - name: PYTHONPYCACHEPREFIX
+    value: "/var/cache/pycache"
+  - name: ALLOWED_HOSTS
+    value: "localhost,api.botmother.uz,botmother.uz,beta.botmother.uz,api.botspace.uz,botspace.uz,plugins.botmother.uz,plugins.botspace.uz,botlarnionasi.jscorp.uz"
+  - name: CORS_ALLOWED_ORIGINS
+    value: "https://botspace.uz,https://botmother.uz,https://beta.botmother.uz,https://botlarnionasi.jscorp.uz,https://api.botspace.uz,https://api.botmother.uz"
+  - name: CSRF_TRUSTED_ORIGINS
+    value: "https://botspace.uz,https://botmother.uz,https://beta.botmother.uz,https://botlarnionasi.jscorp.uz,https://api.botspace.uz,https://api.botmother.uz"
+  - name: NODE_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+
+probes:
+  startup:
+    enabled: true
+    type: httpGet
+    httpGet:
+      path: /health/
+      port: 8000
+      host: localhost
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  readiness:
+    enabled: true
+    type: httpGet
+    httpGet:
+      path: /health/
+      port: 8000
+      host: localhost
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    enabled: true
+    type: httpGet
+    httpGet:
+      path: /health/
+      port: 8000
+      host: localhost
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+
+volumes:
+  - name: media
+    persistentVolumeClaim:
+      claimName: botmother-media
+  - name: static
+    persistentVolumeClaim:
+      claimName: botmother-static
+  - name: logs
+    persistentVolumeClaim:
+      claimName: botmother-logs
+  - name: engine-dir
+    hostPath:
+      path: /mnt/engine
+      type: DirectoryOrCreate
+
+volumeMounts:
+  - name: media
+    mountPath: /code/resources/media
+  - name: static
+    mountPath: /code/resources/staticfiles
+  - name: logs
+    mountPath: /code/resources/logs
+  - name: engine-dir
+    mountPath: /mnt/engine
+    readOnly: false
+
+persistentVolumeClaims:
+  - name: botmother-media
+    storage: 10Gi
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteMany
+  - name: botmother-static
+    storage: 5Gi
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteMany
+  - name: botmother-logs
+    storage: 5Gi
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteMany
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+dnsConfig:
+  options:
+    - name: ndots
+      value: "1"
+    - name: single-request-reopen
+    - name: timeout
+      value: "2"
+    - name: attempts
+      value: "3"
+
+prometheus:
+  scrape: true
+  port: 8000
+
+terminationGracePeriodSeconds: 30
