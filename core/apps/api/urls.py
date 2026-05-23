@@ -6,6 +6,7 @@ from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet, ProjectPlanViewSet
 from core.apps.api.views.chat import ChatViewSet
+from core.apps.api.views.subscription import SubscriptionViewSet
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -38,6 +39,27 @@ urlpatterns = [
         "project/<int:project_pk>/plan/usage/",
         ProjectPlanViewSet.as_view({"get": "usage_stats"}),
         name="project-plan-usage",
+    ),
+    # User subscription endpoints
+    path(
+        "subscription/",
+        SubscriptionViewSet.as_view({"get": "current"}),
+        name="subscription-current",
+    ),
+    path(
+        "subscription/upgrade/",
+        SubscriptionViewSet.as_view({"post": "upgrade"}),
+        name="subscription-upgrade",
+    ),
+    path(
+        "subscription/usage/",
+        SubscriptionViewSet.as_view({"get": "usage"}),
+        name="subscription-usage",
+    ),
+    path(
+        "subscription/usage/report/",
+        SubscriptionViewSet.as_view({"post": "report_usage"}),
+        name="subscription-usage-report",
     ),
     # Internal endpoints for Golang webhook service
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),

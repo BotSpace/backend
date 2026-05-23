@@ -30,4 +30,5 @@ env = environ.Env(
     PAYME_ID=(str, ""),
     PAYME_KEY=(str, ""),
     PAYTECH_API_KEY=(str, ""),
+    INTERNAL_API_TOKEN=(str, ""),
 )

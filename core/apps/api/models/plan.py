@@ -26,6 +26,10 @@ class PlanModel(AbstractBaseModel):
     is_top = models.BooleanField(default=False)
     is_active = models.BooleanField(verbose_name=_("Faol"), default=True)
     order = models.IntegerField(verbose_name=_("Tartib"), default=0)
+    max_bots = models.IntegerField(verbose_name=_("Maksimal botlar soni"), default=1)
+    max_output_tokens = models.BigIntegerField(verbose_name=_("Oylik output token limiti"), default=200000)
+    max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti"), default=1000000)
+    features = models.JSONField(verbose_name=_("Xususiyatlar"), default=dict, blank=True)
 
     def __str__(self):
         return f"{self.get_name_display()} - ${self.price}"
@@ -83,3 +87,44 @@ class ProjectPlanModel(AbstractBaseModel):
         db_table = "project_plan"
         verbose_name = _("Proyekt tarifi")
         verbose_name_plural = _("Proyekt tariflari")
+
+
+class UserSubscription(AbstractBaseModel):
+    """Foydalanuvchi tarifi"""
+
+    user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="subscription")
+    plan = models.ForeignKey(PlanModel, on_delete=models.PROTECT, related_name="user_subscriptions")
+    status = models.CharField(max_length=20, choices=PlanStatus.choices, default=PlanStatus.ACTIVE)
+    started_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    tokens_used_input = models.BigIntegerField(default=0)
+    tokens_used_output = models.BigIntegerField(default=0)
+    token_reset_at = models.DateTimeField(auto_now_add=True)
+    bots_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "user_subscription"
+        verbose_name = _("Foydalanuvchi tarifi")
+        verbose_name_plural = _("Foydalanuvchi tariflari")
+
+    def __str__(self):
+        return f"{self.user} - {self.plan.get_name_display()}"
+
+    def is_token_limit_exceeded(self) -> bool:
+        return self.tokens_used_output >= self.plan.max_output_tokens
+
+    def can_create_bot(self) -> bool:
+        if self.plan.max_bots == 0:
+            return True
+        return self.bots_count < self.plan.max_bots
+
+    def tokens_remaining(self) -> int:
+        return max(0, self.plan.max_output_tokens - self.tokens_used_output)
+
+    @classmethod
+    def _create_fake(cls):
+        from core.apps.accounts.models import User
+
+        user = User._create_fake()
+        plan = PlanModel.objects.filter(name=PlanType.FREE).first() or PlanModel._create_fake()
+        return baker.make(cls, user=user, plan=plan)

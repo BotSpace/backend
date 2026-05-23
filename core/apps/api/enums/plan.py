@@ -8,10 +8,9 @@ from django.utils.translation import gettext_lazy as _
 
 class PlanType(models.TextChoices):
     """Tarif turlari"""
-    FREE = "free", _("Bepul")
-    START = "start", _("Start")
+    FREE = "free", _("Free")
     PRO = "pro", _("Pro")
-    ENTERPRISE = "enterprise", _("Enterprise")
+    MAX = "max", _("Max")
 
 
 class PlanStatus(models.TextChoices):

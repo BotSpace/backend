@@ -156,6 +156,8 @@ MEDIA_URL = "/resources/media/"
 
 AUTH_USER_MODEL = "accounts.User"
 
+INTERNAL_API_TOKEN = env.str("INTERNAL_API_TOKEN", default="")
+
 CELERY_BROKER_URL = env("REDIS_URL")
 CELERY_RESULT_BACKEND = env("REDIS_URL")
 
