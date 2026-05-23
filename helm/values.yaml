@@ -103,7 +103,6 @@ probes:
     httpGet:
       path: /health/
       port: 8000
-      host: localhost
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
@@ -114,7 +113,6 @@ probes:
     httpGet:
       path: /health/
       port: 8000
-      host: localhost
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
@@ -125,7 +123,6 @@ probes:
     httpGet:
       path: /health/
       port: 8000
-      host: localhost
     initialDelaySeconds: 60
     periodSeconds: 15
     timeoutSeconds: 10
