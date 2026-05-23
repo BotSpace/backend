@@ -45,7 +45,7 @@ PAGES = [
             {
                 "title": _("Collection"),
                 "icon": "collections",
-                "link": reverse_lazy("admin:cms_collectionmodel_changelist"),
+                "link": reverse_lazy("admin:cms_legacy_collectionmodel_changelist"),
             },
         ],
     },
