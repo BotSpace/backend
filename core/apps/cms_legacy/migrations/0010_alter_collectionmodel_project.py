@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('api', '0040_planmodel_is_top'),
-        ('cms', '0009_add_relation_field_type'),
+        ('cms_legacy', '0009_add_relation_field_type'),
     ]
 
     operations = [
