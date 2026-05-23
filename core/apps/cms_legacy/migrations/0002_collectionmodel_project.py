@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('api', '0014_alter_debugmodel_status_alter_relasemodel_status'),
-        ('cms', '0001_initial'),
+        ('cms_legacy', '0001_initial'),
     ]
 
     operations = [

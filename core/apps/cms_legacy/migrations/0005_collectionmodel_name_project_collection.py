@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('api', '0014_alter_debugmodel_status_alter_relasemodel_status'),
-        ('cms', '0004_fieldmodel_default'),
+        ('cms_legacy', '0004_fieldmodel_default'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

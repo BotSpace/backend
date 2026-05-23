@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cms', '0006_alter_fieldmodel_type'),
+        ('cms_legacy', '0006_alter_fieldmodel_type'),
     ]
 
     operations = [

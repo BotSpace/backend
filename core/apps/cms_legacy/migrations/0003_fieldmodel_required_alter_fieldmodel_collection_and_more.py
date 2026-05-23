@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cms', '0002_collectionmodel_project'),
+        ('cms_legacy', '0002_collectionmodel_project'),
     ]
 
     operations = [
