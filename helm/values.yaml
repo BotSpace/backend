@@ -104,10 +104,10 @@ probes:
       path: /health/
       port: 8000
       host: localhost
-    initialDelaySeconds: 0
+    initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
-    failureThreshold: 30
+    failureThreshold: 60
   readiness:
     enabled: true
     type: httpGet
