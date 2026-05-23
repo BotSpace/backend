@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('name', models.CharField(max_length=255, verbose_name='name')),
                 ('type', models.CharField(choices=[('text', 'Text'), ('number', 'Number'), ('bool', 'bool')], default='text', max_length=255, verbose_name='name')),
-                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='cms.collectionmodel')),
+                ('collection', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='cms_legacy.collectionmodel')),
             ],
             options={
                 'verbose_name': 'FieldModel',

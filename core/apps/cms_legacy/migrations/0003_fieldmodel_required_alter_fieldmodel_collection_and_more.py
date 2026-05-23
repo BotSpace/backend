@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='fieldmodel',
             name='collection',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='fields', to='cms.collectionmodel'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='fields', to='cms_legacy.collectionmodel'),
         ),
         migrations.AddConstraint(
             model_name='fieldmodel',
