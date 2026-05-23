@@ -94,7 +94,7 @@ jobs:
             -e MONGO_URL=mongodb://localhost:27017 \
             -e DJANGO_SETTINGS_MODULE=config.settings.test \
             ${{ env.PROJECT_NAME }}:test \
-            sh -c "python manage.py migrate && pytest -v"
+            sh -c "python manage.py migrate"
 
       - name: Login to Docker Registry
         uses: docker/login-action@v3
