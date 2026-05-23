@@ -2,9 +2,11 @@ name: Build, Test, Push & Deploy
 
 on:
   push:
-    tags:
-      - "*-dev"
-      - "*-prod"
+    branches:
+      - main
+    paths-ignore:
+      - 'helm/**'
+      - '*.md'
 
 env:
   PROJECT_NAME: botmother
@@ -59,6 +61,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
       - name: Copy env
         run: cp .env.example .env
 
@@ -101,17 +106,16 @@ jobs:
       - name: Tag & push image
         run: |
           IMAGE_BASE=${{ vars.DOCKER_REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ env.PROJECT_NAME }}
-          docker tag ${{ env.PROJECT_NAME }}:test "$IMAGE_BASE:${{ github.ref_name }}"
+          docker tag ${{ env.PROJECT_NAME }}:test "$IMAGE_BASE:${{ env.SHORT_SHA }}"
           docker tag ${{ env.PROJECT_NAME }}:test "$IMAGE_BASE:latest"
-          docker push "$IMAGE_BASE:${{ github.ref_name }}"
+          docker push "$IMAGE_BASE:${{ env.SHORT_SHA }}"
           docker push "$IMAGE_BASE:latest"
 
       - name: Update Helm values with new image tag
         run: |
-          sed -i "s|tag:.*|tag: \"${{ github.ref_name }}\"|" helm/values.yaml
+          sed -i "s|tag:.*|tag: \"${{ env.SHORT_SHA }}\"|" helm/values.yaml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
           git add helm/values.yaml
-          git diff --cached --quiet || git commit -m "deploy: update image tag to ${{ github.ref_name }}"
+          git diff --cached --quiet || git commit -m "deploy: update image tag to ${{ env.SHORT_SHA }}"
           git push origin main
