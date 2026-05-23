@@ -5,6 +5,7 @@ from core.apps.cms.models import AuditLog, Collection, Field, Webhook
 
 class FieldInline(admin.TabularInline):
     model = Field
+    fk_name = "collection"
     extra = 0
 
 
