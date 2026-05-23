@@ -8,7 +8,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt import views as jwt_views
 
-from .views import BalanceView, ChangePasswordView, MeView, RegisterView, ResetPasswordView
+from .views import APITokenViewSet, BalanceView, ChangePasswordView, MeView, RegisterView, ResetPasswordView, TokenExchangeView
 
 router = DefaultRouter()
 router.register("auth", RegisterView, basename="auth")
@@ -23,4 +23,19 @@ urlpatterns = [
     path("auth/token/", jwt_views.TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/verify/", jwt_views.TokenVerifyView.as_view(), name="token_verify"),
     path("auth/token/refresh/", jwt_views.TokenRefreshView.as_view(), name="token_refresh"),
+    path(
+        "auth/api-tokens/",
+        APITokenViewSet.as_view({"get": "list", "post": "create"}),
+        name="api-tokens",
+    ),
+    path(
+        "auth/api-tokens/<int:pk>/",
+        APITokenViewSet.as_view({"delete": "destroy"}),
+        name="api-tokens-detail",
+    ),
+    path(
+        "auth/token/exchange/",
+        TokenExchangeView.as_view({"post": "create"}),
+        name="token-exchange",
+    ),
 ]
