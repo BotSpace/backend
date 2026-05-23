@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("cms", "0008_exporttaskmodel"),
+        ("cms_legacy", "0008_exporttaskmodel"),
     ]
 
     operations = [
@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 null=True,
                 on_delete=django.db.models.deletion.SET_NULL,
                 related_name="related_fields",
-                to="cms.collectionmodel",
+                to="cms_legacy.collectionmodel",
             ),
         ),
         migrations.AlterField(

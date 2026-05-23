@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("cms", "0007_alter_fieldmodel_type"),
+        ("cms_legacy", "0007_alter_fieldmodel_type"),
     ]
 
     operations = [
@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 (
                     "collection",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, related_name="exports", to="cms.collectionmodel"
+                        on_delete=django.db.models.deletion.CASCADE, related_name="exports", to="cms_legacy.collectionmodel"
                     ),
                 ),
             ],
