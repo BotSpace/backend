@@ -12,7 +12,7 @@ from typing import Any
 
 from bson import ObjectId
 
-from core.apps.cms.services.mongo import MongoDBClient
+from core.apps.cms_legacy.services.mongo import MongoDBClient
 
 
 _client_singleton: MongoDBClient | None = None
