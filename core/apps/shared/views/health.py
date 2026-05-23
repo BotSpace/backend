@@ -38,7 +38,7 @@ def _check_redis() -> Dict[str, Any]:
 
 def _check_mongo() -> Dict[str, Any]:
     try:
-        from core.apps.cms.services.mongo import MongoDBClient
+        from core.apps.cms_legacy.services.mongo import MongoDBClient
 
         client = MongoDBClient()
         try:

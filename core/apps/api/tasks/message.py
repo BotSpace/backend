@@ -7,8 +7,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 
 from core.apps.api.models.message import MessageModel
 from core.apps.api.services.enviroment import release_bot_token
-from core.apps.cms.models import CollectionModel
-from core.apps.cms.services import find
+from core.apps.cms_legacy.models import CollectionModel
+from core.apps.cms_legacy.services import find
 from core.apps.api.enums import MessageStatusEnum
 
 

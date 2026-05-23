@@ -50,7 +50,7 @@ def ProjectDeleteSignal(sender, instance, **kwargs):
     if getattr(settings, "TESTING", False):
         return
 
-    from core.apps.cms.services.mongo import MongoDBClient
+    from core.apps.cms_legacy.services.mongo import MongoDBClient
 
     try:
         # Delete MongoDB database

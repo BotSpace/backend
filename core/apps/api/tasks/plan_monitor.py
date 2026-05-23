@@ -10,7 +10,7 @@ import logging
 
 from core.apps.api.models import ProjectPlanModel
 from core.apps.api.enums.plan import PlanStatus
-from core.apps.cms.models import CollectionModel
+from core.apps.cms_legacy.models import CollectionModel
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def count_project_users(project_id: int) -> int:
     Returns:
         Total unique user count
     """
-    from core.apps.cms.services.mongo import MongoDBClient
+    from core.apps.cms_legacy.services.mongo import MongoDBClient
     
     try:
         client = MongoDBClient()

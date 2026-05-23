@@ -4,7 +4,7 @@ Test MongoDB user creation and Docker CPU limits
 
 import pytest
 from unittest.mock import patch, MagicMock
-from core.apps.cms.services.mongo import MongoDBClient
+from core.apps.cms_legacy.services.mongo import MongoDBClient
 from core.apps.api.models import ProjectModel
 from django.contrib.auth import get_user_model
 
@@ -15,7 +15,7 @@ User = get_user_model()
 class TestMongoDBUserManagement:
     """Test MongoDB user creation for projects"""
 
-    @patch("core.apps.cms.services.mongo.pymongo.MongoClient")
+    @patch("core.apps.cms_legacy.services.mongo.pymongo.MongoClient")
     def test_create_project_user(self, mock_mongo_client):
         """Test creating MongoDB user for project"""
         # Setup mock
@@ -43,7 +43,7 @@ class TestMongoDBUserManagement:
         assert len(credentials["password"]) == 32
         assert "mongodb://" in credentials["connection_string"]
 
-    @patch("core.apps.cms.services.mongo.pymongo.MongoClient")
+    @patch("core.apps.cms_legacy.services.mongo.pymongo.MongoClient")
     def test_update_existing_user(self, mock_mongo_client):
         """Test updating existing MongoDB user"""
         # Setup mock - user exists
@@ -64,7 +64,7 @@ class TestMongoDBUserManagement:
 
         assert credentials["password"] == "custom_password"
 
-    @patch("core.apps.cms.services.mongo.pymongo.MongoClient")
+    @patch("core.apps.cms_legacy.services.mongo.pymongo.MongoClient")
     def test_delete_project_user(self, mock_mongo_client):
         """Test deleting MongoDB user"""
         mock_admin_db = MagicMock()

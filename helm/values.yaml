@@ -168,19 +168,19 @@ volumeMounts:
 persistentVolumeClaims:
   - name: botmother-media
     storage: 10Gi
-    storageClassName: longhorn
+    storageClassName: local-path
     accessModes:
-      - ReadWriteMany
+      - ReadWriteOnce
   - name: botmother-static
     storage: 5Gi
-    storageClassName: longhorn
+    storageClassName: local-path
     accessModes:
-      - ReadWriteMany
+      - ReadWriteOnce
   - name: botmother-logs
     storage: 5Gi
-    storageClassName: longhorn
+    storageClassName: local-path
     accessModes:
-      - ReadWriteMany
+      - ReadWriteOnce
 
 podDisruptionBudget:
   enabled: true

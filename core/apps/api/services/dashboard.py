@@ -3,7 +3,7 @@ from typing import Optional, List, Dict
 
 from django.core.cache import cache
 
-from core.apps.cms.services.mongo import MongoRepository, MongoService
+from core.apps.cms_legacy.services.mongo import MongoRepository, MongoService
 
 DASHBOARD_CACHE_TTL = 300  # 5 daqiqa
 

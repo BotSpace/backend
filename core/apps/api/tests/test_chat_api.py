@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 
 from core.apps.api.models import ProjectModel
 from core.apps.api.services.project import create_default_collections
-from core.apps.cms.models.cms import CollectionModel
+from core.apps.cms_legacy.models.cms import CollectionModel
 
 
 @pytest.fixture(autouse=True)

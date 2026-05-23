@@ -68,10 +68,10 @@ class ProjectModel(SoftDeleteModel):
         """Get-or-create per-project MongoDB credentials.
 
         Thin wrapper around
-        :class:`core.apps.cms.services.credentials.ProjectMongoCredentialsService`
+        :class:`core.apps.cms_legacy.services.credentials.ProjectMongoCredentialsService`
         kept for call-site compatibility.
         """
-        from core.apps.cms.services.credentials import project_mongo_credentials
+        from core.apps.cms_legacy.services.credentials import project_mongo_credentials
 
         creds = project_mongo_credentials.get_or_create(self.pk)
         self.mongo_username = creds.username

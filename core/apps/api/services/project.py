@@ -1,6 +1,6 @@
 from core.apps.api.models.project import ProjectModel
-from core.apps.cms.enums.cms import FieldType
-from core.apps.cms.models.cms import CollectionModel, FieldModel
+from core.apps.cms_legacy.enums.cms import FieldType
+from core.apps.cms_legacy.models.cms import CollectionModel, FieldModel
 
 
 def default_flow() -> dict:

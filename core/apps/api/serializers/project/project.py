@@ -7,7 +7,7 @@ from core.apps.api.models.project import EnviromentModel
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
 from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
-from core.apps.cms.services.mongo import get_project_collection
+from core.apps.cms_legacy.services.mongo import get_project_collection
 from core.apps.template.models import TemplateModel
 
 

@@ -35,7 +35,7 @@ from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.throttle.ip_throttle import DebugContainerThrottle, ReleaseCreateThrottle
 from core.apps.api.services.webhook import set_webhook
-from core.apps.cms.models.cms import CollectionModel
+from core.apps.cms_legacy.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
 
 

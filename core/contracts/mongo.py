@@ -1,7 +1,7 @@
 """MongoDB-related service contracts.
 
 These Protocols describe the inter-app boundary. The concrete
-implementations live in ``core.apps.cms.services.mongo`` (
+implementations live in ``core.apps.cms_legacy.services.mongo`` (
 ``MongoDBClient``, ``MongoRepository``) — that module is the only
 place that may import ``pymongo`` directly.
 """
@@ -37,7 +37,7 @@ class MongoRepository(Protocol):
     """Thin repository over a Mongo collection.
 
     Matches the public API of
-    ``core.apps.cms.services.mongo.MongoRepository``.
+    ``core.apps.cms_legacy.services.mongo.MongoRepository``.
     """
 
     def count(self, where: Mapping[str, Any]) -> int:

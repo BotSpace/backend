@@ -13,8 +13,8 @@ from datetime import datetime
 
 from core.apps.api.models.file import FileModel
 from core.apps.api.models.project import ProjectModel
-from core.apps.cms.models.cms import CollectionModel
-from core.apps.cms.services.mongo import MongoRepository, MongoDBClient
+from core.apps.cms_legacy.models.cms import CollectionModel
+from core.apps.cms_legacy.services.mongo import MongoRepository, MongoDBClient
 from core.apps.api.serializers.chat import (
     UsersListResponseSerializer,
     MessagesListResponseSerializer,
