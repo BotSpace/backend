@@ -86,7 +86,7 @@ env:
   - name: PYTHONPYCACHEPREFIX
     value: "/var/cache/pycache"
   - name: ALLOWED_HOSTS
-    value: "localhost,api.botmother.uz,botmother.uz,beta.botmother.uz,api.botspace.uz,botspace.uz,plugins.botmother.uz,plugins.botspace.uz,botlarnionasi.jscorp.uz"
+    value: "localhost,web,api.botmother.uz,botmother.uz,beta.botmother.uz,api.botspace.uz,botspace.uz,plugins.botmother.uz,plugins.botspace.uz,botlarnionasi.jscorp.uz"
   - name: CORS_ALLOWED_ORIGINS
     value: "https://botspace.uz,https://botmother.uz,https://beta.botmother.uz,https://botlarnionasi.jscorp.uz,https://api.botspace.uz,https://api.botmother.uz"
   - name: CSRF_TRUSTED_ORIGINS
