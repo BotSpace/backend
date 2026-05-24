@@ -61,7 +61,7 @@ PAGES = [
             {
                 "title": _("Subscriptions"),
                 "icon": "subscriptions",
-                "link": reverse_lazy("admin:api_projectplanmodel_changelist"),
+                "link": reverse_lazy("admin:api_usersubscription_changelist"),
             },
         ],
     },
