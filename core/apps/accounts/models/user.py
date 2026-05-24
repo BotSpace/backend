@@ -13,6 +13,7 @@ class User(auth_models.AbstractUser):
     validated_at = models.DateTimeField(null=True, blank=True)
     balance = models.BigIntegerField(default=0)
     template_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    prompt_limit = models.PositiveIntegerField(default=5)
     role = models.CharField(
         max_length=255,
         choices=RoleChoice,

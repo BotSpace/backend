@@ -11,6 +11,7 @@ from rest_framework_simplejwt import tokens
 class UserService(sms.SmsService):
     def get_token(self, user):
         refresh = tokens.RefreshToken.for_user(user)
+        refresh.access_token["prompt_limit"] = user.prompt_limit
 
         return {
             "refresh": str(refresh),
