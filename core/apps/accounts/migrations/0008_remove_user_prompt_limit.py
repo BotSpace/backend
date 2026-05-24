@@ -8,8 +8,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name="user",
-            name="prompt_limit",
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name="user",
+                    name="prompt_limit",
+                ),
+            ],
         ),
     ]
