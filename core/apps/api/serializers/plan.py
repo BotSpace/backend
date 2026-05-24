@@ -42,6 +42,8 @@ class ProjectPlanSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     limit_exceeded = serializers.BooleanField(source="is_limit_exceeded", read_only=True)
     can_add_user = serializers.BooleanField(read_only=True)
+    tokens_remaining = serializers.IntegerField(read_only=True)
+    is_token_limit_exceeded = serializers.BooleanField(read_only=True)
 
     # Grace period info
     days_until_suspension = serializers.SerializerMethodField()
@@ -56,6 +58,11 @@ class ProjectPlanSerializer(serializers.ModelSerializer):
             "status",
             "status_display",
             "current_users",
+            "tokens_used_input",
+            "tokens_used_output",
+            "tokens_remaining",
+            "is_token_limit_exceeded",
+            "token_reset_at",
             "limit_exceeded",
             "can_add_user",
             "limit_exceeded_at",
@@ -68,6 +75,9 @@ class ProjectPlanSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "current_users",
+            "tokens_used_input",
+            "tokens_used_output",
+            "token_reset_at",
             "limit_exceeded_at",
             "grace_period_notified",
             "started_at",

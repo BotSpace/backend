@@ -89,6 +89,7 @@ class TokenUsageReportSerializer(serializers.Serializer):
     """Token sarflanishi hisoboti serializer (agentv3 ichki endpointi uchun)"""
 
     user_id = serializers.IntegerField(required=True)
+    project_id = serializers.IntegerField(required=True)
     input_tokens = serializers.IntegerField(required=True, min_value=0)
     output_tokens = serializers.IntegerField(required=True, min_value=0)
 
@@ -98,4 +99,11 @@ class TokenUsageReportSerializer(serializers.Serializer):
         User = get_user_model()
         if not User.objects.filter(pk=value).exists():
             raise serializers.ValidationError("Foydalanuvchi topilmadi")
+        return value
+
+    def validate_project_id(self, value):
+        from core.apps.api.models import ProjectModel
+
+        if not ProjectModel.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Loyiha topilmadi")
         return value

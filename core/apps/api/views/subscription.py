@@ -165,7 +165,7 @@ class SubscriptionViewSet(viewsets.ViewSet):
         agentv3 dan token sarflanishini qabul qiladi.
 
         Header:  X-Internal-Token: <settings.INTERNAL_API_TOKEN>
-        Body:    {"user_id": <int>, "input_tokens": <int>, "output_tokens": <int>}
+        Body:    {"user_id": <int>, "project_id": <int>, "input_tokens": <int>, "output_tokens": <int>}
         """
         internal_token = getattr(settings, "INTERNAL_API_TOKEN", None)
         if not internal_token:
@@ -180,10 +180,12 @@ class SubscriptionViewSet(viewsets.ViewSet):
             return error_response(serializer.errors, 400)
 
         user_id = serializer.validated_data["user_id"]
+        project_id = serializer.validated_data["project_id"]
         input_tokens = serializer.validated_data["input_tokens"]
         output_tokens = serializer.validated_data["output_tokens"]
 
         from django.contrib.auth import get_user_model
+        from core.apps.api.models import ProjectPlanModel, ProjectModel
 
         User = get_user_model()
         try:
@@ -192,18 +194,24 @@ class SubscriptionViewSet(viewsets.ViewSet):
             return error_response({"detail": "Foydalanuvchi topilmadi."}, 404)
 
         try:
-            subscription = _get_or_create_subscription(user)
-        except PlanModel.DoesNotExist:
-            return error_response({"detail": "FREE tarif topilmadi."}, 500)
+            project = ProjectModel.objects.get(pk=project_id, owner=user)
+        except ProjectModel.DoesNotExist:
+            return error_response({"detail": "Loyiha topilmadi."}, 404)
 
-        UserSubscription.objects.filter(pk=subscription.pk).update(
+        try:
+            project_plan = project.plan_subscription
+        except ProjectPlanModel.DoesNotExist:
+            return error_response({"detail": "Loyiha tarifi topilmadi."}, 404)
+
+        ProjectPlanModel.objects.filter(pk=project_plan.pk).update(
             tokens_used_input=F("tokens_used_input") + input_tokens,
             tokens_used_output=F("tokens_used_output") + output_tokens,
         )
 
         logger.info(
-            "Token usage reported: user=%d input=%d output=%d",
+            "Token usage reported: user=%d project=%d input=%d output=%d",
             user_id,
+            project_id,
             input_tokens,
             output_tokens,
         )
@@ -211,6 +219,7 @@ class SubscriptionViewSet(viewsets.ViewSet):
         return success_response(
             {
                 "user_id": user_id,
+                "project_id": project_id,
                 "input_tokens_added": input_tokens,
                 "output_tokens_added": output_tokens,
             }

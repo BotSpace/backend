@@ -8,9 +8,6 @@ from pydantic import BaseModel
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.apps.api.enums.plan import PlanStatus, PlanType
-from core.apps.api.models import PlanModel
-from core.apps.api.models.plan import UserSubscription
 from core.apps.accounts.models import ResetToken
 from core.services import SmsService
 
@@ -120,56 +117,6 @@ def test_me_view(api_client, test_user):
     api_client.force_authenticate(user=test_user)
     response = api_client.get(reverse("me-me"))
     assert response.status_code == status.HTTP_200_OK
-
-
-@pytest.mark.django_db
-def test_me_view_returns_ai_token_usage_for_existing_subscription(api_client, test_user):
-    plan = PlanModel.objects.create(
-        name=PlanType.PRO,
-        max_input_tokens=1000,
-        max_output_tokens=400,
-    )
-    UserSubscription.objects.create(
-        user=test_user,
-        plan=plan,
-        status=PlanStatus.ACTIVE,
-        tokens_used_input=250,
-        tokens_used_output=150,
-    )
-
-    api_client.force_authenticate(user=test_user)
-    response = api_client.get(reverse("me-me"))
-    assert response.status_code == status.HTTP_200_OK
-
-    payload = response.data.get("data", response.data)
-    usage = payload["ai_token_usage"]
-    assert usage["limit"] == 1400
-    assert usage["used"] == 400
-    assert usage["remaining"] == 1000
-    assert usage["input_used"] == 250
-    assert usage["output_used"] == 150
-    assert usage["plan"]["name"] == PlanType.PRO
-    assert usage["plan"]["display"] == "Pro"
-    assert usage["status"] == PlanStatus.ACTIVE
-    assert usage["token_reset_at"] is not None
-
-
-@pytest.mark.django_db
-def test_me_view_creates_free_subscription_when_missing(api_client, test_user):
-    PlanModel.objects.get_or_create(
-        name=PlanType.FREE,
-        defaults={"max_input_tokens": 100, "max_output_tokens": 50},
-    )
-
-    api_client.force_authenticate(user=test_user)
-    response = api_client.get(reverse("me-me"))
-    assert response.status_code == status.HTTP_200_OK
-    assert UserSubscription.objects.filter(user=test_user).exists()
-
-    payload = response.data.get("data", response.data)
-    usage = payload["ai_token_usage"]
-    assert usage["plan"]["name"] == PlanType.FREE
-    assert usage["plan"]["display"] == "Free"
 
 
 @pytest.mark.django_db

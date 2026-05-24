@@ -77,6 +77,7 @@ class ProjectPlanAdmin(ModelAdmin):
         "plan_name",
         "status_display",
         "users_display",
+        "tokens_output_display",
         "grace_period_info",
         "started_at",
     ]
@@ -92,6 +93,7 @@ class ProjectPlanAdmin(ModelAdmin):
         "limit_exceeded_at",
         "grace_period_notified",
         "started_at",
+        "token_reset_at",
         "created_at",
         "updated_at",
     ]
@@ -99,6 +101,7 @@ class ProjectPlanAdmin(ModelAdmin):
     fieldsets = (
         (_("Asosiy"), {"fields": ("project", "plan", "status")}),
         (_("Statistika"), {"fields": ("current_users", "limit_exceeded_at", "grace_period_notified")}),
+        (_("Token statistikasi"), {"fields": ("tokens_used_input", "tokens_used_output", "token_reset_at")}),
         (_("Sanalar"), {"fields": ("started_at", "expires_at", "created_at", "updated_at")}),
     )
 
@@ -155,6 +158,20 @@ class ProjectPlanAdmin(ModelAdmin):
             int(percentage),
         )
 
+    @display(description=_("Output tokenlar"))
+    def tokens_output_display(self, obj):
+        limit = obj.plan.max_output_tokens
+        used = obj.tokens_used_output
+        percentage = (used / limit * 100) if limit else 0
+        color = "red" if percentage >= 100 else ("orange" if percentage >= 80 else "green")
+        return format_html(
+            '<span style="color: {}; font-weight: 600;">{:,} / {:,} ({:.1f}%)</span>',
+            color,
+            used,
+            limit,
+            percentage,
+        )
+
     @display(description=_("Imkoniyat muddati"))
     def grace_period_info(self, obj):
         if not obj.limit_exceeded_at:
@@ -172,7 +189,7 @@ class ProjectPlanAdmin(ModelAdmin):
         days_left = (grace_period_end - now).days
         return format_html('<span style="color: orange; font-weight: 500;">⏳ {} kun qoldi</span>', days_left)
 
-    actions = ["activate_plan", "suspend_plan", "reset_limit"]
+    actions = ["activate_plan", "suspend_plan", "reset_limit", "reset_tokens"]
 
     @admin.action(description=_("Tanlangan tariflarni faollashtirish"))
     def activate_plan(self, request, queryset):
@@ -195,6 +212,13 @@ class ProjectPlanAdmin(ModelAdmin):
         """Reset limit exceeded status"""
         count = queryset.update(limit_exceeded_at=None, grace_period_notified=False)
         self.message_user(request, f"{count} ta tarifning limiti qayta tiklandi.")
+
+    @admin.action(description=_("Tokenlarni reset qilish"))
+    def reset_tokens(self, request, queryset):
+        from django.utils import timezone
+
+        count = queryset.update(tokens_used_input=0, tokens_used_output=0, token_reset_at=timezone.now())
+        self.message_user(request, f"{count} ta proyekt tokenlari reset qilindi.")
 
 
 @admin.register(UserSubscription)

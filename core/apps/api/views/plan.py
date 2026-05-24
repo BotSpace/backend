@@ -137,6 +137,10 @@ class ProjectPlanViewSet(viewsets.ViewSet):
                 if project_plan.plan.max_users > 0
                 else 0
             )
+            input_used = project_plan.tokens_used_input
+            output_used = project_plan.tokens_used_output
+            token_limit = project_plan.token_limit()
+            token_used = project_plan.tokens_used()
 
             return success_response(
                 {
@@ -147,6 +151,20 @@ class ProjectPlanViewSet(viewsets.ViewSet):
                     "can_add_user": project_plan.can_add_user(),
                     "status": project_plan.status,
                     "plan_name": project_plan.plan.get_name_display(),
+                    "ai_token_usage": {
+                        "limit": token_limit,
+                        "used": token_used,
+                        "remaining": max(0, token_limit - token_used),
+                        "input_used": input_used,
+                        "output_used": output_used,
+                        "plan": {
+                            "id": project_plan.plan_id,
+                            "name": project_plan.plan.name,
+                            "display": project_plan.plan.get_name_display(),
+                        },
+                        "status": project_plan.status,
+                        "token_reset_at": project_plan.token_reset_at,
+                    },
                 }
             )
 

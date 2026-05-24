@@ -63,6 +63,9 @@ class ProjectPlanModel(AbstractBaseModel):
     grace_period_notified = models.BooleanField(verbose_name=_("Ogohlantirish yuborildi"), default=False)
     started_at = models.DateTimeField(verbose_name=_("Boshlangan sana"), auto_now_add=True)
     expires_at = models.DateTimeField(verbose_name=_("Tugash sanasi"), null=True, blank=True)
+    tokens_used_input = models.BigIntegerField(default=0)
+    tokens_used_output = models.BigIntegerField(default=0)
+    token_reset_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.project.name} - {self.plan.get_name_display()}"
@@ -74,6 +77,18 @@ class ProjectPlanModel(AbstractBaseModel):
     def can_add_user(self) -> bool:
         """Check if can add new user"""
         return self.current_users < self.plan.max_users
+
+    def token_limit(self) -> int:
+        return self.plan.max_input_tokens + self.plan.max_output_tokens
+
+    def tokens_used(self) -> int:
+        return self.tokens_used_input + self.tokens_used_output
+
+    def tokens_remaining(self) -> int:
+        return max(0, self.token_limit() - self.tokens_used())
+
+    def is_token_limit_exceeded(self) -> bool:
+        return self.tokens_remaining() <= 0
 
     @classmethod
     def _create_fake(cls):
