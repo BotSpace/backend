@@ -121,7 +121,7 @@ class UserSubscriptionAdmin(ModelAdmin):
         pct = round(used / limit * 100, 1) if limit else 0
         color = "red" if pct >= 100 else ("orange" if pct >= 80 else "green")
         return format_html(
-            '<span style="color: {};">{:,} / {:,} ({}%)</span>',
+            '<span style="color: {};">{} / {} ({}%)</span>',
             color,
             used,
             limit,
