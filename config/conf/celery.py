@@ -17,8 +17,4 @@ CELERY_BEAT_SCHEDULE = {
     #     "task": "payment.process_resource_usage",
     #     "schedule": crontab(minute="0", hour="*/1"),
     # },
-    "monitor_plan_limits": {
-        "task": "monitor_plan_limits",
-        "schedule": crontab(minute="0", hour="*/6"),  # Every 6 hours
-    },
 }

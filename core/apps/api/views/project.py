@@ -1,9 +1,4 @@
-from datetime import timedelta
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from core.apps.payment.services.balance import subtract_balance
-from core.apps.api.models import ProjectPlanModel
-from core.apps.api.enums.plan import PlanStatus
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiExample, extend_schema
@@ -16,7 +11,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from core.apps.api.services.project import copy_collections, create_default_collections, default_flow
 
 from core.apps.api.enums.container import ContainerStatusEnum
-from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel, PlanModel
+from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
 from core.apps.api.serializers.project import (
     CreateEnviromentSerializer,
     CreateProjectSerializer,
@@ -87,9 +82,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     @extend_schema(
         summary="Loyiha yaratish",
         description=(
-            "Yangi loyiha yaratadi. Loyiha yaratish **bepul va limitsiz** — plan talab qilinmaydi.\n\n"
-            "Loyiha avtomatik ravishda **FREE** tarifga biriktiriladi.\n\n"
-            "Tarif birinchi **release** qo'shilganda tanlanadi."
+            "Yangi loyiha yaratadi. Loyiha yaratish uchun alohida loyiha tarifi talab qilinmaydi; "
+            "limitlar foydalanuvchi obunasi orqali boshqariladi."
         ),
         request=CreateProjectSerializer,
         responses={
@@ -150,7 +144,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return (
             ProjectModel.objects
             .filter(owner=self.request.user)
-            .select_related("plan_subscription__plan", "debug")
+            .select_related("debug")
             .prefetch_related(Prefetch("relases", queryset=latest_release_qs, to_attr="prefetched_relases"))
             .order_by("-id")
         )
@@ -159,15 +153,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
 
     def perform_create(self, serializer):
-        free_plan, _ = PlanModel.objects.get_or_create(
-            name="free",
-            defaults={"is_active": True, "price": 0},
-        )
-
         project = serializer.save(owner=self.request.user)
         project.flow = default_flow()
         project.save()
-        ProjectPlanModel.objects.create(project=project, plan=free_plan, status=PlanStatus.ACTIVE, current_users=0)
         create_default_collections(project)
 
     @extend_schema(
@@ -175,7 +163,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         description=(
             "Sotib olingan shablondan yangi loyiha yaratadi.\n\n"
             "Shablon avval sotib olingan bo'lishi shart.\n\n"
-            "Loyiha FREE tarifga biriktiriladi va darhol birinchi release (v1) ham yaratiladi."
+            "Darhol birinchi release (v1) ham yaratiladi. Limitlar foydalanuvchi obunasi orqali boshqariladi."
         ),
         request=CreateProjectFromTemplate,
         responses={
@@ -218,17 +206,11 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
 
-        free_plan, _ = PlanModel.objects.get_or_create(
-            name="free",
-            defaults={"is_active": True, "price": 0},
-        )
-
         instance = ProjectModel.objects.create(
             name=data.get("name"),
             flow=template.project.flow,
             owner=request.user,
         )
-        ProjectPlanModel.objects.create(project=instance, plan=free_plan, status=PlanStatus.ACTIVE, current_users=0)
         EnviromentModel.objects.create(
             key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
         )
@@ -495,27 +477,12 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get("project")
-        plan = serializer.validated_data.pop("_plan", None)
-        months = serializer.validated_data.pop("_months", 1)
-        total_price = serializer.validated_data.pop("_total_price", 0)
-        serializer.validated_data.pop("plan_id", None)  # model field emas
+        serializer.validated_data.pop("plan_id", None)
+        serializer.validated_data.pop("months", None)
 
         set_webhook(project, "release")
         relase = RelaseModel.objects.filter(project=project).last()
         version = 1 if relase is None else relase.version
-
-        # Birinchi release: plan biriktiriladi va kerak bo'lsa pul yechiladi
-        if plan is not None:
-            if total_price > 0:
-                subtract_balance(
-                    self.request.user, total_price,
-                    comment=f"Tarif to'lovi: {plan.get_name_display()} ({months} oy)"
-                )
-            subscription = project.plan_subscription
-            subscription.plan = plan
-            subscription.started_at = timezone.now()
-            subscription.expires_at = timezone.now() + timedelta(days=months * 30)
-            subscription.save(update_fields=["plan", "started_at", "expires_at"])
 
         serializer.save(version=version + 1, flow=project.flow)
 

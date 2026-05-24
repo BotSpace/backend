@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
-from core.apps.api.views.plan import PlanViewSet, ProjectPlanViewSet
+from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
 from core.apps.api.views.subscription import SubscriptionViewSet
 
@@ -24,22 +24,6 @@ urlpatterns = [
     path("", include(router.urls)),
     path("bot-webhook/<str:method>/<str:uuid>/", BotWebhookView.as_view(), name="bot-webhook"),
     re_path(r"^used(?:/(?P<project_id>[0-9]+))?/$", UsedView.as_view(), name="project-used"),
-    # Plan management endpoints
-    path(
-        "project/<int:project_pk>/plan/",
-        ProjectPlanViewSet.as_view({"get": "get_current"}),
-        name="project-plan-current",
-    ),
-    path(
-        "project/<int:project_pk>/plan/upgrade/",
-        ProjectPlanViewSet.as_view({"post": "upgrade"}),
-        name="project-plan-upgrade",
-    ),
-    path(
-        "project/<int:project_pk>/plan/usage/",
-        ProjectPlanViewSet.as_view({"get": "usage_stats"}),
-        name="project-plan-usage",
-    ),
     # User subscription endpoints
     path(
         "subscription/",

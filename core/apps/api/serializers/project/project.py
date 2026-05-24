@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from drf_spectacular.utils import OpenApiExample
-from core.apps.api.models import PlanModel
-
 from core.apps.api.models import ProjectModel
 from core.apps.api.models.project import EnviromentModel
 from core.apps.api.serializers.project.debug import CreateDebugSerializer, RetrieveDebugSerializer
@@ -26,14 +24,6 @@ class BaseProjectSerializer(serializers.ModelSerializer):
     def get_users(self, obj) -> int:
         return self.dashboardService.users_count()
 
-    def validate_plan_id(self, value):
-        """Validate plan exists and is active"""
-        try:
-            plan = PlanModel.objects.get(id=value, is_active=True)
-            return plan.pk
-        except PlanModel.DoesNotExist:
-            raise serializers.ValidationError("Invalid or inactive plan")
-
     class Meta:
         model = ProjectModel
         fields = [
@@ -46,24 +36,8 @@ class BaseProjectSerializer(serializers.ModelSerializer):
 
 
 class ListProjectSerializer(BaseProjectSerializer):
-    plan = serializers.SerializerMethodField()
-
-    def get_plan(self, obj):
-        """Get project plan info (relies on prefetched plan_subscription__plan)."""
-        project_plan = getattr(obj, "plan_subscription", None)
-        if project_plan is None:
-            return None
-        plan = project_plan.plan
-        return {
-            "id": plan.id,
-            "name": plan.get_name_display(),
-            "status": project_plan.status,
-            "current_users": project_plan.current_users,
-            "max_users": plan.max_users,
-        }
-
     class Meta(BaseProjectSerializer.Meta):
-        fields = [*BaseProjectSerializer.Meta.fields, "release", "plan"]
+        fields = [*BaseProjectSerializer.Meta.fields, "release"]
 
 
 class RetrieveProjectSerializer(BaseProjectSerializer):
@@ -71,7 +45,6 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     debug_bot = serializers.SerializerMethodField()
     release_bot = serializers.SerializerMethodField()
     debug_uuid = serializers.SerializerMethodField()
-    plan = serializers.SerializerMethodField()
 
     def get_debug_uuid(self, obj) -> str:
         return obj.debug_webhook_uuid
@@ -82,23 +55,6 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     def get_release_bot(self, obj) -> bool:
         return EnviromentModel.objects.filter(project=obj, key="RELEASE_BOT_TOKEN").exists()
 
-    def get_plan(self, obj):
-        """Get detailed project plan info (relies on prefetched plan_subscription__plan)."""
-        project_plan = getattr(obj, "plan_subscription", None)
-        if project_plan is None:
-            return None
-        plan = project_plan.plan
-        return {
-            "id": plan.id,
-            "name": plan.get_name_display(),
-            "price": str(plan.price),
-            "status": project_plan.status,
-            "current_users": project_plan.current_users,
-            "max_users": plan.max_users,
-            "powered_by_botmother": plan.powered_by_botmother,
-            "limit_exceeded": project_plan.is_limit_exceeded(),
-        }
-
     class Meta(BaseProjectSerializer.Meta):
         fields = [
             *BaseProjectSerializer.Meta.fields,
@@ -108,7 +64,6 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
             "release_bot",
             "debug_uuid",
             "flow",
-            "plan",
         ]
 
 

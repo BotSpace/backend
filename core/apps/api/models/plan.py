@@ -45,65 +45,6 @@ class PlanModel(AbstractBaseModel):
         ordering = ["order"]
 
 
-class ProjectPlanModel(AbstractBaseModel):
-    """Proyekt tariflari"""
-
-    project = models.OneToOneField("api.ProjectModel", on_delete=models.CASCADE, related_name="plan_subscription")
-    plan = models.ForeignKey(PlanModel, on_delete=models.PROTECT, related_name="subscriptions")
-    status = models.CharField(
-        verbose_name=_("Holat"), max_length=20, choices=PlanStatus.choices, default=PlanStatus.ACTIVE
-    )
-    current_users = models.IntegerField(verbose_name=_("Joriy foydalanuvchilar"), default=0)
-    limit_exceeded_at = models.DateTimeField(
-        verbose_name=_("Limit oshgan sana"),
-        null=True,
-        blank=True,
-        help_text=_("Foydalanuvchilar soni limitdan oshgan sana"),
-    )
-    grace_period_notified = models.BooleanField(verbose_name=_("Ogohlantirish yuborildi"), default=False)
-    started_at = models.DateTimeField(verbose_name=_("Boshlangan sana"), auto_now_add=True)
-    expires_at = models.DateTimeField(verbose_name=_("Tugash sanasi"), null=True, blank=True)
-    tokens_used_input = models.BigIntegerField(default=0)
-    tokens_used_output = models.BigIntegerField(default=0)
-    token_reset_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.project.name} - {self.plan.get_name_display()}"
-
-    def is_limit_exceeded(self) -> bool:
-        """Check if user limit is exceeded"""
-        return self.current_users > self.plan.max_users
-
-    def can_add_user(self) -> bool:
-        """Check if can add new user"""
-        return self.current_users < self.plan.max_users
-
-    def token_limit(self) -> int:
-        return self.plan.max_input_tokens + self.plan.max_output_tokens
-
-    def tokens_used(self) -> int:
-        return self.tokens_used_input + self.tokens_used_output
-
-    def tokens_remaining(self) -> int:
-        return max(0, self.token_limit() - self.tokens_used())
-
-    def is_token_limit_exceeded(self) -> bool:
-        return self.tokens_remaining() <= 0
-
-    @classmethod
-    def _create_fake(cls):
-        from core.apps.api.models import ProjectModel
-
-        return baker.make(
-            cls, project=ProjectModel._create_fake(), plan=PlanModel.objects.first() or PlanModel._create_fake()
-        )
-
-    class Meta:
-        db_table = "project_plan"
-        verbose_name = _("Proyekt tarifi")
-        verbose_name_plural = _("Proyekt tariflari")
-
-
 class UserSubscription(AbstractBaseModel):
     """Foydalanuvchi tarifi"""
 
@@ -126,7 +67,7 @@ class UserSubscription(AbstractBaseModel):
         return f"{self.user} - {self.plan.get_name_display()}"
 
     def is_token_limit_exceeded(self) -> bool:
-        return self.tokens_used_output >= self.plan.max_output_tokens
+        return self.tokens_remaining() <= 0
 
     def can_create_bot(self) -> bool:
         if self.plan.max_bots == 0:
@@ -134,7 +75,9 @@ class UserSubscription(AbstractBaseModel):
         return self.bots_count < self.plan.max_bots
 
     def tokens_remaining(self) -> int:
-        return max(0, self.plan.max_output_tokens - self.tokens_used_output)
+        token_limit = self.plan.max_input_tokens + self.plan.max_output_tokens
+        tokens_used = self.tokens_used_input + self.tokens_used_output
+        return max(0, token_limit - tokens_used)
 
     @classmethod
     def _create_fake(cls):
