@@ -63,7 +63,15 @@ def get_k8s_client():
                 config.load_kube_config()
             logger.info("Loaded kubeconfig file")
 
-        return client.CoreV1Api()
+        k8s_config = client.Configuration.get_default_copy()
+        authorization = k8s_config.api_key.get("authorization")
+        if authorization and "BearerToken" not in k8s_config.api_key:
+            # kubernetes>=36 generated APIs request the `BearerToken` auth
+            # scheme, while in-cluster config still populates `authorization`.
+            k8s_config.api_key["BearerToken"] = authorization
+            client.Configuration.set_default(k8s_config)
+
+        return client.CoreV1Api(client.ApiClient(k8s_config))
     except Exception as e:
         logger.error("Kubernetes client error: %s", e)
         raise Exception("Kubernetes client error")
