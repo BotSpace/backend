@@ -332,7 +332,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug", throttle_classes=[DebugContainerThrottle])
     def debug(self, request, pk):
         instance = self.get_object()
-        debug, _ = DebugModel.objects.get_or_create(project=instance)
+        debug, _created = DebugModel.objects.get_or_create(project=instance)
         try:
             service = deploy_service(
                 instance,
