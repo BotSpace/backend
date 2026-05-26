@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiExample, extend_schema
+from kubernetes.client.rest import ApiException
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
@@ -12,6 +13,7 @@ from core.apps.api.services.project import copy_collections, create_default_coll
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
+from core.apps.api.models.project import DebugModel
 from core.apps.api.serializers.project import (
     CreateEnviromentSerializer,
     CreateProjectSerializer,
@@ -34,10 +36,24 @@ from core.apps.cms_legacy.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
 
 
-_error_response = lambda desc, props: OpenApiResponse(
-    description=desc,
-    response={"type": "object", "properties": props},
-)
+def _error_response(desc, props):
+    return OpenApiResponse(
+        description=desc,
+        response={"type": "object", "properties": props},
+    )
+
+
+class DeploymentUnavailable(exceptions.APIException):
+    status_code = 503
+    default_detail = _("Deployment service is temporarily unavailable")
+    default_code = "deployment_unavailable"
+
+
+def _deployment_error(exc: ApiException) -> DeploymentUnavailable:
+    detail = _("Deployment service is temporarily unavailable")
+    if exc.status in {401, 403}:
+        detail = _("Deployment service is not authorized to manage Kubernetes resources")
+    return DeploymentUnavailable(detail=detail)
 
 
 @extend_schema(tags=["project"])
@@ -316,15 +332,20 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug", throttle_classes=[DebugContainerThrottle])
     def debug(self, request, pk):
         instance = self.get_object()
-        debug = instance.debug
-        service = deploy_service(
-            instance,
-            "debug",
-            instance.flow,
-            instance.id,
-            list(project_enviroment(instance.id)),
-            webhook_uuid=str(instance.debug_webhook_uuid),
-        )
+        debug, _ = DebugModel.objects.get_or_create(project=instance)
+        try:
+            service = deploy_service(
+                instance,
+                "debug",
+                instance.flow,
+                instance.id,
+                list(project_enviroment(instance.id)),
+                webhook_uuid=str(instance.debug_webhook_uuid),
+            )
+        except ApiException as exc:
+            debug.status = ContainerStatusEnum.FAILED.value
+            debug.save(update_fields=["status", "updated_at"])
+            raise _deployment_error(exc) from exc
         debug.service_id = service.metadata.name
         debug.status = "initializing"
         debug.save()
@@ -349,6 +370,8 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
             project_id = self.request.query_params.get("project")
             if project_id is None:
                 raise exceptions.ValidationError(detail={"project": [_("project is required")]})
+            if not str(project_id).isdigit():
+                raise exceptions.ValidationError(detail={"project": [_("project must be a numeric id")]})
             queryset = queryset.filter(project_id=project_id)
         return queryset
 
@@ -454,7 +477,10 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
         ],
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        try:
+            return super().create(request, *args, **kwargs)
+        except ApiException as exc:
+            raise _deployment_error(exc) from exc
 
     @extend_schema(
         summary="Releaseni to'xtatish",

@@ -41,21 +41,14 @@ from kubernetes import client, config, watch
 
 logger = logging.getLogger(__name__)
 
-_k8s_client = None
-_k8s_core_api = None
-
-
 def get_k8s_client():
-    """Get or create Kubernetes API client
+    """Get a Kubernetes API client.
 
-    Returns:
-        kubernetes.client.CoreV1Api instance
+    In-cluster service-account tokens are rotated by Kubernetes. Keeping a
+    module-level API client around can leave long-lived Django workers using a
+    stale bearer token, which surfaces as intermittent 401 errors when starting
+    debug/release deployments.
     """
-    global _k8s_client, _k8s_core_api
-
-    if _k8s_core_api is not None:
-        return _k8s_core_api
-
     try:
         # Try in-cluster config first (when running inside Kubernetes)
         try:
@@ -70,9 +63,7 @@ def get_k8s_client():
                 config.load_kube_config()
             logger.info("Loaded kubeconfig file")
 
-        _k8s_client = client
-        _k8s_core_api = client.CoreV1Api()
-        return _k8s_core_api
+        return client.CoreV1Api()
     except Exception as e:
         logger.error("Kubernetes client error: %s", e)
         raise Exception("Kubernetes client error")

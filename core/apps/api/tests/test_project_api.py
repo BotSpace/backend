@@ -1,4 +1,3 @@
-import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,7 +6,7 @@ from rest_framework.test import APIClient
 
 from core.apps.api.models import ProjectModel, PlanModel
 
-from core.apps.api.models.project import EnviromentModel
+from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.project import create_default_collections
 
 
@@ -18,7 +17,7 @@ def patch_docker_services():
         "core.apps.api.signals.project.deploy_service"
     ) as mock_deploy, patch("core.apps.api.views.project.deploy_service") as mock_deploy_view, patch(
         "core.apps.api.views.project.set_webhook"
-    ) as mock_set_webhook:
+    ):
         magic = MagicMock()
         magic.metadata.name = "test-deployment-123"
         mock_deploy.return_value = magic
@@ -96,6 +95,24 @@ def test_project_debug(project_client):
 
 
 @pytest.mark.django_db
+def test_project_debug_recreates_missing_debug_row(project_client):
+    client, urls, instance, _ = project_client
+    DebugModel.objects.filter(project=instance).delete()
+    EnviromentModel.objects.create(
+        project=instance,
+        key="BOT_TOKEN",
+        value="token",
+        user=instance.owner,
+    )
+
+    response = client.get(urls["debug"])
+
+    assert response.status_code == 200
+    assert response.json()["status"] is True
+    assert DebugModel.objects.filter(project=instance).exists()
+
+
+@pytest.mark.django_db
 def test_project_update(project_client):
     client, urls, _, plan = project_client
     response = client.put(urls["retrieve"], data={"name": "test", "plan_id": plan.id})
@@ -160,3 +177,12 @@ def test_project_debug_bot_active_token(project_client):
     data = response.json()["data"]
     assert data["debug_bot"] is True
     assert data["release_bot"] is True
+
+
+@pytest.mark.django_db
+def test_release_list_rejects_non_numeric_project(project_client):
+    client, _, _, _ = project_client
+    response = client.get(reverse("relase-list"), {"project": "global"})
+
+    assert response.status_code == 400
+    assert response.json()["status"] is False
