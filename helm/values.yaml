@@ -63,7 +63,7 @@ configMaps:
   k8s:
     K8S_NAMESPACE: "botmother"
 
-# envFrom references EXISTING secrets/configmaps NOT managed by this chart
+
 envFrom:
   - secretRef:
       name: botmother-secret
