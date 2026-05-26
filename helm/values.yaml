@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: registry.iprogrammer.uz/botspace/botmother
-  tag: "55fb311"
+  tag: "86b9c4f"
   pullPolicy: Always
 
 imagePullSecrets:
