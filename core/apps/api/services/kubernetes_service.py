@@ -586,6 +586,18 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     if _env is None:
         _env = []
 
+    def has_env(name: str) -> bool:
+        return any(env_value.split("=", 1)[0] == name for env_value in _env if "=" in env_value)
+
+    def get_env_value(name: str) -> str | None:
+        for env_value in _env:
+            if "=" not in env_value:
+                continue
+            key_name, value = env_value.split("=", 1)
+            if key_name == name:
+                return value
+        return None
+
     deployment_name = f"{prefix}-{key}".lower().replace("_", "-")
     configmap_name = f"{deployment_name}-flow"
 
@@ -602,7 +614,12 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
         mongo_credentials = {"connection_string": env.str("MONGO_URL"), "database": f"project_{project.id}"}
 
     # Build environment variables
-    _env.append(f"BOT_TOKEN={env.str('TEST_BOT_TOKEN')}")
+    if prefix == "release" and not has_env("BOT_TOKEN"):
+        release_token = get_env_value("RELEASE_BOT_TOKEN")
+        if release_token:
+            _env.append(f"BOT_TOKEN={release_token}")
+    if not has_env("BOT_TOKEN"):
+        _env.append(f"BOT_TOKEN={env.str('TEST_BOT_TOKEN')}")
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")

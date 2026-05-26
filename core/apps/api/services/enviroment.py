@@ -25,7 +25,7 @@ def release_bot_token(project_id: int) -> Optional[str]:
     try:
         return EnviromentModel.objects.get(project_id=project_id, key="RELEASE_BOT_TOKEN").value
     except EnviromentModel.DoesNotExist:
-        return None
+        return debug_bot_token(project_id)
 
 
 def validate_release_enviroment(project_id):
