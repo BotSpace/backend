@@ -151,7 +151,6 @@ COERCERS: dict[str, Callable[[Any], Any]] = {
     FieldKind.TEXT: _as_text,
     FieldKind.LONGTEXT: _as_text,
     FieldKind.INT: _as_int,
-    FieldKind.NUMBER: _as_int,  # legacy synonym; treated as integer
     FieldKind.FLOAT: _as_float,
     FieldKind.BOOL: _as_bool,
     FieldKind.DATETIME: _as_datetime,
@@ -166,10 +165,12 @@ COERCERS: dict[str, Callable[[Any], Any]] = {
     FieldKind.IMAGE: _as_uuid,
     FieldKind.AUDIO: _as_uuid,
     FieldKind.VIDEO: _as_uuid,
-} if hasattr(FieldKind, "NUMBER") else {}
+}
 
-# `NUMBER` is not in our enum — drop the placeholder; real fields use INT/FLOAT.
-COERCERS = {k: v for k, v in COERCERS.items() if k != "number"}
+# Legacy synonym — agentlar yoki eski client'lar `kind="number"` yuborishi
+# mumkin. FieldKind enum'da rasman yo'q, lekin string kalit sifatida int
+# sifatida talqin qilamiz.
+COERCERS["number"] = _as_int
 
 
 def _check_extra_validators(kind: str, value: Any, rules: dict[str, Any]) -> None:
@@ -184,10 +185,14 @@ def _check_extra_validators(kind: str, value: Any, rules: dict[str, Any]) -> Non
             if not re.search(str(rules["regex"]), s):
                 raise ValueError("regex mismatch")
     if kind in {FieldKind.INT, FieldKind.FLOAT}:
-        if "min" in rules and value < rules["min"]:
-            raise ValueError(f"min={rules['min']}")
-        if "max" in rules and value > rules["max"]:
-            raise ValueError(f"max={rules['max']}")
+        # Defensiv: agar value coerce'dan keyin ham number bo'lmasa (masalan
+        # COERCERS sxemasi noto'g'ri ishlagan bo'lsa), TypeError chiqarmasdan
+        # tinch o'tib ketamiz — boshqa joyda aniqroq xato qaytadi.
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if "min" in rules and value < rules["min"]:
+                raise ValueError(f"min={rules['min']}")
+            if "max" in rules and value > rules["max"]:
+                raise ValueError(f"max={rules['max']}")
     if "choices" in rules and rules["choices"]:
         if value not in rules["choices"]:
             raise ValueError(f"must be one of {rules['choices']}")
