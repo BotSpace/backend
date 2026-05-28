@@ -29,6 +29,7 @@ from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListD
 from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
+from core.apps.api.services.kubernetes_service import deployment_logs_snapshot
 from core.apps.api.services.enviroment import project_enviroment
 from core.throttle.ip_throttle import DebugContainerThrottle, ReleaseCreateThrottle
 from core.apps.api.services.webhook import set_webhook
@@ -500,6 +501,62 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
         instance.status = ContainerStatusEnum.STOPPING.value
         instance.save()
         return Response(data={"detail": _("Stopped")})
+
+    @extend_schema(
+        summary="Release loglarini olish (snapshot)",
+        description=(
+            "Bu release uchun ishlayotgan pod loglarining oxirgi N qatorini qaytaradi. "
+            "Streaming emas — JSON snapshot. Real-time stream uchun /sse/.../logs/ ishlatiladi."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="tail",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Oxirgi nechta qator (default 200, max 2000).",
+            ),
+            OpenApiParameter(
+                name="since_seconds",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Faqat oxirgi N soniyadagi qatorlar.",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Log qatorlari",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "pod_name": {"type": "string", "nullable": True},
+                        "lines": {"type": "array", "items": {"type": "string"}},
+                        "truncated": {"type": "boolean"},
+                    },
+                },
+            ),
+            404: _error_response("Release topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
+        },
+    )
+    @action(methods=["GET"], detail=True, url_path="logs", url_name="logs")
+    def logs(self, request, pk):
+        instance = self.get_object()
+        if not instance.service_id:
+            return Response(
+                data={"pod_name": None, "lines": [], "truncated": False, "detail": _("Service is not deployed")},
+            )
+        try:
+            tail = int(request.query_params.get("tail", 200))
+        except (TypeError, ValueError):
+            tail = 200
+        since_param = request.query_params.get("since_seconds")
+        try:
+            since = int(since_param) if since_param is not None else None
+        except (TypeError, ValueError):
+            since = None
+        snapshot = deployment_logs_snapshot(instance.service_id, tail_lines=tail, since_seconds=since)
+        return Response(data=snapshot)
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get("project")

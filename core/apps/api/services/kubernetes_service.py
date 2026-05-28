@@ -754,3 +754,54 @@ async def deployment_logs_async(deployment_name: str):
     except Exception as e:
         logger.error("Error streaming logs for deployment %s: %s", deployment_name, e)
         yield f"Error: {str(e)}"
+
+
+def deployment_logs_snapshot(
+    deployment_name: str,
+    tail_lines: int = 200,
+    since_seconds: int | None = None,
+) -> dict:
+    """Return a non-streaming snapshot of recent deployment logs.
+
+    Args:
+        deployment_name: Name of the Kubernetes deployment (Release.service_id).
+        tail_lines: Number of trailing log lines to return (1..2000).
+        since_seconds: Only return lines newer than this many seconds, if set.
+
+    Returns:
+        dict with keys: pod_name (str|None), lines (list[str]), truncated (bool).
+        If no pod is found, lines is empty and pod_name is None.
+    """
+    tail = max(1, min(int(tail_lines or 200), 2000))
+    try:
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            config.load_kube_config()
+
+        api = client.CoreV1Api()
+        namespace = get_namespace()
+
+        label_selector = f"engine-name={deployment_name}"
+        pods = api.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+
+        if not pods.items:
+            return {"pod_name": None, "lines": [], "truncated": False}
+
+        pod_name = pods.items[0].metadata.name
+
+        kwargs = {
+            "name": pod_name,
+            "namespace": namespace,
+            "tail_lines": tail,
+            "timestamps": True,
+        }
+        if since_seconds is not None and since_seconds > 0:
+            kwargs["since_seconds"] = int(since_seconds)
+
+        raw = api.read_namespaced_pod_log(**kwargs)
+        lines = [ln for ln in (raw or "").splitlines() if ln]
+        return {"pod_name": pod_name, "lines": lines, "truncated": len(lines) >= tail}
+    except Exception as e:
+        logger.error("Error fetching log snapshot for deployment %s: %s", deployment_name, e)
+        return {"pod_name": None, "lines": [f"Error: {e}"], "truncated": False}
