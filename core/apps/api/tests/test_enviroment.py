@@ -30,6 +30,20 @@ def test_env_create(env_client):
 
 
 @pytest.mark.django_db
+def test_env_create_upserts_on_duplicate_key(env_client):
+    """POST with the same (project, key) must update the value, not 400."""
+    client, urls, instance = env_client
+    response = client.post(
+        urls["list"],
+        data={"key": instance.key, "value": "new-value", "project": instance.project.pk},
+    )
+    assert response.status_code == 201, response.json()
+    assert response.json()["status"] is True
+    instance.refresh_from_db()
+    assert instance.value == "new-value"
+
+
+@pytest.mark.django_db
 def test_env_update(env_client):
     client, urls, _ = env_client
     response = client.patch(urls["retrieve"], data={"flow": [{"step": "init", "action": "initialize release"}]})
