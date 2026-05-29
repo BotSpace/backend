@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from core.apps.api.enums.plan import PlanStatus, PlanType
 from core.apps.api.models import PlanModel
@@ -50,6 +50,15 @@ class SubscriptionViewSet(viewsets.ViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        # report_usage agentv3 dan X-Internal-Token bilan chaqiriladi.
+        # DRF default Bearer JWT autentifikatsiyasi bu yerda 401 qaytarmasligi
+        # uchun shu action uchun ochiq qilamiz — view ichidagi mantiq
+        # X-Internal-Token ni alohida tekshiradi.
+        if getattr(self, "action", None) == "report_usage":
+            return [AllowAny()]
+        return [permission() for permission in self.permission_classes]
 
     def current(self, request):
         """Joriy foydalanuvchi obunasini qaytaradi."""
