@@ -7,4 +7,5 @@ MODULES = [
     "core.apps.cms",
     "core.apps.payment",
     "core.apps.template",
+    "core.apps.administration",
 ]
