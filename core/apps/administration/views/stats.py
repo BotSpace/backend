@@ -83,28 +83,35 @@ def dashboard_stats(request):
         or 0
     )
 
+    # Wrap in the same {status, data} envelope that BaseViewSetMixin
+    # applies to every other endpoint, so the admin frontend's uniform
+    # `unwrap(raw).data` parsing works here too (this is a plain
+    # @api_view and doesn't inherit the mixin).
     return Response(
         {
-            "users": {
-                "total": users_total,
-                "active": users_active,
-                "new_7d": users_new_7d,
-                "new_30d": users_new_30d,
+            "status": True,
+            "data": {
+                "users": {
+                    "total": users_total,
+                    "active": users_active,
+                    "new_7d": users_new_7d,
+                    "new_30d": users_new_30d,
+                },
+                "projects": {
+                    "total": projects_total,
+                    "with_release": projects_with_release,
+                },
+                "templates": {
+                    "total": templates_total,
+                    "pending_verify": templates_pending_verify,
+                },
+                "withdrawals": {"pending": withdrawals_pending},
+                "revenue_30d": str(revenue_30d),
+                "daily_signups": _daily_buckets(User.objects, "date_joined"),
+                "daily_orders": _daily_buckets(
+                    TemplateOrderModel.objects.filter(payment_status=True),
+                    "created_at",
+                ),
             },
-            "projects": {
-                "total": projects_total,
-                "with_release": projects_with_release,
-            },
-            "templates": {
-                "total": templates_total,
-                "pending_verify": templates_pending_verify,
-            },
-            "withdrawals": {"pending": withdrawals_pending},
-            "revenue_30d": str(revenue_30d),
-            "daily_signups": _daily_buckets(User.objects, "date_joined"),
-            "daily_orders": _daily_buckets(
-                TemplateOrderModel.objects.filter(payment_status=True),
-                "created_at",
-            ),
         }
     )

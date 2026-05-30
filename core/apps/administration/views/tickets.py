@@ -6,13 +6,14 @@ an empty list so the admin UI renders gracefully; the frontend's
 Tickets page will show a "tizim hali to'liq sozlanmagan" notice.
 """
 
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import viewsets
 from rest_framework.response import Response
 
 from core.apps.administration.permissions import IsAdminUser
 
 
-class AdminTicketsView(viewsets.ViewSet):
+class AdminTicketsView(BaseViewSetMixin, viewsets.ViewSet):
     permission_classes = [IsAdminUser]
 
     def list(self, request):

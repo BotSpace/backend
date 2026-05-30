@@ -1,6 +1,7 @@
 # type: ignore
 """Admin audit log — paginated, filterable read-only view."""
 
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, viewsets
 from rest_framework import serializers as drf_serializers
 
@@ -30,6 +31,7 @@ class _AuditLogSerializer(drf_serializers.ModelSerializer):
 
 
 class AdminAuditLogView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,

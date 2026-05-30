@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -21,6 +22,7 @@ User = get_user_model()
 
 
 class AdminUsersView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,

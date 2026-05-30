@@ -1,5 +1,6 @@
 # type: ignore
 from django.db.models import Q
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, viewsets
 from rest_framework.response import Response
 
@@ -10,6 +11,7 @@ from core.apps.api.models.project import ProjectModel
 
 
 class AdminProjectsView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.DestroyModelMixin,

@@ -2,6 +2,7 @@
 """Read-only payment transaction history for admins."""
 
 from django.db.models import Q
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, viewsets
 from rest_framework import serializers as drf_serializers
 
@@ -18,6 +19,7 @@ class _TransactionSerializer(drf_serializers.ModelSerializer):
 
 
 class AdminTransactionsView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,

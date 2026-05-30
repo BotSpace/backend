@@ -1,6 +1,7 @@
 # type: ignore
 from django.db.models import Q
 from django.utils import timezone
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -19,6 +20,7 @@ from core.apps.template.models.submission import TemplateSubmissionRequestModel
 
 
 class AdminTemplatesView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
@@ -57,6 +59,7 @@ class AdminTemplatesView(
 
 
 class AdminTemplateSubmissionsView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,

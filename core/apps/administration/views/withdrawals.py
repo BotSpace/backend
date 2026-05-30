@@ -4,6 +4,7 @@
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ from core.apps.template.models.withdrawal import TemplateWithdrawalRequestModel
 
 
 class AdminWithdrawalsView(
+    BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,

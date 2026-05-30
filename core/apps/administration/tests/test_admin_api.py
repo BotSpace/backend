@@ -165,9 +165,9 @@ def test_reject_withdrawal(admin_client, normal_user):
 def test_dashboard_stats(admin_client, normal_user):
     res = admin_client.get("/api/admin/stats/dashboard/")
     assert res.status_code == 200
-    body = res.json()
-    assert "users" in body and "total" in body["users"]
-    assert "revenue_30d" in body
+    data = res.json()["data"]
+    assert "users" in data and "total" in data["users"]
+    assert "revenue_30d" in data
 
 
 # ── audit log read ────────────────────────────────────────────────────────────

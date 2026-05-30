@@ -1,6 +1,7 @@
 # type: ignore
 """Plan CRUD — pricing tier management."""
 
+from django_core.mixins import BaseViewSetMixin
 from rest_framework import serializers as drf_serializers
 from rest_framework import viewsets
 
@@ -15,7 +16,7 @@ class _PlanSerializer(drf_serializers.ModelSerializer):
         fields = "__all__"
 
 
-class AdminPlansView(viewsets.ModelViewSet):
+class AdminPlansView(BaseViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = _PlanSerializer
     queryset = PlanModel.objects.all().order_by("id")
