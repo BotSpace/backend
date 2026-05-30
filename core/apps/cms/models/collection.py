@@ -26,6 +26,8 @@ class Collection(models.Model):
     )
     label = models.CharField(max_length=120, blank=True, default="")
     description = models.TextField(blank=True, default="")
+    # Field name used as the display/title value when this collection is referenced via a relation.
+    primary_field = models.CharField(max_length=64, blank=True, default="")
 
     # System collections (users, chat) cannot be deleted from the UI.
     system = models.BooleanField(default=False)

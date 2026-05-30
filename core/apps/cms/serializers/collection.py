@@ -37,6 +37,7 @@ class CollectionListSerializer(serializers.ModelSerializer):
             "name",
             "label",
             "description",
+            "primary_field",
             "system",
             "schema_version",
             "fields_count",
@@ -62,7 +63,7 @@ class CollectionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Collection
-        fields = ["name", "label", "description", "fields"]
+        fields = ["name", "label", "description", "primary_field", "fields"]
 
     def validate_name(self, value: str) -> str:
         if not value or not value.replace("_", "").isalnum():
@@ -92,7 +93,7 @@ class CollectionCreateSerializer(serializers.ModelSerializer):
                 coll = Collection.objects.create(project=project, owner=owner, **validated_data)
             else:
                 changed_fields = []
-                for attr in ("label", "description"):
+                for attr in ("label", "description", "primary_field"):
                     if attr in validated_data and getattr(coll, attr) != validated_data[attr]:
                         setattr(coll, attr, validated_data[attr])
                         changed_fields.append(attr)
