@@ -28,7 +28,11 @@ class AllowMetricsHostMiddleware:
 
     def __call__(self, request):
         if request.path == self.METRICS_PATH or request.path.startswith(self.METRICS_PATH):
-            host = request.get_host().split(":", 1)[0]
+            # Read raw Host header from WSGI environ — Django's
+            # request.get_host() would itself trigger the ALLOWED_HOSTS
+            # check we're trying to bypass.
+            raw = request.META.get("HTTP_HOST") or request.META.get("SERVER_NAME") or ""
+            host = raw.split(":", 1)[0].strip()
             if host and host not in settings.ALLOWED_HOSTS:
                 settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + [host]
         return self.get_response(request)
