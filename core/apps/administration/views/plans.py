@@ -20,6 +20,10 @@ class AdminPlansView(BaseViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = _PlanSerializer
     queryset = PlanModel.objects.all().order_by("id")
+    # Tariffs are a small fixed set — return the full list as an array
+    # (no pagination envelope) so the admin frontend's plans page can
+    # map over it directly.
+    pagination_class = None
 
     def perform_create(self, serializer):
         instance = serializer.save()
