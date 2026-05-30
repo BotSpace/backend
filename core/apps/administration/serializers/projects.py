@@ -5,8 +5,9 @@ from core.apps.api.models.project import ProjectModel
 
 
 class AdminProjectSerializer(serializers.ModelSerializer):
+    # owner_id is a real model field (FK id), so ModelSerializer exposes it
+    # automatically — no explicit declaration needed.
     owner_phone = serializers.CharField(source="owner.phone", read_only=True)
-    owner_id = serializers.IntegerField(source="owner_id", read_only=True)
 
     class Meta:
         model = ProjectModel

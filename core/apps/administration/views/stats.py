@@ -49,9 +49,7 @@ def dashboard_stats(request):
         TemplateWithdrawalRequestModel,
     )
     from core.apps.template.enums.order import TemplateOrderStatusEnum  # noqa: WPS433
-    from core.apps.template.enums.withdrawal import (  # noqa: WPS433
-        TemplateWithdrawalRequestStatusEnum,
-    )
+    from core.apps.template.enums.withdrawal import WithdrawalStatusEnum  # noqa: WPS433
 
     now = timezone.now()
     week_ago = now - timedelta(days=7)
@@ -71,7 +69,7 @@ def dashboard_stats(request):
     templates_pending_verify = TemplateModel.objects.filter(is_verify=False).count()
 
     withdrawals_pending = TemplateWithdrawalRequestModel.objects.filter(
-        status=TemplateWithdrawalRequestStatusEnum.PENDING.value,
+        status=WithdrawalStatusEnum.PENDING.value,
     ).count()
 
     revenue_30d = (
