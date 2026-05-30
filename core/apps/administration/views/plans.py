@@ -11,6 +11,12 @@ from core.apps.api.models.plan import PlanModel
 
 
 class _PlanSerializer(drf_serializers.ModelSerializer):
+    # Plain CharField (no enum-choice enforcement) so admins can edit /
+    # deactivate legacy plans whose name predates the current PlanType
+    # choices (e.g. a leftover "start" plan). Without this, any PATCH
+    # that echoes the existing name 400s with "not a valid choice".
+    name = drf_serializers.CharField(max_length=50)
+
     class Meta:
         model = PlanModel
         fields = "__all__"
