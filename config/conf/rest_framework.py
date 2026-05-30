@@ -1,7 +1,13 @@
 from typing import Dict, Any
 
 REST_FRAMEWORK: Dict[str, Any] = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        # Tried first so X-Internal-Token + X-User-Id from the agent
+        # short-circuits before JWT parsing. Falls through silently on
+        # missing/wrong internal token so regular Bearer JWT auth still works.
+        "core.apps.shared.authentication.InternalTokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "django_core.paginations.CustomPagination",
