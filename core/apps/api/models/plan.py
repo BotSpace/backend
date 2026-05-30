@@ -14,21 +14,21 @@ from core.apps.api.enums.plan import PlanType, PlanStatus
 class PlanModel(AbstractBaseModel):
     """Tarif rejasi modeli"""
 
+    # Tarif endi FOYDALANUVCHIGA biriktiriladi (UserSubscription orqali),
+    # avvalgi loyiha-asosli model emas. Limitlar foydalanuvchi resurslari:
+    # nechta bot yaratishi va oylik AI token sarfi.
     name = models.CharField(verbose_name=_("Nom"), max_length=50, choices=PlanType.choices, unique=True)
     price = models.DecimalField(verbose_name=_("Narx"), max_digits=20, decimal_places=2, default=Decimal("0.00"))
-    max_users = models.IntegerField(verbose_name=_("Maksimal foydalanuvchilar soni"), default=100)
-    powered_by_botmother = models.BooleanField(
-        verbose_name=_("Powered by BotMother"), default=True, help_text=_("Botda 'Powered by BotMother' ko'rsatiladi")
-    )
-    custom_domain = models.BooleanField(verbose_name=_("Custom domain"), default=False)
-    priority_support = models.BooleanField(verbose_name=_("Priority support"), default=False)
     description = models.TextField(verbose_name=_("Tavsif"), null=True, blank=True)
     is_top = models.BooleanField(default=False)
     is_active = models.BooleanField(verbose_name=_("Faol"), default=True)
     order = models.IntegerField(verbose_name=_("Tartib"), default=0)
-    max_bots = models.IntegerField(verbose_name=_("Maksimal botlar soni"), default=1)
+    # Foydalanuvchi limitlari (enforce qilinadi: can_create_bot, token tracking)
+    max_bots = models.IntegerField(
+        verbose_name=_("Maksimal botlar soni"), default=1, help_text=_("0 = cheksiz")
+    )
     max_output_tokens = models.BigIntegerField(verbose_name=_("Oylik output token limiti"), default=200000)
-    max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti"), default=1000000)
+    max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti"), default=800000)
     features = models.JSONField(verbose_name=_("Xususiyatlar"), default=dict, blank=True)
 
     def __str__(self):

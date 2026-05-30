@@ -27,46 +27,36 @@ class Command(BaseCommand):
         
         console.print("\n[cyan]Creating pricing plans...[/cyan]\n")
         
+        # Tarif foydalanuvchiga biriktiriladi. Limitlar: bot soni + oylik AI token.
+        # (input = umumiy token'ning ~80%, output = ~20%)
         plans_data = [
             {
                 'name': PlanType.FREE,
                 'price': Decimal('0.00'),
-                'max_users': 100,
-                'powered_by_botmother': True,
-                'custom_domain': False,
-                'priority_support': False,
-                'description': 'Bepul tarif - 100 tagacha foydalanuvchi. "Powered by BotMother" brending bilan.',
+                'max_bots': 1,
+                'max_input_tokens': 800_000,
+                'max_output_tokens': 200_000,  # jami 1M token/oy
+                'description': 'Bepul tarif — 1 ta bot, oyiga 1M AI token.',
                 'order': 1,
-            },
-            {
-                'name': PlanType.START,
-                'price': Decimal('2.00'),
-                'max_users': 5000,
-                'powered_by_botmother': False,
-                'custom_domain': False,
-                'priority_support': False,
-                'description': 'Start tarifi - 5,000 tagacha foydalanuvchi. Brending yo\'q.',
-                'order': 2,
             },
             {
                 'name': PlanType.PRO,
                 'price': Decimal('10.00'),
-                'max_users': 100000,
-                'powered_by_botmother': False,
-                'custom_domain': True,
-                'priority_support': True,
-                'description': 'Pro tarifi - 100,000 tagacha foydalanuvchi. Custom domain va priority support.',
-                'order': 3,
+                'max_bots': 5,
+                'max_input_tokens': 8_000_000,
+                'max_output_tokens': 2_000_000,  # jami 10M token/oy
+                'description': 'Pro tarifi — 5 ta bot, oyiga 10M AI token.',
+                'is_top': True,
+                'order': 2,
             },
             {
-                'name': PlanType.ENTERPRISE,
-                'price': Decimal('0.00'),  # Custom pricing
-                'max_users': 999999999,  # Unlimited
-                'powered_by_botmother': False,
-                'custom_domain': True,
-                'priority_support': True,
-                'description': 'Enterprise tarifi - Cheksiz foydalanuvchi. Narx kelishiladi.',
-                'order': 4,
+                'name': PlanType.MAX,
+                'price': Decimal('30.00'),
+                'max_bots': 0,  # cheksiz
+                'max_input_tokens': 40_000_000,
+                'max_output_tokens': 10_000_000,  # jami 50M token/oy
+                'description': 'Max tarifi — cheksiz bot, oyiga 50M AI token.',
+                'order': 3,
             },
         ]
         

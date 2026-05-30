@@ -19,15 +19,15 @@ class PlanAdmin(ModelAdmin):
     list_display = [
         "name_display",
         "price_display",
-        "max_users",
-        "features_display",
+        "max_bots",
+        "limits_display",
         "is_active",
         "order",
         "subscription_count",
         "is_top",
     ]
 
-    list_filter = ["is_active", "powered_by_botmother"]
+    list_filter = ["is_active", "is_top"]
 
     search_fields = ["name", "description"]
 
@@ -35,8 +35,8 @@ class PlanAdmin(ModelAdmin):
 
     fieldsets = (
         (_("Asosiy"), {"fields": ("name", "price", "is_top", "description", "is_active", "order")}),
-        (_("Limitlar"), {"fields": ("max_users", "max_bots", "max_input_tokens", "max_output_tokens")}),
-        (_("Xususiyatlar"), {"fields": ("powered_by_botmother", "custom_domain", "priority_support")}),
+        (_("Limitlar"), {"fields": ("max_bots", "max_input_tokens", "max_output_tokens")}),
+        (_("Qo'shimcha xususiyatlar"), {"fields": ("features",)}),
     )
 
     @display(description=_("Tarif"))
@@ -49,16 +49,11 @@ class PlanAdmin(ModelAdmin):
             return format_html('<span style="color: green; font-weight: bold;">BEPUL</span>')
         return format_html('<span style="font-weight: 500;">${}/oy</span>', obj.price)
 
-    @display(description=_("Xususiyatlar"))
-    def features_display(self, obj):
-        features = []
-        if not obj.powered_by_botmother:
-            features.append("✓ No branding")
-        if obj.custom_domain:
-            features.append("✓ Custom domain")
-        if obj.priority_support:
-            features.append("✓ Priority support")
-        return ", ".join(features) if features else "-"
+    @display(description=_("Limitlar"))
+    def limits_display(self, obj):
+        bots = "cheksiz" if obj.max_bots == 0 else obj.max_bots
+        total_tokens = obj.max_input_tokens + obj.max_output_tokens
+        return f"{bots} bot · {total_tokens:,} token/oy"
 
     @display(description=_("Obunalar"))
     def subscription_count(self, obj):
