@@ -29,14 +29,79 @@ class AdminTemplatesView(
     serializer_class = AdminTemplateSerializer
 
     def get_queryset(self):
-        qs = TemplateModel.objects.select_related("author").order_by("-id")
-        search = self.request.query_params.get("search", "").strip()
+        qs = TemplateModel.objects.select_related("author").prefetch_related("categories").order_by("-id")
+        p = self.request.query_params
+        search = p.get("search", "").strip()
         if search:
             qs = qs.filter(Q(name__icontains=search) | Q(slug__icontains=search))
-        verify = self.request.query_params.get("is_verify", "").strip()
+        verify = p.get("is_verify", "").strip()
         if verify in ("true", "false"):
             qs = qs.filter(is_verify=(verify == "true"))
+        category = p.get("category", "").strip()
+        if category.isdigit():
+            qs = qs.filter(categories__id=int(category))
+        author = p.get("author", "").strip()
+        if author.isdigit():
+            qs = qs.filter(author_id=int(author))
+        price_min = p.get("price_min", "").strip()
+        if price_min.replace(".", "", 1).isdigit():
+            qs = qs.filter(original_price__gte=price_min)
+        price_max = p.get("price_max", "").strip()
+        if price_max.replace(".", "", 1).isdigit():
+            qs = qs.filter(original_price__lte=price_max)
+        created_after = p.get("created_after", "").strip()
+        if created_after:
+            qs = qs.filter(created_at__date__gte=created_after)
+        created_before = p.get("created_before", "").strip()
+        if created_before:
+            qs = qs.filter(created_at__date__lte=created_before)
+        ordering = p.get("ordering", "").strip()
+        if ordering in ("id", "-id", "views", "-views", "original_price", "-original_price", "created_at", "-created_at"):
+            qs = qs.order_by(ordering)
         return qs
+
+    def retrieve(self, request, *args, **kwargs):
+        """Rich detail: template + author + categories + features + order
+        stats + flow node count."""
+        from core.apps.template.models import TemplateOrderModel  # noqa: WPS433
+        from core.apps.template.enums.order import TemplateOrderStatusEnum  # noqa: WPS433
+
+        t = self.get_object()
+        orders_qs = TemplateOrderModel.objects.filter(template=t)
+        confirmed = orders_qs.filter(
+            payment_status=True, status=TemplateOrderStatusEnum.CONFIRM.value
+        ).count()
+        flow = getattr(getattr(t, "project", None), "flow", None)
+        node_count = None
+        if flow is not None:
+            node_count = len(flow) if isinstance(flow, list) else len((flow or {}).get("nodes", []))
+        data = {
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "image": t.image.url if t.image else None,
+            "demo_url": t.demo_url,
+            "short_description": t.short_description,
+            "description": t.description,
+            "original_price": str(t.original_price),
+            "discount": str(t.discount),
+            "discount_type": t.discount_type,
+            "is_verify": t.is_verify,
+            "views": t.views,
+            "likes": t.likes.count() if hasattr(t, "likes") else 0,
+            "author": {
+                "id": t.author_id,
+                "phone": getattr(t.author, "phone", None),
+            },
+            "categories": [{"id": c.id, "name": c.name} for c in t.categories.all()],
+            "features": [{"id": f.id, "name": f.name} for f in t.features.all()],
+            "orders_total": orders_qs.count(),
+            "orders_confirmed": confirmed,
+            "node_count": node_count,
+            "created_at": t.created_at,
+            "updated_at": t.updated_at,
+        }
+        return Response(data)
 
     @action(detail=True, methods=["patch"])
     def verify(self, request, pk=None):
