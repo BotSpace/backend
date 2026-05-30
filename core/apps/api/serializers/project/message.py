@@ -73,7 +73,11 @@ class SendMessageSerializer(serializers.ModelSerializer):
         }
 
     def validate_project(self, value):
-        if value.owner != self.context["request"].user:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and (user.is_staff or user.is_superuser):
+            return value
+        if value.owner != user:
             raise serializers.ValidationError("Project does not belong to the authenticated user")
         return value
 

@@ -25,10 +25,11 @@ class MessageView(BaseViewSetMixin, ModelViewSet):
 
     def get_queryset(self):
         """Filter messages by project if provided"""
-        queryset = super().get_queryset().filter(project__owner=self.request.user)
+        queryset = super().get_queryset()
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            queryset = queryset.filter(project__owner=user)
         project_id = self.request.query_params.get("project")
-
         if project_id:
             queryset = queryset.filter(project_id=project_id)
-
         return queryset.order_by("-id")
