@@ -59,6 +59,10 @@ for module_path in MODULES:
     INSTALLED_APPS.append("{}.apps.ModuleConfig".format(module_path))
 
 MIDDLEWARE = [
+    # Whitelists the inbound Host on /metrics/ so Prometheus pod-IP
+    # scrapes don't get bounced as DisallowedHost. Must run BEFORE
+    # CommonMiddleware which calls request.get_host().
+    "core.apps.shared.middleware.metrics_host.AllowMetricsHostMiddleware",
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
