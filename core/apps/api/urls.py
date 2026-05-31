@@ -7,6 +7,7 @@ from core.apps.api.views.internal import project_by_debug_uuid, project_by_relea
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
 from core.apps.api.views.subscription import SubscriptionViewSet
+from core.apps.api.views.overview import OverviewView
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -45,6 +46,8 @@ urlpatterns = [
         SubscriptionViewSet.as_view({"post": "report_usage"}),
         name="subscription-usage-report",
     ),
+    # Dashboard overview
+    path("dashboard/overview/", OverviewView.as_view(), name="dashboard-overview"),
     # Internal endpoints for Golang webhook service
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
