@@ -33,6 +33,13 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
 
 class AdminTemplateSubmissionSerializer(serializers.ModelSerializer):
     user_phone = serializers.CharField(source="user.phone", read_only=True)
+    reviewed_by_phone = serializers.CharField(
+        source="reviewed_by.phone", read_only=True, default=None
+    )
+    project_name = serializers.CharField(source="project.name", read_only=True, default=None)
+    template_name = serializers.CharField(source="template.name", read_only=True, default=None)
+    categories_detail = serializers.SerializerMethodField()
+    features_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = TemplateSubmissionRequestModel
@@ -44,6 +51,12 @@ class AdminTemplateSubmissionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def get_categories_detail(self, obj):
+        return [{"id": c.id, "name": c.name} for c in obj.categories.all()]
+
+    def get_features_detail(self, obj):
+        return [{"id": f.id, "name": f.name} for f in obj.features.all()]
 
 
 class AdminVerifySerializer(serializers.Serializer):

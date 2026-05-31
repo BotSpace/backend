@@ -133,10 +133,46 @@ class AdminTemplateSubmissionsView(
     serializer_class = AdminTemplateSubmissionSerializer
 
     def get_queryset(self):
-        qs = TemplateSubmissionRequestModel.objects.select_related("user").order_by("-id")
-        status_filter = self.request.query_params.get("status", "").strip()
+        qs = (
+            TemplateSubmissionRequestModel.objects.select_related(
+                "user", "project", "template", "reviewed_by"
+            )
+            .prefetch_related("categories", "features")
+            .order_by("-id")
+        )
+        p = self.request.query_params
+        status_filter = p.get("status", "").strip()
         if status_filter:
             qs = qs.filter(status=status_filter)
+        search = p.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(user__phone__icontains=search)
+                | Q(short_description__icontains=search)
+            )
+        price_min = p.get("price_min", "").strip()
+        if price_min.replace(".", "", 1).isdigit():
+            qs = qs.filter(original_price__gte=price_min)
+        price_max = p.get("price_max", "").strip()
+        if price_max.replace(".", "", 1).isdigit():
+            qs = qs.filter(original_price__lte=price_max)
+        created_after = p.get("created_after", "").strip()
+        if created_after:
+            qs = qs.filter(created_at__date__gte=created_after)
+        created_before = p.get("created_before", "").strip()
+        if created_before:
+            qs = qs.filter(created_at__date__lte=created_before)
+        ordering = p.get("ordering", "").strip()
+        if ordering in (
+            "id",
+            "-id",
+            "original_price",
+            "-original_price",
+            "created_at",
+            "-created_at",
+        ):
+            qs = qs.order_by(ordering)
         return qs
 
     def _review(self, request, pk, new_status: str, action_name: str):
