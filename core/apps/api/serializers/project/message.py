@@ -3,6 +3,7 @@ import json
 from rest_framework import serializers
 
 from core.apps.api.models.message import MessageModel
+from core.apps.api.serializers.fields import ProjectPkOrUuidField
 
 
 class ButtonSerializer(serializers.Serializer):
@@ -37,6 +38,7 @@ class ButtonSerializer(serializers.Serializer):
 class SendMessageSerializer(serializers.ModelSerializer):
     """Serializer for sending messages to bot users"""
 
+    project = ProjectPkOrUuidField()
     buttons = serializers.JSONField(
         required=False,
         allow_null=True,

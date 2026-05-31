@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.apps.api.models import EnviromentModel
+from core.apps.api.serializers.fields import ProjectPkOrUuidField
 
 
 class BaseEnviromentSerializer(serializers.ModelSerializer):
@@ -22,6 +23,8 @@ class RetrieveEnviromentSerializer(BaseEnviromentSerializer):
 
 
 class CreateEnviromentSerializer(BaseEnviromentSerializer):
+    project = ProjectPkOrUuidField()
+
     class Meta(BaseEnviromentSerializer.Meta):
         fields = [
             "id",

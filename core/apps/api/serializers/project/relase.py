@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.apps.api.models import RelaseModel
+from core.apps.api.serializers.fields import ProjectPkOrUuidField
 
 # Billing period discounts (matches frontend BILLING_PERIODS)
 BILLING_MONTHS_DISCOUNTS = {1: 0, 3: 12, 6: 20, 12: 30}
@@ -41,6 +42,7 @@ class RetrieveRelaseSerializer(BaseRelaseSerializer):
 
 
 class CreateRelaseSerializer(BaseRelaseSerializer):
+    project = ProjectPkOrUuidField()
     plan_id = serializers.IntegerField(
         required=False,
         write_only=True,

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.apps.api.models import FileModel
+from core.apps.api.serializers.fields import ProjectPkOrUuidField
 
 
 class BaseFileSerializer(serializers.ModelSerializer):
@@ -24,6 +25,8 @@ class RetrieveFileSerializer(BaseFileSerializer):
 
 
 class CreateFileSerializer(BaseFileSerializer):
+    project = ProjectPkOrUuidField()
+
     class Meta(BaseFileSerializer.Meta):
         fields = [
             "file",
