@@ -48,7 +48,7 @@ class OverviewService:
     def _build(self) -> dict[str, Any]:
         from core.apps.api.models.project import ProjectModel, RelaseModel
         from core.apps.cms_legacy.models.cms import CollectionModel
-        from core.apps.template.models.template import TemplateModel
+        from core.apps.template.models.order import TemplateOrderModel
 
         projects = list(
             ProjectModel.objects.filter(owner=self.user, deleted_at__isnull=True).only("id", "name")
@@ -62,13 +62,13 @@ class OverviewService:
         )
         active_bots = len(active_bot_ids)
 
-        # templates (global) — is_verify=True
+        # templates — foydalanuvchining o'z shablonlari (sotib olgan / order qilgan)
         try:
-            templates_count = TemplateModel.objects.filter(is_verify=True).count()
+            templates_count = TemplateOrderModel.objects.filter(user=self.user).count()
         except Exception:
             templates_count = 0
 
-        # revenue from user.balance
+        # revenue field — foydalanuvchi balansi (UI'da "Balans" deb ko'rsatiladi)
         revenue = int(getattr(self.user, "balance", 0) or 0)
 
         # Agar loyihalar bo'lmasa, MongoDB ga bormaymiz
