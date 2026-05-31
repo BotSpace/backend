@@ -31,9 +31,9 @@ class CollectionViewSet(ModelViewSet):
     lookup_url_kwarg = "name"
 
     def get_queryset(self):
-        project_id = self.kwargs["project_id"]
+        project = get_project_or_404(self.kwargs["project_id"])
         return (
-            Collection.objects.filter(project_id=project_id, deleted_at__isnull=True)
+            Collection.objects.filter(project_id=project.pk, deleted_at__isnull=True)
             .prefetch_related("fields")
             .order_by("name")
         )

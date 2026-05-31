@@ -10,6 +10,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from core.apps.api.models.project import ProjectModel
 from core.apps.api.models.resource import ResourceModel
+from core.apps.cms.views._common import resolve_project
 from core.apps.api.serializers.resource.resource import (
     CreateResourceSerializer,
     ListResourceSerializer,
@@ -42,7 +43,12 @@ class UsedView(APIView):
         return ProjectModel.objects.filter(owner=self.request.user)
 
     def get_object(self):
-        return get_object_or_404(self.get_queryset(), pk=self.kwargs.get("project_id"))
+        raw = self.kwargs.get("project_id")
+        project = resolve_project(raw)
+        if project is None:
+            from rest_framework.exceptions import NotFound
+            raise NotFound("Project not found")
+        return get_object_or_404(self.get_queryset(), pk=project.pk)
 
     def get(self, request, project_id=None):
         if project_id is None:

@@ -32,7 +32,6 @@ class FileView(
     filter_backends = [DjangoFilterBackend]
     filterset_fields = [
         "filetype",
-        "project",
     ]
 
     action_permission_classes = {
@@ -47,7 +46,14 @@ class FileView(
     def get_queryset(self):
         if self.action == "retrieve":
             return FileModel.objects.all()
-        return FileModel.objects.filter(user=self.request.user)
+        qs = FileModel.objects.filter(user=self.request.user)
+        project_raw = self.request.query_params.get("project")
+        if project_raw:
+            from core.apps.cms.views._common import resolve_project
+
+            project = resolve_project(project_raw)
+            qs = qs.filter(project_id=project.pk) if project else qs.none()
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

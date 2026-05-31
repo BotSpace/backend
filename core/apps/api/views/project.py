@@ -1,4 +1,6 @@
 from django.shortcuts import get_object_or_404
+
+from core.apps.cms.views._common import resolve_project
 from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiExample, extend_schema
@@ -167,7 +169,13 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         )
 
     def get_object(self):
-        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=self.kwargs.get("pk"))
+        raw = self.kwargs.get("pk")
+        project = resolve_project(raw)
+        if project is None:
+            from rest_framework.exceptions import NotFound
+            raise NotFound("Project not found")
+        # Re-filter through the owner queryset to enforce ownership.
+        return get_object_or_404(self.filter_queryset(self.get_queryset()), pk=project.pk)
 
     def perform_create(self, serializer):
         project = serializer.save(owner=self.request.user)
@@ -368,12 +376,13 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
     def get_queryset(self):
         queryset = RelaseModel.objects.order_by("-id").filter(project__owner=self.request.user)
         if self.action in ["list"]:
-            project_id = self.request.query_params.get("project")
-            if project_id is None:
+            project_raw = self.request.query_params.get("project")
+            if project_raw is None:
                 raise exceptions.ValidationError(detail={"project": [_("project is required")]})
-            if not str(project_id).isdigit():
-                raise exceptions.ValidationError(detail={"project": [_("project must be a numeric id")]})
-            queryset = queryset.filter(project_id=project_id)
+            project = resolve_project(project_raw)
+            if project is None:
+                raise exceptions.ValidationError(detail={"project": [_("project not found")]})
+            queryset = queryset.filter(project_id=project.pk)
         return queryset
 
     def get_throttles(self):
@@ -600,8 +609,11 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
         serializer.instance = obj
 
     def get_queryset(self):
-        project = self.request.query_params.get("project")
-        if project is None:
+        project_raw = self.request.query_params.get("project")
+        if project_raw is None:
             raise exceptions.ValidationError(detail={"project": [_("project is required")]})
-        queryset = EnviromentModel.objects.filter(project=project, user=self.request.user)
-        return queryset
+        # project_raw may be an integer pk OR a UUID string.
+        project = resolve_project(project_raw)
+        if project is None:
+            raise exceptions.ValidationError(detail={"project": [_("project not found")]})
+        return EnviromentModel.objects.filter(project_id=project.pk, user=self.request.user)

@@ -28,11 +28,15 @@ class BaseProjectSerializer(serializers.ModelSerializer):
         model = ProjectModel
         fields = [
             "id",
+            "uuid",
             "name",
             "users",
             "username",
             "avatar",
         ]
+        extra_kwargs = {
+            "uuid": {"read_only": True},
+        }
 
 
 class ListProjectSerializer(BaseProjectSerializer):

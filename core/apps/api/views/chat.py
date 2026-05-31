@@ -35,7 +35,14 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
 
     def get_collections(self, project_id):
         """Get users and chat collections for a project"""
-        project = get_object_or_404(ProjectModel, id=project_id, owner=self.request.user)
+        from django.http import Http404
+
+        from core.apps.cms.views._common import resolve_project
+
+        # project_id may be an integer pk OR a UUID string.
+        project = resolve_project(project_id)
+        if project is None or project.owner_id != self.request.user.id:
+            raise Http404("Project not found")
 
         try:
             users_collection = CollectionModel.objects.get(project=project, name="users")
@@ -86,7 +93,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             404: ErrorResponseSerializer,
         },
     )
-    @action(detail=False, methods=["get"], url_path="users/(?P<project_id>[0-9]+)")
+    @action(detail=False, methods=["get"], url_path="users/(?P<project_id>[^/.]+)")
     def get_users_with_messages(self, request, project_id=None):
         """
         Get all users with their chat messages and unread count
@@ -217,7 +224,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             404: ErrorResponseSerializer,
         },
     )
-    @action(detail=False, methods=["get"], url_path="messages/(?P<project_id>[0-9]+)/(?P<chat_id>[^/.]+)")
+    @action(detail=False, methods=["get"], url_path="messages/(?P<project_id>[^/.]+)/(?P<chat_id>[^/.]+)")
     def get_user_messages(self, request, project_id=None, chat_id=None):
         """
         Get messages for a specific user
@@ -280,7 +287,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             404: ErrorResponseSerializer,
         },
     )
-    @action(detail=False, methods=["post"], url_path="mark-read/(?P<project_id>[0-9]+)")
+    @action(detail=False, methods=["post"], url_path="mark-read/(?P<project_id>[^/.]+)")
     def mark_messages_as_read(self, request, project_id=None):
         """
         Mark messages as read for a specific user
@@ -348,7 +355,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             404: ErrorResponseSerializer,
         },
     )
-    @action(detail=False, methods=["get"], url_path="stats/(?P<project_id>[0-9]+)")
+    @action(detail=False, methods=["get"], url_path="stats/(?P<project_id>[^/.]+)")
     def get_chat_stats(self, request, project_id=None):
         """
         Get chat statistics for a project
@@ -425,7 +432,7 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
             413: ErrorResponseSerializer,
         },
     )
-    @action(detail=False, methods=["post"], url_path="send-message/(?P<project_id>[0-9]+)")
+    @action(detail=False, methods=["post"], url_path="send-message/(?P<project_id>[^/.]+)")
     def send_message(self, request, project_id=None):
         """
         Send a message to a user (text and/or media)

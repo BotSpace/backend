@@ -5,6 +5,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from core.apps.api.models.message import MessageModel
 from core.apps.api.serializers import SendMessageSerializer, MessageSerializer
+from core.apps.cms.views._common import resolve_project
 
 
 class MessageView(BaseViewSetMixin, ModelViewSet):
@@ -31,5 +32,7 @@ class MessageView(BaseViewSetMixin, ModelViewSet):
             queryset = queryset.filter(project__owner=user)
         project_id = self.request.query_params.get("project")
         if project_id:
-            queryset = queryset.filter(project_id=project_id)
+            # project_id may be an integer pk OR a UUID string.
+            project = resolve_project(project_id)
+            queryset = queryset.filter(project_id=project.pk) if project else queryset.none()
         return queryset.order_by("-id")

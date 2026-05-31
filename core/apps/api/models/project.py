@@ -15,6 +15,7 @@ User = get_user_model()
 
 
 class ProjectModel(SoftDeleteModel):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True, db_index=True)
     name = models.CharField(verbose_name=_("name"), max_length=255)
     description = models.TextField(null=True, blank=True)
     username = models.CharField(max_length=255, null=True, blank=True)

@@ -24,7 +24,7 @@ router.register("chat", ChatViewSet, basename="chat")
 urlpatterns = [
     path("", include(router.urls)),
     path("bot-webhook/<str:method>/<str:uuid>/", BotWebhookView.as_view(), name="bot-webhook"),
-    re_path(r"^used(?:/(?P<project_id>[0-9]+))?/$", UsedView.as_view(), name="project-used"),
+    re_path(r"^used(?:/(?P<project_id>[0-9a-fA-F-]+))?/$", UsedView.as_view(), name="project-used"),
     # User subscription endpoints
     path(
         "subscription/",

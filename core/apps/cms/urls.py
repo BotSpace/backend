@@ -40,36 +40,36 @@ webhook_detail = WebhookViewSet.as_view(
 
 urlpatterns = [
     # Collections
-    path("cms/projects/<int:project_id>/collections/", collection_list,
+    path("cms/projects/<str:project_id>/collections/", collection_list,
          name="cms-coll-list"),
-    path("cms/projects/<int:project_id>/collections/<slug:name>/", collection_detail,
+    path("cms/projects/<str:project_id>/collections/<slug:name>/", collection_detail,
          name="cms-coll-detail"),
-    path("cms/projects/<int:project_id>/collections/<slug:name>/fields/",
+    path("cms/projects/<str:project_id>/collections/<slug:name>/fields/",
          collection_add_field, name="cms-coll-add-field"),
-    path("cms/projects/<int:project_id>/collections/<slug:name>/fields/<slug:field_name>/",
+    path("cms/projects/<str:project_id>/collections/<slug:name>/fields/<slug:field_name>/",
          collection_field_detail, name="cms-coll-field-detail"),
 
     # Documents
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/",
          doc_list, name="cms-doc-list"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/bulk/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/bulk/",
          doc_bulk, name="cms-doc-bulk"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/aggregate/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/aggregate/",
          doc_aggregate, name="cms-doc-aggregate"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/count/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/count/",
          doc_count, name="cms-doc-count"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/<str:pk>/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/<str:pk>/",
          doc_detail, name="cms-doc-detail"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/documents/<str:pk>/restore/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/documents/<str:pk>/restore/",
          doc_restore, name="cms-doc-restore"),
 
     # Audit
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/audit/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/audit/",
          CollectionAuditView.as_view(), name="cms-coll-audit"),
 
     # Webhooks
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/webhooks/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/webhooks/",
          webhook_list, name="cms-webhook-list"),
-    path("cms/projects/<int:project_id>/collections/<slug:collection_name>/webhooks/<int:pk>/",
+    path("cms/projects/<str:project_id>/collections/<slug:collection_name>/webhooks/<int:pk>/",
          webhook_detail, name="cms-webhook-detail"),
 ]
