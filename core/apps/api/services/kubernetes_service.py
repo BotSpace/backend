@@ -36,7 +36,7 @@ from kubernetes.client import (
     V1ServiceSpec,
     V1ServicePort,
 )
-from kubernetes import client, config, watch
+from kubernetes import client, config
 
 
 logger = logging.getLogger(__name__)
@@ -743,14 +743,24 @@ async def deployment_logs_async(deployment_name: str):
 
         pod_name = pods.items[0].metadata.name
 
-        w = watch.Watch()
-        for line in w.stream(
-            api.read_namespaced_pod_log,
+        # NOTE: do NOT use watch.Watch().stream(read_namespaced_pod_log, ...).
+        # Watch injects watch=True, which read_namespaced_pod_log does not accept
+        # ("Got an unexpected keyword argument 'watch'"). Stream the raw HTTP
+        # response instead: follow=True + _preload_content=False yields a live
+        # byte stream we decode line-by-line.
+        resp = api.read_namespaced_pod_log(
             name=pod_name,
             namespace=namespace,
             follow=True,
-        ):
-            yield line
+            _preload_content=False,
+        )
+        try:
+            for chunk in resp.stream():
+                text = chunk.decode("utf-8", errors="replace")
+                for line in text.splitlines():
+                    yield line
+        finally:
+            resp.close()
     except Exception as e:
         logger.error("Error streaming logs for deployment %s: %s", deployment_name, e)
         yield f"Error: {str(e)}"
