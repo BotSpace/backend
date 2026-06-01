@@ -1,7 +1,6 @@
 import pytest
 from decimal import Decimal
 
-from django.urls import reverse
 from rest_framework.test import APIClient
 
 from core.apps.accounts.models import User
@@ -349,3 +348,98 @@ def test_submission_reject_creates_no_template(admin_client, normal_user, projec
     assert sub.status == TemplateSubmissionStatusEnum.REJECTED.value
     assert sub.template is None
     assert TemplateModel.objects.count() == before
+
+
+# ── settings: list + upsert ───────────────────────────────────────────────────
+
+def test_settings_list_empty(admin_client, db):
+    """GET /api/admin/settings/ returns an empty list when no rows exist."""
+    res = admin_client.get("/api/admin/settings/")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert isinstance(data, list)
+
+
+def test_settings_list_with_data(admin_client, db):
+    """GET returns all SettingsModel groups with their options."""
+    from core.apps.shared.models.settings import OptionsModel, SettingsModel  # noqa: WPS433
+
+    s = SettingsModel.objects.create(key="engine", is_public=False, description="Engine settings")
+    OptionsModel.objects.create(settings=s, key="version", value=["3.5.11-prod"])
+
+    res = admin_client.get("/api/admin/settings/")
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert len(data) >= 1
+    engine_group = next((g for g in data if g["key"] == "engine"), None)
+    assert engine_group is not None
+    assert engine_group["is_public"] is False
+    assert len(engine_group["options"]) == 1
+    assert engine_group["options"][0]["key"] == "version"
+    assert engine_group["options"][0]["value"] == ["3.5.11-prod"]
+
+
+def test_settings_set_creates_new(admin_client, db):
+    """POST /api/admin/settings/set/ creates SettingsModel + OptionsModel when absent."""
+    res = admin_client.post(
+        "/api/admin/settings/set/",
+        {"settings_key": "engine", "option_key": "version", "value": ["3.6.0-prod"]},
+        format="json",
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["key"] == "version"
+    assert data["value"] == ["3.6.0-prod"]
+
+    from core.apps.shared.models.settings import OptionsModel, SettingsModel  # noqa: WPS433
+
+    s = SettingsModel.objects.get(key="engine")
+    opt = OptionsModel.objects.get(settings=s, key="version")
+    assert opt.value == ["3.6.0-prod"]
+
+
+def test_settings_set_updates_existing(admin_client, db):
+    """POST /api/admin/settings/set/ updates value when option already exists."""
+    from core.apps.shared.models.settings import OptionsModel, SettingsModel  # noqa: WPS433
+
+    s = SettingsModel.objects.create(key="currency", is_public=True)
+    OptionsModel.objects.create(settings=s, key="exchange_rate", value=["12500"])
+
+    res = admin_client.post(
+        "/api/admin/settings/set/",
+        {"settings_key": "currency", "option_key": "exchange_rate", "value": ["13000"]},
+        format="json",
+    )
+    assert res.status_code == 200
+    assert res.json()["data"]["value"] == ["13000"]
+    assert OptionsModel.objects.filter(settings=s, key="exchange_rate").count() == 1
+
+
+def test_settings_set_writes_audit_log(admin_client, db):
+    """POST /api/admin/settings/set/ must write an audit log entry."""
+    admin_client.post(
+        "/api/admin/settings/set/",
+        {"settings_key": "engine", "option_key": "version", "value": ["3.7.0-prod"]},
+        format="json",
+    )
+    assert AdminAuditLogModel.objects.filter(action="settings.set").exists()
+
+
+def test_settings_set_invalid_empty_list(admin_client, db):
+    """POST with empty value list must return 400."""
+    res = admin_client.post(
+        "/api/admin/settings/set/",
+        {"settings_key": "engine", "option_key": "version", "value": []},
+        format="json",
+    )
+    assert res.status_code == 400
+
+
+def test_settings_set_forbidden_for_non_admin(user_client, db):
+    """Non-admin must receive 403 on settings set."""
+    res = user_client.post(
+        "/api/admin/settings/set/",
+        {"settings_key": "engine", "option_key": "version", "value": ["3.6.0-prod"]},
+        format="json",
+    )
+    assert res.status_code == 403
