@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 from core.apps.accounts.models import User
 from core.apps.administration.models import AdminAuditLogModel
 from core.apps.template.models import TemplateModel
+from core.apps.template.models.submission import TemplateSubmissionRequestModel
+from core.apps.template.enums.template import TemplateSubmissionStatusEnum
 from core.apps.template.models.withdrawal import TemplateWithdrawalRequestModel
 from core.apps.template.enums.withdrawal import WithdrawalStatusEnum
 
@@ -178,3 +180,118 @@ def test_audit_log_list(admin_client, normal_user):
     )
     res = admin_client.get("/api/admin/audit-log/")
     assert res.status_code == 200
+
+
+# ── template submissions: list fields + PATCH ─────────────────────────────────
+
+def _make_submission(user, project):
+    """Create a minimal TemplateSubmissionRequestModel for testing."""
+    return TemplateSubmissionRequestModel.objects.create(
+        user=user,
+        project=project,
+        name="My Bot Template",
+        short_description="Short",
+        description="Full description",
+        original_price=Decimal("99.00"),
+        status=TemplateSubmissionStatusEnum.PENDING.value,
+    )
+
+
+@pytest.fixture
+def project(normal_user):
+    from core.apps.api.models.project import ProjectModel  # noqa: WPS433
+    return ProjectModel.objects.create(name="Test Project", owner=normal_user)
+
+
+def test_submission_list_includes_required_fields(admin_client, normal_user, project):
+    """List endpoint must include id, name, user_phone, project_name, status, created_at."""
+    _make_submission(normal_user, project)
+    res = admin_client.get("/api/admin/template-submissions/")
+    assert res.status_code == 200
+    results = res.json().get("data") or res.json().get("results") or res.json()
+    # Support both paginated and non-paginated response shapes
+    if isinstance(results, dict):
+        results = results.get("results", [])
+    assert len(results) >= 1
+    item = results[0]
+    assert "id" in item
+    assert "name" in item
+    assert item["name"] == "My Bot Template"
+    assert "user_phone" in item
+    assert item["user_phone"] == normal_user.phone
+    assert "project_name" in item
+    assert item["project_name"] == "Test Project"
+    assert "status" in item
+    assert "created_at" in item
+
+
+def test_submission_list_user_phone_not_null(admin_client, normal_user, project):
+    """user_phone must be a real phone string, not None/null."""
+    _make_submission(normal_user, project)
+    res = admin_client.get("/api/admin/template-submissions/")
+    assert res.status_code == 200
+    results = res.json().get("data") or res.json().get("results") or res.json()
+    if isinstance(results, dict):
+        results = results.get("results", [])
+    item = results[0]
+    assert item["user_phone"] is not None
+    assert item["user_phone"] != ""
+
+
+def test_admin_patch_template_updates_field(admin_client, admin_user):
+    """PATCH /api/admin/templates/{id}/ must update editable fields."""
+    tpl = TemplateModel.objects.create(
+        name="Old Name",
+        short_description="s",
+        description="d",
+        original_price=Decimal("0.00"),
+        is_verify=False,
+        author=admin_user,
+    )
+    res = admin_client.patch(
+        f"/api/admin/templates/{tpl.id}/",
+        {"name": "New Name", "is_verify": True},
+        format="json",
+    )
+    assert res.status_code == 200
+    tpl.refresh_from_db()
+    assert tpl.name == "New Name"
+    assert tpl.is_verify is True
+
+
+def test_non_admin_cannot_patch_template(user_client, admin_user):
+    """Non-admin must receive 403 on template PATCH."""
+    tpl = TemplateModel.objects.create(
+        name="Tpl",
+        short_description="s",
+        description="d",
+        original_price=Decimal("0.00"),
+        author=admin_user,
+    )
+    res = user_client.patch(f"/api/admin/templates/{tpl.id}/", {"name": "Hacked"}, format="json")
+    assert res.status_code == 403
+
+
+def test_admin_patch_submission_updates_field(admin_client, normal_user, project):
+    """PATCH /api/admin/template-submissions/{id}/ must update editable fields."""
+    sub = _make_submission(normal_user, project)
+    res = admin_client.patch(
+        f"/api/admin/template-submissions/{sub.id}/",
+        {"name": "Updated Name", "original_price": "199.00"},
+        format="json",
+    )
+    assert res.status_code == 200
+    sub.refresh_from_db()
+    assert sub.name == "Updated Name"
+    assert sub.original_price == Decimal("199.00")
+
+
+def test_non_admin_cannot_patch_submission(user_client, normal_user, project):
+    """Non-admin must receive 403 on submission PATCH."""
+    sub = _make_submission(normal_user, project)
+    res = user_client.patch(
+        f"/api/admin/template-submissions/{sub.id}/",
+        {"name": "Hacked"},
+        format="json",
+    )
+    assert res.status_code == 403
