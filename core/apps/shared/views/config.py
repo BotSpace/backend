@@ -47,6 +47,10 @@ class ConfigViewSet(
 
     serializer_class = ConfigSerializer
     lookup_field = "key"
+    # Keys contain dots (e.g. "ai_agent.provider"); the default router lookup
+    # regex ([^/.]+) excludes dots, so PATCH /config/ai_agent.provider/ would
+    # 404. Allow any non-slash char in the key segment.
+    lookup_value_regex = "[^/]+"
     http_method_names = ["get", "patch", "head", "options"]
 
     # Per-action permission overrides via BaseViewSetMixin
