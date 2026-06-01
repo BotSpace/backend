@@ -295,3 +295,57 @@ def test_non_admin_cannot_patch_submission(user_client, normal_user, project):
         format="json",
     )
     assert res.status_code == 403
+
+
+def test_submission_approve_creates_template(admin_client, normal_user, project):
+    """Approving a submission via the admin API must PUBLISH the actual Template
+    (mirrors the Django admin approve action) — previously it only flipped the
+    status and no template was created."""
+    from core.apps.template.models.template import TemplateModel  # noqa: WPS433
+
+    sub = _make_submission(normal_user, project)
+    res = admin_client.patch(
+        f"/api/admin/template-submissions/{sub.id}/approve/", {}, format="json"
+    )
+    assert res.status_code == 200, res.content
+
+    sub.refresh_from_db()
+    assert sub.status == TemplateSubmissionStatusEnum.APPROVED.value
+    assert sub.template is not None
+    assert TemplateModel.objects.filter(id=sub.template.id).exists()
+    # Template fields are copied from the submission.
+    assert sub.template.name == sub.name
+    assert sub.template.author == sub.user
+    assert sub.template.is_verify is True
+
+
+def test_submission_approve_is_idempotent_no_duplicate_template(admin_client, normal_user, project):
+    """A second approve must NOT create a second template."""
+    from core.apps.template.models.template import TemplateModel  # noqa: WPS433
+
+    sub = _make_submission(normal_user, project)
+    admin_client.patch(f"/api/admin/template-submissions/{sub.id}/approve/", {}, format="json")
+    sub.refresh_from_db()
+    first_template_id = sub.template.id
+    count_after_first = TemplateModel.objects.count()
+
+    admin_client.patch(f"/api/admin/template-submissions/{sub.id}/approve/", {}, format="json")
+    sub.refresh_from_db()
+    assert sub.template.id == first_template_id
+    assert TemplateModel.objects.count() == count_after_first  # no duplicate
+
+
+def test_submission_reject_creates_no_template(admin_client, normal_user, project):
+    """Rejecting must not create a template."""
+    from core.apps.template.models.template import TemplateModel  # noqa: WPS433
+
+    sub = _make_submission(normal_user, project)
+    before = TemplateModel.objects.count()
+    res = admin_client.patch(
+        f"/api/admin/template-submissions/{sub.id}/reject/", {}, format="json"
+    )
+    assert res.status_code == 200
+    sub.refresh_from_db()
+    assert sub.status == TemplateSubmissionStatusEnum.REJECTED.value
+    assert sub.template is None
+    assert TemplateModel.objects.count() == before
