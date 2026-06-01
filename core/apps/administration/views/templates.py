@@ -11,6 +11,7 @@ from core.apps.administration.serializers.templates import (
     AdminSubmissionReviewSerializer,
     AdminTemplateSerializer,
     AdminTemplateSubmissionSerializer,
+    AdminTemplateWriteSerializer,
     AdminVerifySerializer,
 )
 from core.apps.administration.services import log_admin_action
@@ -23,10 +24,18 @@ class AdminTemplatesView(
     BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAdminUser]
     serializer_class = AdminTemplateSerializer
+    # Allow PATCH only; block full PUT replacements.
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_serializer_class(self):
+        if self.action in ("partial_update", "update"):
+            return AdminTemplateWriteSerializer
+        return AdminTemplateSerializer
 
     def get_queryset(self):
         qs = TemplateModel.objects.select_related("author").prefetch_related("categories").order_by("-id")
@@ -56,7 +65,10 @@ class AdminTemplatesView(
         if created_before:
             qs = qs.filter(created_at__date__lte=created_before)
         ordering = p.get("ordering", "").strip()
-        if ordering in ("id", "-id", "views", "-views", "original_price", "-original_price", "created_at", "-created_at"):
+        _allowed_orderings = (
+            "id", "-id", "views", "-views", "original_price", "-original_price", "created_at", "-created_at"
+        )
+        if ordering in _allowed_orderings:
             qs = qs.order_by(ordering)
         return qs
 
@@ -127,10 +139,13 @@ class AdminTemplateSubmissionsView(
     BaseViewSetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAdminUser]
     serializer_class = AdminTemplateSubmissionSerializer
+    # Allow PATCH only; block full PUT replacements.
+    http_method_names = ["get", "patch", "head", "options"]
 
     def get_queryset(self):
         qs = (
