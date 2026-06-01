@@ -1,4 +1,7 @@
 # type: ignore
+from decimal import Decimal
+
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django_core.mixins import BaseViewSetMixin
@@ -195,14 +198,37 @@ class AdminTemplateSubmissionsView(
         serializer = AdminSubmissionReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         before = {"status": target.status}
-        target.status = new_status
-        # Submission models usually have reviewed_by/reviewed_at — write
-        # what's available, ignore missing fields.
-        if hasattr(target, "reviewed_by"):
-            target.reviewed_by = request.user
-        if hasattr(target, "reviewed_at"):
-            target.reviewed_at = timezone.now()
-        target.save()
+        with transaction.atomic():
+            target.status = new_status
+            # Submission models usually have reviewed_by/reviewed_at — write
+            # what's available, ignore missing fields.
+            if hasattr(target, "reviewed_by"):
+                target.reviewed_by = request.user
+            if hasattr(target, "reviewed_at"):
+                target.reviewed_at = timezone.now()
+            # On APPROVE, publish the actual Template from the submission — same
+            # as the Django admin `approve_submissions` action. Without this the
+            # admin-panel approve only flipped the status and never created the
+            # template. Idempotent: skip if a template is already linked.
+            if new_status == TemplateSubmissionStatusEnum.APPROVED.value and not target.template:
+                template = TemplateModel.objects.create(
+                    author=target.user,
+                    name=target.name,
+                    image=target.image,
+                    video=target.video,
+                    project=target.project,
+                    short_description=target.short_description,
+                    description=target.description,
+                    original_price=target.original_price,
+                    discount=Decimal("0.00"),
+                    discount_type="percent",
+                    demo_url=target.demo_url,
+                    is_verify=True,
+                )
+                template.categories.set(target.categories.all())
+                template.features.set(target.features.all())
+                target.template = template
+            target.save()
         log_admin_action(
             actor=request.user,
             action=f"template_submission.{action_name}",
