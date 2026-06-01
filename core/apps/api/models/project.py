@@ -1,5 +1,5 @@
-import uuid
 from typing import Any
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.db import models
@@ -15,7 +15,7 @@ User = get_user_model()
 
 
 class ProjectModel(SoftDeleteModel):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True, db_index=True)
+    uuid = models.UUIDField(default=uuid4, editable=False, null=True, blank=True, db_index=True)
     name = models.CharField(verbose_name=_("name"), max_length=255)
     description = models.TextField(null=True, blank=True)
     username = models.CharField(max_length=255, null=True, blank=True)
@@ -30,8 +30,8 @@ class ProjectModel(SoftDeleteModel):
     flow = models.JSONField(default=list)
     is_template = models.BooleanField(default=False)
 
-    release_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
-    debug_webhook_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    release_webhook_uuid = models.UUIDField(default=uuid4, editable=False)
+    debug_webhook_uuid = models.UUIDField(default=uuid4, editable=False)
 
     # MongoDB credentials - created once per project
     mongo_username = models.CharField(max_length=255, null=True, blank=True)
