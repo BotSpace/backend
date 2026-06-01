@@ -10,7 +10,9 @@ URL pattern:
 
 from __future__ import annotations
 
+from bson.errors import BSONError
 from drf_spectacular.utils import extend_schema
+from pymongo.errors import PyMongoError
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -76,6 +78,8 @@ class DocumentViewSet(ViewSet):
             res = doc_svc.insert(coll, request.data, actor_id=request.user.id if request.user.is_authenticated else None)
         except ValidationError as exc:
             return Response({"errors": exc.errors}, status=400)
+        except (BSONError, PyMongoError) as exc:
+            return Response({"detail": f"storage error: {exc}"}, status=422)
         return Response(res, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, project_id=None, collection_name=None, pk=None):
@@ -95,6 +99,8 @@ class DocumentViewSet(ViewSet):
             return Response({"detail": str(exc)}, status=404)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=409)
+        except (BSONError, PyMongoError) as exc:
+            return Response({"detail": f"storage error: {exc}"}, status=422)
         return Response(res)
 
     def destroy(self, request, project_id=None, collection_name=None, pk=None):
@@ -130,6 +136,8 @@ class DocumentViewSet(ViewSet):
             )
         except ValidationError as exc:
             return Response({"errors": exc.errors}, status=400)
+        except (BSONError, PyMongoError) as exc:
+            return Response({"detail": f"storage error: {exc}"}, status=422)
         return Response(res, status=201)
 
     @action(detail=False, methods=["post"], url_path="aggregate")

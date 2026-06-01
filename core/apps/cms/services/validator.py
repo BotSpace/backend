@@ -91,9 +91,11 @@ def _as_datetime(value: Any) -> dt.datetime:
     raise ValueError("expected ISO-8601 datetime")
 
 
-def _as_date(value: Any) -> dt.date:
+def _as_date(value: Any) -> dt.datetime:
+    # BSON has no date-only type and PyMongo cannot encode datetime.date, so a
+    # date is stored as a midnight datetime (datetime is a subclass of date).
     dttm = _as_datetime(value)
-    return dttm.date()
+    return dt.datetime(dttm.year, dttm.month, dttm.day)
 
 
 def _as_email(value: Any) -> str:
