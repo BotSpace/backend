@@ -230,3 +230,23 @@ def test_delete(data):
     assert data["status"] is True
     assert data["data"]["deleted_count"] == 10
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_list_by_project_uuid(api_client):
+    """The bot constructor lists collections by the project UUID. Filtering the
+    integer project FK with a UUID used to raise `Field 'id' expected a number`
+    (HTTP 500); it must now return 200."""
+    client, instance = api_client
+    url = reverse("collection-list") + "?project=" + str(instance.project.uuid)
+    response = client.get(url)
+    assert response.status_code == 200, response.content
+
+
+@pytest.mark.django_db
+def test_list_by_project_integer_id_still_works(api_client):
+    """Backward-compat: the integer project PK must still work."""
+    client, instance = api_client
+    url = reverse("collection-list") + "?project=" + str(instance.project.pk)
+    response = client.get(url)
+    assert response.status_code == 200, response.content

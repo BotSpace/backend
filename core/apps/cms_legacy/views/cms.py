@@ -59,7 +59,12 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         project = self.request.query_params.get("project")
         if project is None:
             raise ValidationError(detail={"project": ["project query_params is required"]})
-        return queryset.filter(project=project)
+        # `project` may be the integer PK or the project UUID — the bot
+        # constructor passes the UUID. Filtering the FK by a UUID string blew up
+        # with `Field 'id' expected a number` (500); route to the right field.
+        if str(project).isdigit():
+            return queryset.filter(project_id=project)
+        return queryset.filter(project__uuid=project)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
