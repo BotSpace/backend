@@ -18,6 +18,7 @@ from core.apps.administration.views import (
     audit_log as audit_log_views,
     plans as plans_views,
     projects as projects_views,
+    settings as settings_views,
     stats as stats_views,
     templates as templates_views,
     tickets as tickets_views,
@@ -41,6 +42,7 @@ router.register("transactions", transactions_views.AdminTransactionsView, basena
 router.register("plans", plans_views.AdminPlansView, basename="admin-plans")
 router.register("tickets", tickets_views.AdminTicketsView, basename="admin-tickets")
 router.register("audit-log", audit_log_views.AdminAuditLogView, basename="admin-audit-log")
+router.register("settings", settings_views.AdminSettingsView, basename="admin-settings")
 
 
 urlpatterns = [
