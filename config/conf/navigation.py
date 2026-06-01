@@ -66,6 +66,17 @@ PAGES = [
         ],
     },
     {
+        "title": _("System"),
+        "separator": True,
+        "items": [
+            {
+                "title": _("Global Config"),
+                "icon": "tune",
+                "link": reverse_lazy("admin:shared_config_changelist"),
+            },
+        ],
+    },
+    {
         "title": _("Templates"),
         "separator": True,
         "items": [
