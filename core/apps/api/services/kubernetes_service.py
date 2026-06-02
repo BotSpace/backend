@@ -629,6 +629,15 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
     _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
     _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
+    _env.append(f"PROJECT_ID={project.id}")
+
+    # Debug bots emit per-node execution events to the backend, which relays
+    # them to the constructor over WS (n8n-style live node highlighting).
+    if prefix == "debug":
+        _env.append("DEBUG_MODE=true")
+        internal_token = env.str("INTERNAL_API_TOKEN", default="")
+        if internal_token:
+            _env.append(f"DEBUG_EVENT_TOKEN={internal_token}")
 
     # Volume mount for flow file from ConfigMap
     volume_mounts = [
