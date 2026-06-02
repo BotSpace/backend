@@ -648,7 +648,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
         )
     ]
 
-    image = f"registry.jscorp.uz/golang-engine:{engine_version()}"
+    image = f"registry.iprogrammer.uz/botspace/golang-engine:{engine_version()}"
 
     deployment = create_deployment(
         image=image,
