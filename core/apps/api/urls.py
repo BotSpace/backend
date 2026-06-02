@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
+from core.apps.api.views.debug import DebugNodeEventView
 from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
@@ -51,4 +52,6 @@ urlpatterns = [
     # Internal endpoints for Golang webhook service
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
+    # Debug node-execution events from engine
+    path("debug/node-event/", DebugNodeEventView.as_view(), name="debug-node-event"),
 ]

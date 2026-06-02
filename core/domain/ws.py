@@ -7,6 +7,7 @@ from core.apps.api.enums import ContainerStatusEnum
 class EventTypes(Enum):
     DEBUG_STATUS = "debug_status"
     RELEASE_STATUS = "release_status"
+    NODE_EXECUTION = "node_execution"
 
 
 class DebugContainerStatus(BaseModel):
@@ -24,6 +25,18 @@ class ReleaseContainerStatus(BaseModel):
     status: ContainerStatusEnum
     version: int
     service_id: Optional[str]
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class NodeExecutionStatus(BaseModel):
+    project: int
+    chat_id: int
+    node_id: str
+    node_type: Optional[str] = None
+    status: str  # running | success | error
+    error: Optional[str] = None
+    ts: Optional[int] = None
 
     model_config = ConfigDict(use_enum_values=True)
 
