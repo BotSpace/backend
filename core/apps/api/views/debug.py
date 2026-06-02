@@ -1,7 +1,8 @@
 # type: ignore
 import logging
 
-from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,24 +16,20 @@ logger = logging.getLogger(__name__)
 class DebugNodeEventView(APIView):
     """Engine'dan kelgan node-execution debug event'ini qabul qilib, WS orqali project owner'iga yuboradi.
 
-    Auth: engine resource endpoint'i bilan bir xil — `Authorization: Bearer <API_TOKEN>` (JWT),
-    DRF IsAuthenticated orqali tekshiriladi.
+    Auth: shared X-Internal-Token (subscription.report_usage / template internal bilan bir xil).
+    Engine `X-Internal-Token: <DEBUG_EVENT_TOKEN>` (== settings.INTERNAL_API_TOKEN) yuboradi.
 
     POST /api/debug/node-event/
-    Body: {
-        "project_id": "<uuid|int>",
-        "chat_id": 123,
-        "node_id": "n1",
-        "node_type": "SendTextMessageNode",
-        "status": "running|success|error",
-        "error": "",
-        "ts": 1700000000000
-    }
+    Body: {project_id, chat_id, node_id, node_type, status, error, ts}
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
+        expected = getattr(settings, "INTERNAL_API_TOKEN", None)
+        if not expected or request.headers.get("X-Internal-Token", "") != expected:
+            return Response({"detail": "Ruxsat etilmagan so'rov."}, status=403)
+
         data = request.data
         project_id = data.get("project_id")
         if not project_id:
