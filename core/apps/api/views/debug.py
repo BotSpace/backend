@@ -23,6 +23,10 @@ class DebugNodeEventView(APIView):
     Body: {project_id, chat_id, node_id, node_type, status, error, ts}
     """
 
+    # Skip global DRF authentication: the project-wide InternalToken auth
+    # intercepts any X-Internal-Token and demands an X-User-Id header (401).
+    # The engine has no user — we authenticate manually below.
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
