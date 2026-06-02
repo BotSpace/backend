@@ -10,7 +10,7 @@ def default_flow() -> dict:
                 "id": "node_1775417466338-5ek0gt09s",
                 "type": "CommandTriggerNode",
                 "position": {"x": 606, "y": 261},
-                "data": {"command": "", "withArgs": False, "global": True},
+                "data": {"command": "/start", "withArgs": False, "global": True},
                 "width": 150,
                 "height": 154,
                 "selected": False,
