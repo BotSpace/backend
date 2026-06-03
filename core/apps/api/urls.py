@@ -52,6 +52,9 @@ urlpatterns = [
     # Internal endpoints for Golang webhook service
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
-    # Debug node-execution events from engine
+    # Debug node-execution events from engine.
+    # Both with/without trailing slash so engines that strip the slash (≤3.5.15)
+    # don't hit an APPEND_SLASH 301 → GET → 405.
     path("debug/node-event/", DebugNodeEventView.as_view(), name="debug-node-event"),
+    path("debug/node-event", DebugNodeEventView.as_view(), name="debug-node-event-noslash"),
 ]
