@@ -14,7 +14,7 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from config.env import env
-from core.apps.accounts.views import BalanceView
+from core.apps.accounts.views import BalanceView, OAuthMetadataView
 from core.apps.api.views.docker import logs
 from core.apps.shared.views.health import liveness, readiness
 
@@ -36,6 +36,8 @@ api_v1_patterns = [
 
 
 urlpatterns = [
+    # RFC 8414 metadata — must live at the root (not under /api/v1/)
+    path(".well-known/oauth-authorization-server", OAuthMetadataView.as_view(), name="oauth-metadata"),
     path("health/", home, name="health"),
     path("healthz/", liveness, name="liveness"),
     path("readyz/", readiness, name="readiness"),

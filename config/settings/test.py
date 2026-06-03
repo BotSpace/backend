@@ -16,6 +16,13 @@ LOGGING = {
 
 CACHEOPS_ENABLED = False
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+
 # Flag to indicate we're in test mode
 TESTING = True
 
