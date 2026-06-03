@@ -31,4 +31,6 @@ env = environ.Env(
     PAYME_KEY=(str, ""),
     PAYTECH_API_KEY=(str, ""),
     INTERNAL_API_TOKEN=(str, ""),
+    OAUTH_ISSUER=(str, "https://api.botspace.uz"),
+    OAUTH_AUTHORIZE_PAGE=(str, "https://botspace.uz/oauth/authorize"),
 )

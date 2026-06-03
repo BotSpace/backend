@@ -8,7 +8,19 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt import views as jwt_views
 
-from .views import APITokenViewSet, BalanceView, ChangePasswordView, MeView, RegisterView, ResetPasswordView, TokenExchangeView
+from .views import (
+    APITokenViewSet,
+    BalanceView,
+    ChangePasswordView,
+    MeView,
+    OAuthAuthorizeApproveView,
+    OAuthAuthorizeMetaView,
+    OAuthRegisterView,
+    OAuthTokenView,
+    RegisterView,
+    ResetPasswordView,
+    TokenExchangeView,
+)
 
 router = DefaultRouter()
 router.register("auth", RegisterView, basename="auth")
@@ -38,4 +50,9 @@ urlpatterns = [
         TokenExchangeView.as_view({"post": "create"}),
         name="token-exchange",
     ),
+    # OAuth 2.1 endpoints
+    path("auth/oauth/register/", OAuthRegisterView.as_view(), name="oauth-register"),
+    path("auth/oauth/authorize/meta/", OAuthAuthorizeMetaView.as_view(), name="oauth-authorize-meta"),
+    path("auth/oauth/authorize/approve/", OAuthAuthorizeApproveView.as_view(), name="oauth-authorize-approve"),
+    path("auth/oauth/token/", OAuthTokenView.as_view(), name="oauth-token"),
 ]
