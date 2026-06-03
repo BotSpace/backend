@@ -9,7 +9,7 @@ shared X-Internal-Token used elsewhere (subscription.report_usage).
 """
 
 from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
@@ -39,6 +39,7 @@ def _serialize_template(t: TemplateModel) -> dict:
 
 
 @api_view(["GET"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def list_templates_with_flow(request):
     """List ALL verified templates with their flow JSON for RAG indexing.
@@ -59,6 +60,7 @@ def list_templates_with_flow(request):
 
 
 @api_view(["GET"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def get_template_with_flow(request, identifier):
     """Get a single template (by id or slug) WITH flow JSON.
