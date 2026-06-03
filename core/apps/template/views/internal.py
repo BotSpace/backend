@@ -25,6 +25,16 @@ def _internal_token_ok(request) -> bool:
 
 
 def _serialize_template(t: TemplateModel) -> dict:
+    # Flow is stored on the linked ProjectModel, not on TemplateModel directly
+    project_flow = {}
+    if t.project_id and t.project:
+        raw = t.project.flow or []
+        if isinstance(raw, dict):
+            project_flow = raw
+        elif isinstance(raw, list):
+            # Older format: list of node dicts stored flat
+            project_flow = {"nodes": raw, "edges": []}
+    flow = project_flow or {"nodes": [], "edges": []}
     return {
         "id": t.id,
         "slug": t.slug,
@@ -33,7 +43,7 @@ def _serialize_template(t: TemplateModel) -> dict:
         "description": t.description,
         "categories": [{"id": c.id, "name": c.name} for c in t.categories.all()],
         "features": [{"id": f.id, "name": f.name, "value": f.value} for f in t.features.all()],
-        "flow": getattr(t, "flow", None) or {"nodes": [], "edges": []},
+        "flow": flow,
         "is_verify": t.is_verify,
     }
 
@@ -53,7 +63,7 @@ def list_templates_with_flow(request):
         return Response({"detail": "Ruxsat etilmagan so'rov."}, status=403)
 
     only_verified = request.query_params.get("only_verified", "true").lower() != "false"
-    qs = TemplateModel.objects.all().prefetch_related("categories", "features")
+    qs = TemplateModel.objects.select_related("project").prefetch_related("categories", "features")
     if only_verified:
         qs = qs.filter(is_verify=True)
     return Response({"results": [_serialize_template(t) for t in qs]})
