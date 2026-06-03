@@ -360,6 +360,63 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug.save()
         return Response(data={"detail": _("Updated")})
 
+    @extend_schema(
+        summary="Debug bot loglarini olish (snapshot)",
+        description=(
+            "Loyihaning DEBUG konteyneri pod loglarining oxirgi N qatorini qaytaradi. "
+            "Streaming emas — JSON snapshot (release logs bilan bir xil format)."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="tail",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Oxirgi nechta qator (default 200, max 2000).",
+            ),
+            OpenApiParameter(
+                name="since_seconds",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Faqat oxirgi N soniya ichidagi qatorlar (ixtiyoriy).",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Log snapshot",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "pod_name": {"type": "string", "nullable": True},
+                        "lines": {"type": "array", "items": {"type": "string"}},
+                        "truncated": {"type": "boolean"},
+                    },
+                },
+            ),
+            404: _error_response("Loyiha topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
+        },
+    )
+    @action(methods=["GET"], detail=True, url_path="debug/logs", url_name="debug-logs")
+    def debug_logs(self, request, pk):
+        instance = self.get_object()
+        debug = DebugModel.objects.filter(project=instance).first()
+        if debug is None or not debug.service_id:
+            return Response(
+                data={"pod_name": None, "lines": [], "truncated": False, "detail": _("Debug is not running")},
+            )
+        try:
+            tail = int(request.query_params.get("tail", 200))
+        except (TypeError, ValueError):
+            tail = 200
+        since_param = request.query_params.get("since_seconds")
+        try:
+            since = int(since_param) if since_param is not None else None
+        except (TypeError, ValueError):
+            since = None
+        snapshot = deployment_logs_snapshot(debug.service_id, tail_lines=tail, since_seconds=since)
+        return Response(data=snapshot)
+
 
 @extend_schema(tags=["relase"])
 class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListModelMixin, GenericViewSet):
