@@ -67,86 +67,60 @@ def default_flow() -> dict:
     }
 
 
+USERS_COLLECTION_FIELDS = [
+    # (name, label, type, required)
+    ("chat_id", "Chat ID", FieldType.NUMBER.value, True),
+    ("first_name", "Ism", FieldType.TEXT.value, False),
+    ("last_name", "Familiya", FieldType.TEXT.value, False),
+    ("username", "Username", FieldType.TEXT.value, False),
+    ("last_seen", "Oxirgi faollik", FieldType.DATETIME.value, False),
+    ("created_at", "Yaratilgan vaqt", FieldType.DATETIME.value, False),
+]
+
+CHAT_COLLECTION_FIELDS = [
+    ("chat_id", "Chat ID", FieldType.TEXT.value, True),
+    ("message", "Xabar", FieldType.TEXT.value, False),
+    ("message_type", "Xabar turi", FieldType.TEXT.value, False),
+    ("is_read", "O'qilgan", FieldType.BOOL.value, False),
+    ("from_admin", "Admindan", FieldType.BOOL.value, False),
+    ("updated_at", "Yangilangan vaqt", FieldType.DATETIME.value, False),
+    ("created_at", "Yaratilgan vaqt", FieldType.DATETIME.value, False),
+]
+
+DEFAULT_COLLECTIONS = {
+    "users": {
+        "primary_field": "first_name",
+        "fields": USERS_COLLECTION_FIELDS,
+    },
+    "chat": {
+        "primary_field": "chat_id",
+        "fields": CHAT_COLLECTION_FIELDS,
+    },
+}
+
+
 def create_default_collections(project):
-    collections = {
-        "users": {
-            "fields": {
-                "chat_id": {
-                    "type": FieldType.TEXT.value,
-                    "required": True,
-                    "default": None,
-                },
-                "first_name": {
-                    "type": FieldType.TEXT.value,
-                    "required": True,
-                },
-                "last_name": {
-                    "type": FieldType.TEXT.value,
-                    "required": False,
-                },
-                "updated_at": {
-                    "type": FieldType.DATETIME.value,
-                    "required": True,
-                },
-                "created_at": {
-                    "type": FieldType.DATETIME.value,
-                    "required": True,
-                },
-            }
-        },
-        "chat": {
-            "fields": {
-                "chat_id": {
-                    "type": FieldType.TEXT.value,
-                    "required": True,
-                },
-                "message": {
-                    "type": FieldType.TEXT.value,
-                    "required": False,
-                },
-                "message_type": {
-                    "type": FieldType.TEXT.value,
-                    "required": False,
-                },
-                "is_read": {
-                    "type": FieldType.BOOL.value,
-                    "default": False,
-                },
-                "from_admin": {
-                    "type": FieldType.BOOL.value,
-                    "default": False,
-                },
-                "updated_at": {
-                    "type": FieldType.DATETIME.value,
-                    "required": False,
-                },
-                "created_at": {
-                    "type": FieldType.DATETIME.value,
-                    "required": False,
-                },
-            }
-        },
-    }
-    for collection_name, collection_data in collections.items():
-        collection = CollectionModel.objects.create(
+    """Loyiha uchun standart kolleksiyalarni yaratadi. Idempotent — get_or_create ishlatiladi."""
+    for collection_name, meta in DEFAULT_COLLECTIONS.items():
+        collection, created = CollectionModel.objects.get_or_create(
             name=collection_name,
-            user=project.owner,
             project=project,
+            defaults={"user": project.owner},
         )
 
-        fields = []
-        for field_name, field_props in collection_data["fields"].items():
-            fields.append(
-                FieldModel(
-                    collection=collection,
-                    name=field_name,
-                    type=field_props["type"],
-                    required=field_props.get("required", False),
-                    default=field_props.get("default"),
-                )
-            )
+        if not created:
+            continue
 
-        FieldModel.objects.bulk_create(fields)
+        fields = [
+            FieldModel(
+                collection=collection,
+                name=field_name,
+                type=field_type,
+                required=required,
+            )
+            for field_name, _label, field_type, required in meta["fields"]
+        ]
+        FieldModel.objects.bulk_create(fields, ignore_conflicts=True)
 
 
 def copy_collections(from_instance: ProjectModel, to_instance: ProjectModel):
