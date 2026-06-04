@@ -31,7 +31,7 @@ class CollectionViewSet(ModelViewSet):
     lookup_url_kwarg = "name"
 
     def get_queryset(self):
-        project = get_project_or_404(self.kwargs["project_id"])
+        project = get_project_or_404(self.kwargs["project_id"], user=self.request.user)
         return (
             Collection.objects.filter(project_id=project.pk, deleted_at__isnull=True)
             .prefetch_related("fields")
@@ -47,7 +47,7 @@ class CollectionViewSet(ModelViewSet):
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
-        ctx["project"] = get_project_or_404(self.kwargs["project_id"])
+        ctx["project"] = get_project_or_404(self.kwargs["project_id"], user=self.request.user)
         return ctx
 
     def perform_create(self, serializer):

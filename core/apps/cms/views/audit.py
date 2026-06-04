@@ -17,6 +17,7 @@ class CollectionAuditView(ListAPIView):
         coll = get_collection_or_404(
             project_id=self.kwargs["project_id"],
             name=self.kwargs["collection_name"],
+            user=self.request.user,
         )
         qs = AuditLog.objects.filter(collection=coll)
         action_q = self.request.query_params.get("action")

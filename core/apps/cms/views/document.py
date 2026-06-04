@@ -31,7 +31,7 @@ class DocumentViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request, project_id=None, collection_name=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         try:
             limit = max(1, min(int(request.query_params.get("limit") or 50), 500))
             skip = max(0, int(request.query_params.get("skip") or 0))
@@ -66,14 +66,14 @@ class DocumentViewSet(ViewSet):
         return Response({"results": items, "total": total, "limit": limit, "skip": skip})
 
     def retrieve(self, request, project_id=None, collection_name=None, pk=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         item = mongo.find_one(coll.project_id, coll.name, {"_id": pk})
         if item is None:
             return Response({"detail": "not found"}, status=404)
         return Response(item)
 
     def create(self, request, project_id=None, collection_name=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         try:
             res = doc_svc.insert(coll, request.data, actor_id=request.user.id if request.user.is_authenticated else None)
         except ValidationError as exc:
@@ -83,7 +83,7 @@ class DocumentViewSet(ViewSet):
         return Response(res, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, project_id=None, collection_name=None, pk=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         expected_version = request.data.pop("_version", None) if isinstance(request.data, dict) else None
         try:
             res = doc_svc.update(
@@ -104,7 +104,7 @@ class DocumentViewSet(ViewSet):
         return Response(res)
 
     def destroy(self, request, project_id=None, collection_name=None, pk=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         ok = doc_svc.soft_delete(
             coll,
             document_id=pk,
@@ -114,7 +114,7 @@ class DocumentViewSet(ViewSet):
 
     @action(detail=True, methods=["post"], url_path="restore")
     def restore(self, request, project_id=None, collection_name=None, pk=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         ok = doc_svc.restore(
             coll,
             document_id=pk,
@@ -124,7 +124,7 @@ class DocumentViewSet(ViewSet):
 
     @action(detail=False, methods=["post"], url_path="bulk")
     def bulk_insert(self, request, project_id=None, collection_name=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         docs = request.data.get("documents") if isinstance(request.data, dict) else request.data
         if not isinstance(docs, list):
             return Response({"detail": "documents must be a list"}, status=400)
@@ -142,7 +142,7 @@ class DocumentViewSet(ViewSet):
 
     @action(detail=False, methods=["post"], url_path="aggregate")
     def aggregate(self, request, project_id=None, collection_name=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         pipeline = request.data.get("pipeline") if isinstance(request.data, dict) else None
         if not isinstance(pipeline, list):
             return Response({"detail": "pipeline must be a list"}, status=400)
@@ -152,7 +152,7 @@ class DocumentViewSet(ViewSet):
 
     @action(detail=False, methods=["get"], url_path="count")
     def count(self, request, project_id=None, collection_name=None):
-        coll = get_collection_or_404(project_id=project_id, name=collection_name)
+        coll = get_collection_or_404(project_id=project_id, name=collection_name, user=request.user)
         import json as _json
         try:
             filter_raw = request.query_params.get("filter")

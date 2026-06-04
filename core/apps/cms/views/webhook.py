@@ -17,6 +17,7 @@ class WebhookViewSet(ModelViewSet):
         coll = get_collection_or_404(
             project_id=self.kwargs["project_id"],
             name=self.kwargs["collection_name"],
+            user=self.request.user,
         )
         return Webhook.objects.filter(collection=coll).order_by("-created_at")
 
@@ -24,5 +25,6 @@ class WebhookViewSet(ModelViewSet):
         coll = get_collection_or_404(
             project_id=self.kwargs["project_id"],
             name=self.kwargs["collection_name"],
+            user=self.request.user,
         )
         serializer.save(collection=coll)
