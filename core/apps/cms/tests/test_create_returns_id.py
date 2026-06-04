@@ -2,6 +2,7 @@
 
 import pytest
 from model_bakery import baker
+from django.urls import reverse
 from rest_framework.test import APIClient
 
 pytestmark = pytest.mark.django_db
@@ -12,8 +13,9 @@ def test_create_collection_response_includes_id():
     project = baker.make("api.ProjectModel", owner=user)
     client = APIClient()
     client.force_authenticate(user=user)
+    url = reverse("cms-coll-list", kwargs={"project_id": project.pk})
     resp = client.post(
-        f"/cms/projects/{project.pk}/collections/",
+        url,
         {"name": "movies", "label": "Kinolar", "fields": [{"name": "title", "kind": "text"}]},
         format="json",
     )
