@@ -63,7 +63,10 @@ class CollectionCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Collection
-        fields = ["name", "label", "description", "primary_field", "fields"]
+        # `id` is read-only in the response so the client can use it as
+        # relation_collection when linking from another collection.
+        fields = ["id", "name", "label", "description", "primary_field", "fields"]
+        read_only_fields = ["id"]
 
     def validate_name(self, value: str) -> str:
         if not value or not value.replace("_", "").isalnum():
