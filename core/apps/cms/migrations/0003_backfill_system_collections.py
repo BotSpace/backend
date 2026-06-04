@@ -45,7 +45,7 @@ def backfill(apps, schema_editor):
     Collection = apps.get_model("cms", "Collection")
     Field = apps.get_model("cms", "Field")
 
-    projects = Project.objects.filter(deleted_at__isnull=True).only("id", "user_id")
+    projects = Project.objects.filter(deleted_at__isnull=True).only("id", "user")
     for project in projects.iterator(chunk_size=500):
         for name, spec in SYSTEM_COLLECTIONS.items():
             coll = Collection.objects.filter(
