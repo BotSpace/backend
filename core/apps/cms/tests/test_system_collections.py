@@ -44,7 +44,7 @@ def test_idempotent(project):
 
 
 def test_existing_non_system_collection_upgraded(project):
-    Collection.objects.create(project=project, owner=project.user, name="users", system=False)
+    Collection.objects.create(project=project, owner=project.owner, name="users", system=False)
     ensure_system_collections(project)
     users = Collection.objects.get(project=project, name="users")
     assert users.system is True
