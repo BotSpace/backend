@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from core.apps.api.services.project import copy_collections, create_default_collections, default_flow
+from core.apps.cms.services.system_collections import ensure_system_collections
 
 from core.apps.api.enums.container import ContainerStatusEnum
 from core.apps.api.models import EnviromentModel, ProjectModel, RelaseModel
@@ -182,6 +183,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         project.flow = default_flow()
         project.save()
         create_default_collections(project)
+        # cmsv2 schemas — make engine-written users/chat docs visible in the UI.
+        ensure_system_collections(project)
 
     @extend_schema(
         summary="Shablondan loyiha yaratish",
