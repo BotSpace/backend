@@ -39,7 +39,8 @@ def project(db, regular_user):
     return ProjectModel.objects.create(
         name="Test Project",
         description="Test Description",
-        owner=regular_user
+        owner=regular_user,
+        flow={"nodes": [], "edges": []},
     )
 
 
@@ -53,7 +54,8 @@ def pending_submission(db, regular_user, project):
         short_description="Short description",
         description="Long description",
         original_price=Decimal("100.00"),
-        status=TemplateSubmissionStatusEnum.PENDING.value
+        status=TemplateSubmissionStatusEnum.PENDING.value,
+        required_envs=[],
     )
 
 

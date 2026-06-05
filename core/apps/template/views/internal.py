@@ -45,6 +45,7 @@ def _serialize_template(t: TemplateModel) -> dict:
         "features": [{"id": f.id, "name": f.name, "value": f.value} for f in t.features.all()],
         "flow": flow,
         "is_verify": t.is_verify,
+        "required_envs": t.required_envs or [],
     }
 
 

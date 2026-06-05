@@ -224,6 +224,7 @@ class AdminTemplateSubmissionsView(
                     discount_type="percent",
                     demo_url=target.demo_url,
                     is_verify=True,
+                    required_envs=target.required_envs or [],
                 )
                 template.categories.set(target.categories.all())
                 template.features.set(target.features.all())

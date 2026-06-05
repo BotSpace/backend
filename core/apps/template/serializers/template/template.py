@@ -47,6 +47,7 @@ class BaseTemplateSerializer(serializers.ModelSerializer):
             "features",
             "is_order",
             "demo_url",
+            "required_envs",
         ]
 
 
@@ -76,6 +77,7 @@ class RetrieveTemplateSerializer(BaseTemplateSerializer):
             "features",
             "is_order",
             "demo_url",
+            "required_envs",
         ]
 
 

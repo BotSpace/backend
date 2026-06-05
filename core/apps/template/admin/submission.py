@@ -106,12 +106,13 @@ class TemplateSubmissionRequestAdmin(ModelAdmin):
                         discount_type="percent",
                         demo_url=obj.demo_url,
                         is_verify=True,
+                        required_envs=obj.required_envs or [],
                     )
-                    
+
                     # Set many-to-many relationships
                     template.categories.set(obj.categories.all())
                     template.features.set(obj.features.all())
-                    
+
                     # Link template to submission
                     obj.template = template
         
@@ -136,12 +137,13 @@ class TemplateSubmissionRequestAdmin(ModelAdmin):
                     discount_type="percent",
                     demo_url=submission.demo_url,
                     is_verify=True,
+                    required_envs=submission.required_envs or [],
                 )
-                
+
                 # Set many-to-many relationships
                 template.categories.set(submission.categories.all())
                 template.features.set(submission.features.all())
-                
+
                 # Update submission status
                 submission.status = TemplateSubmissionStatusEnum.APPROVED.value
                 submission.template = template

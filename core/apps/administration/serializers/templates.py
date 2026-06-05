@@ -27,6 +27,7 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
             "views",
             "author_id",
             "author_phone",
+            "required_envs",
             "created_at",
             "updated_at",
         )
@@ -59,6 +60,7 @@ class AdminTemplateWriteSerializer(serializers.ModelSerializer):
             "views",
             "author_id",
             "author_phone",
+            "required_envs",
             "created_at",
             "updated_at",
         )
@@ -116,6 +118,7 @@ class AdminTemplateSubmissionSerializer(serializers.ModelSerializer):
             "original_price",
             "categories",
             "features",
+            "required_envs",
             "status",
             "rejection_reason",
             # --- nested detail (read-only) ---
