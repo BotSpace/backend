@@ -8,10 +8,11 @@ from django_core.mixins import BaseViewSetMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, mixins
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from click_up import ClickUp
 from config.env import env
@@ -34,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 @extend_schema(tags=["payment-order"])
 @api_view(["POST"])
+@authentication_classes([])
 @permission_classes([IsInternalTokenOnly])
 @throttle_classes([])
 def order_create(request):
@@ -133,6 +135,7 @@ def _generate_pay_url(order_pk: int, amount, provider: str) -> str:
 
 @extend_schema(tags=["payment-order"])
 @api_view(["GET"])
+@authentication_classes([JWTAuthentication])
 @permission_classes([])
 @throttle_classes([])
 def order_status(request, order_id: int):
@@ -186,24 +189,33 @@ class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())
 
-        # Pagination
-        page = self.paginate_queryset(qs)
-        orders_data = EarningsOrderSerializer(page if page is not None else qs, many=True).data
-
         agg = qs.aggregate(
             total_earned=Coalesce(Sum("net_amount"), 0),
             total_commission=Coalesce(Sum("commission"), 0),
         )
-
         request.user.refresh_from_db(fields=["balance"])
 
+        # Tekis payload: balans/jami + pagination meta + orders bir darajada.
+        # BaseViewSetMixin.finalize_response uni {status, data: payload} ga o'raydi.
         payload = {
             "balance": request.user.balance,
             "total_earned": str(agg["total_earned"]),
             "total_commission": str(agg["total_commission"]),
-            "orders": list(orders_data),
         }
 
+        page = self.paginate_queryset(qs)
         if page is not None:
-            return self.get_paginated_response(payload)
-        return Response({"status": True, "data": payload})
+            orders_data = EarningsOrderSerializer(page, many=True).data
+            meta = self.get_paginated_response(orders_data).data
+            payload.update(
+                {
+                    "count": meta.get("count"),
+                    "next": meta.get("next"),
+                    "previous": meta.get("previous"),
+                    "orders": list(meta.get("results", orders_data)),
+                }
+            )
+        else:
+            payload["orders"] = list(EarningsOrderSerializer(qs, many=True).data)
+
+        return Response(payload)

@@ -7,6 +7,7 @@ from core.apps.payment.enums.payment import PaymentOrderStatusEnum
 from core.apps.payment.models.transaction import TransactionModel
 from core.apps.payment.services.balance import add_balance, subtract_balance
 from core.apps.payment.services.commission import calculate_commission
+from core.apps.payment.services.notify import notify_bot_payment
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,6 @@ class ClickWebhookAPIView(ClickWebhook):
 
     def _order_success(self, params):
         from core.apps.payment.models.order import PaymentOrderModel
-        from core.apps.payment.services.notify import notify_bot_payment
 
         pk = _order_pk(params.merchant_trans_id)
         try:
