@@ -297,13 +297,15 @@ def test_create_from_template_missing_envs_returns_400(_cc, _sw, auth_client, te
 
 
 @pytest.mark.django_db
+@patch("core.apps.api.views.project.ListProjectSerializer")
 @patch("core.apps.api.signals.project.sync_bot")
 @patch("core.apps.api.signals.project.deploy_service")
 @patch("core.apps.api.views.project.set_webhook")
 @patch("core.apps.api.views.project.copy_collections")
-def test_create_from_template_with_envs_creates_env_models(_cc, _sw, _ds, _sb, auth_client, template_with_required_envs, user):
+def test_create_from_template_with_envs_creates_env_models(_cc, _sw, _ds, _sb, _lps, auth_client, template_with_required_envs, user):
     """Providing all required envs → 200 and EnviromentModel records created."""
     _ds.return_value.metadata.name = "release-test-svc"
+    _lps.return_value.data = {"id": 0}  # CI da Mongo yo'q — serializer real ishlamaydi
     from core.apps.template.models.order import TemplateOrderModel
 
     TemplateOrderModel.objects.create(
@@ -334,13 +336,15 @@ def test_create_from_template_with_envs_creates_env_models(_cc, _sw, _ds, _sb, a
 
 
 @pytest.mark.django_db
+@patch("core.apps.api.views.project.ListProjectSerializer")
 @patch("core.apps.api.signals.project.sync_bot")
 @patch("core.apps.api.signals.project.deploy_service")
 @patch("core.apps.api.views.project.set_webhook")
 @patch("core.apps.api.views.project.copy_collections")
-def test_create_from_template_no_required_envs_backward_compat(_cc, _sw, _ds, _sb, auth_client, template_no_required_envs, user):
+def test_create_from_template_no_required_envs_backward_compat(_cc, _sw, _ds, _sb, _lps, auth_client, template_no_required_envs, user):
     """Templates with empty required_envs work without providing envs (backward compat)."""
     _ds.return_value.metadata.name = "release-test-svc"
+    _lps.return_value.data = {"id": 0}  # CI da Mongo yo'q — serializer real ishlamaydi
     from core.apps.template.models.order import TemplateOrderModel
 
     TemplateOrderModel.objects.create(
