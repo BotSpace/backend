@@ -43,6 +43,22 @@ class DebugNodeEventView(APIView):
         if project is None:
             return Response({"detail": "Project topilmadi."}, status=404)
 
+        # Keepalive: node event = foydalanuvchi debug bot bilan FAOL ishlayapti.
+        # sync_debug 10 daqiqa updated_at yangilanmagan containerlarni o'chiradi —
+        # faol sessiya o'chib ketmasligi uchun updated_at'ni yangilab turamiz.
+        # Har eventda emas (burst'da DB urilmasin) — cache bilan 60s throttle.
+        try:
+            from django.core.cache import cache
+
+            if cache.add(f"debug_touch_{project.pk}", 1, timeout=60):
+                from django.utils import timezone
+
+                from core.apps.api.models.project import DebugModel
+
+                DebugModel.objects.filter(project=project).update(updated_at=timezone.now())
+        except Exception as exc:
+            logger.warning("DebugNodeEventView keepalive xatosi: %s", exc)
+
         try:
             schema = NodeExecutionStatus(
                 project=project.pk,
