@@ -8,7 +8,7 @@ from core.apps.template.serializers.template.category import ListTemplateCategor
 from core.apps.template.serializers.template.feature import ListTemplateFeatureSerializer
 from core.apps.template.validators.template import validate_required_envs
 
-_ENV_REF_RE = re.compile(r"\{\{env\.([A-Za-z_][A-Za-z0-9_]*)\}\}")
+_ENV_REF_RE = re.compile(r"\{\{\s*env\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 _RESERVED_KEYS = {"RELEASE_BOT_TOKEN"}
 
 
