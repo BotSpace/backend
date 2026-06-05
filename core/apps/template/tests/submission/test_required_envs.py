@@ -211,12 +211,18 @@ def test_approve_copies_required_envs_to_template(admin_user, pending_submission
     site = AdminSite()
     admin = TemplateSubmissionRequestAdmin(TemplateSubmissionRequestModel, site)
 
+    from django.contrib.messages.storage.fallback import FallbackStorage
+
     class MockRequest:
         user = admin_user
+        session = {}
+
+    request = MockRequest()
+    request._messages = FallbackStorage(request)
 
     submission = pending_submission_with_envs
     # Simulate approve action (bulk action)
-    admin.approve_submissions(MockRequest(), TemplateSubmissionRequestModel.objects.filter(pk=submission.pk))
+    admin.approve_submissions(request, TemplateSubmissionRequestModel.objects.filter(pk=submission.pk))
 
     submission.refresh_from_db()
     assert submission.template is not None
@@ -291,10 +297,13 @@ def test_create_from_template_missing_envs_returns_400(_cc, _sw, auth_client, te
 
 
 @pytest.mark.django_db
+@patch("core.apps.api.signals.project.sync_bot")
+@patch("core.apps.api.signals.project.deploy_service")
 @patch("core.apps.api.views.project.set_webhook")
 @patch("core.apps.api.views.project.copy_collections")
-def test_create_from_template_with_envs_creates_env_models(_cc, _sw, auth_client, template_with_required_envs, user):
+def test_create_from_template_with_envs_creates_env_models(_cc, _sw, _ds, _sb, auth_client, template_with_required_envs, user):
     """Providing all required envs → 200 and EnviromentModel records created."""
+    _ds.return_value.metadata.name = "release-test-svc"
     from core.apps.template.models.order import TemplateOrderModel
 
     TemplateOrderModel.objects.create(
@@ -325,10 +334,13 @@ def test_create_from_template_with_envs_creates_env_models(_cc, _sw, auth_client
 
 
 @pytest.mark.django_db
+@patch("core.apps.api.signals.project.sync_bot")
+@patch("core.apps.api.signals.project.deploy_service")
 @patch("core.apps.api.views.project.set_webhook")
 @patch("core.apps.api.views.project.copy_collections")
-def test_create_from_template_no_required_envs_backward_compat(_cc, _sw, auth_client, template_no_required_envs, user):
+def test_create_from_template_no_required_envs_backward_compat(_cc, _sw, _ds, _sb, auth_client, template_no_required_envs, user):
     """Templates with empty required_envs work without providing envs (backward compat)."""
+    _ds.return_value.metadata.name = "release-test-svc"
     from core.apps.template.models.order import TemplateOrderModel
 
     TemplateOrderModel.objects.create(
