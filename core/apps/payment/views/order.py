@@ -1,3 +1,4 @@
+from decimal import Decimal
 import logging
 
 from django.db.models import Sum
@@ -190,8 +191,8 @@ class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
         qs = self.filter_queryset(self.get_queryset())
 
         agg = qs.aggregate(
-            total_earned=Coalesce(Sum("net_amount"), 0),
-            total_commission=Coalesce(Sum("commission"), 0),
+            total_earned=Coalesce(Sum("net_amount"), Decimal("0")),
+            total_commission=Coalesce(Sum("commission"), Decimal("0")),
         )
         request.user.refresh_from_db(fields=["balance"])
 
