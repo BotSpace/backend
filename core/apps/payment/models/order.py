@@ -88,6 +88,14 @@ class PaymentOrderModel(SoftDeleteModel):
         unique=True,
         help_text=_("Client-supplied idempotency key; duplicate order-create requests with same key return the existing order."),
     )
+    transaction = models.OneToOneField(
+        "payment.TransactionModel",
+        verbose_name=_("transaction"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_order",
+    )
     paid_at = models.DateTimeField(
         verbose_name=_("paid at"),
         null=True,

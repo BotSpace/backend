@@ -6,6 +6,7 @@ Test qamrovi:
 - amount < 1000 — 400
 - Yo'q loyiha — 404
 - Idempotency: bir xil key bilan ikkita POST → bir xil order
+- Order yaratilganda TransactionModel ham yaratiladi + pay_url txn.pk bilan
 """
 
 from decimal import Decimal
@@ -19,6 +20,7 @@ from rest_framework.test import APIClient
 from core.apps.api.models.project import ProjectModel
 from core.apps.payment.enums.payment import PaymentOrderStatusEnum
 from core.apps.payment.models.order import PaymentOrderModel
+from core.apps.payment.models.transaction import TransactionModel
 
 User = get_user_model()
 
@@ -117,3 +119,36 @@ def test_order_create_idempotency(internal_client, project, settings):
     assert r1.status_code == 201
     assert r2.json()["data"]["order_id"] == r1.json()["data"]["order_id"]
     assert PaymentOrderModel.objects.filter(idempotency_key="uniq-key-abc").count() == 1
+
+
+@pytest.mark.django_db
+def test_order_create_creates_transaction_and_pay_url_uses_txn_pk(internal_client, project, settings):
+    """Order yaratilganda TransactionModel ham yaratilishi va pay_url txn.pk bilan."""
+    settings.INTERNAL_API_TOKEN = INTERNAL_TOKEN
+
+    captured = {}
+
+    def fake_generate(txn_pk, amount, provider):
+        captured["txn_pk"] = txn_pk
+        return f"https://click.uz/pay/{txn_pk}"
+
+    with patch("core.apps.payment.views.order._generate_pay_url", side_effect=fake_generate):
+        response = internal_client.post(
+            ENDPOINT,
+            {"project_id": project.pk, "payer_chat_id": 111, "amount": "3000"},
+            format="json",
+        )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+
+    order = PaymentOrderModel.objects.get(pk=data["order_id"])
+    assert order.transaction_id is not None
+
+    txn = TransactionModel.objects.get(pk=order.transaction_id)
+    assert txn.amount == Decimal("3000")
+    assert txn.user == project.owner
+
+    # pay_url txn.pk bilan yaratilgan
+    assert captured["txn_pk"] == txn.pk
+    assert data["pay_url"] == f"https://click.uz/pay/{txn.pk}"

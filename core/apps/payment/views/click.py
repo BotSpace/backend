@@ -4,22 +4,13 @@ from django.utils import timezone
 from click_up.views import ClickWebhook
 
 from core.apps.payment.enums.payment import PaymentOrderStatusEnum
+from core.apps.payment.models.order import PaymentOrderModel
 from core.apps.payment.models.transaction import TransactionModel
 from core.apps.payment.services.balance import add_balance, subtract_balance
 from core.apps.payment.services.commission import calculate_commission
 from core.apps.payment.services.notify import notify_bot_payment
 
 logger = logging.getLogger(__name__)
-
-_ORDER_PREFIX = "ord_"
-
-
-def _is_order(merchant_trans_id) -> bool:
-    return str(merchant_trans_id).startswith(_ORDER_PREFIX)
-
-
-def _order_pk(merchant_trans_id) -> int:
-    return int(str(merchant_trans_id)[len(_ORDER_PREFIX):])
 
 
 class ClickWebhookAPIView(ClickWebhook):
@@ -28,27 +19,38 @@ class ClickWebhookAPIView(ClickWebhook):
     permission_classes = []
 
     def successfully_payment(self, params):
-        if _is_order(params.merchant_trans_id):
-            self._order_success(params)
+        """merchant_trans_id — TransactionModel.pk (raqamli).
+        Agar txn ga bog_liq PaymentOrder bo'lsa — order oqimi,
+        aks holda — eski subscription (balance to'ldirish) oqimi.
+        """
+        try:
+            txn = TransactionModel.objects.get(pk=params.merchant_trans_id)
+        except TransactionModel.DoesNotExist:
+            raise ValueError(f"TransactionModel #{params.merchant_trans_id} topilmadi")
+
+        order = PaymentOrderModel.objects.filter(transaction_id=txn.pk).select_related("owner", "project").first()
+        if order:
+            self._order_success(params, order, txn)
         else:
-            self._transaction_success(params)
+            self._transaction_success(params, txn)
 
     def cancelled_payment(self, params):
-        if _is_order(params.merchant_trans_id):
-            self._order_cancelled(params)
+        """merchant_trans_id — TransactionModel.pk (raqamli)."""
+        try:
+            txn = TransactionModel.objects.get(pk=params.merchant_trans_id)
+        except TransactionModel.DoesNotExist:
+            raise ValueError(f"TransactionModel #{params.merchant_trans_id} topilmadi")
+
+        order = PaymentOrderModel.objects.filter(transaction_id=txn.pk).select_related("owner", "project").first()
+        if order:
+            self._order_cancelled(params, order)
         else:
-            self._transaction_cancelled(params)
+            self._transaction_cancelled(params, txn)
 
     # ---------- PaymentOrder oqimi ----------
 
-    def _order_success(self, params):
-        from core.apps.payment.models.order import PaymentOrderModel
-
-        pk = _order_pk(params.merchant_trans_id)
-        try:
-            order = PaymentOrderModel.objects.get(pk=pk)
-        except PaymentOrderModel.DoesNotExist:
-            raise ValueError(f"PaymentOrder #{pk} topilmadi")
+    def _order_success(self, params, order: PaymentOrderModel, txn: TransactionModel):
+        pk = order.pk
 
         # Idempotency: allaqachon to'langan bo'lsa o'tkazib yuboramiz
         if order.status == PaymentOrderStatusEnum.PAID:
@@ -89,14 +91,8 @@ class ClickWebhookAPIView(ClickWebhook):
         except Exception as exc:
             logger.error("_order_success: engine notify xato order_id=%s: %s", pk, exc)
 
-    def _order_cancelled(self, params):
-        from core.apps.payment.models.order import PaymentOrderModel
-
-        pk = _order_pk(params.merchant_trans_id)
-        try:
-            order = PaymentOrderModel.objects.get(pk=pk)
-        except PaymentOrderModel.DoesNotExist:
-            raise ValueError(f"PaymentOrder #{pk} topilmadi")
+    def _order_cancelled(self, params, order: PaymentOrderModel):
+        pk = order.pk
 
         if order.status == PaymentOrderStatusEnum.CANCELLED:
             logger.info("_order_cancelled: order #%s allaqachon cancelled — skip", pk)
@@ -153,30 +149,22 @@ class ClickWebhookAPIView(ClickWebhook):
                 order.pk,
             )
 
-    # ---------- Eski TransactionModel oqimi (O'ZGARTIRMA) ----------
+    # ---------- Eski TransactionModel (subscription/balance to'ldirish) oqimi ----------
 
-    def _transaction_success(self, params):
-        try:
-            transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
-        except TransactionModel.DoesNotExist:
-            raise ValueError("Transaction not found")
+    def _transaction_success(self, params, txn: TransactionModel):
         add_balance(
-            transaction.user,
-            transaction.amount,
+            txn.user,
+            txn.amount,
             "Click orqali hisob to'ldirildi",
-            idempotency_key=f"click:credit:{params.merchant_trans_id}",
+            idempotency_key=f"click:credit:{txn.pk}",
         )
-        TransactionModel.objects.filter(pk=transaction.pk, status=False).update(status=True)
+        TransactionModel.objects.filter(pk=txn.pk, status=False).update(status=True)
 
-    def _transaction_cancelled(self, params):
-        try:
-            transaction = TransactionModel.objects.get(pk=params.merchant_trans_id)
-        except TransactionModel.DoesNotExist:
-            raise ValueError("Transaction not found")
+    def _transaction_cancelled(self, params, txn: TransactionModel):
         subtract_balance(
-            transaction.user,
-            transaction.amount,
+            txn.user,
+            txn.amount,
             "Clickdan to'lov bekor qilindi",
-            idempotency_key=f"click:debit:{params.merchant_trans_id}",
+            idempotency_key=f"click:debit:{txn.pk}",
         )
-        TransactionModel.objects.filter(pk=transaction.pk, status=True).update(status=False)
+        TransactionModel.objects.filter(pk=txn.pk, status=True).update(status=False)

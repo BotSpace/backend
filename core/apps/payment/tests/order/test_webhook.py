@@ -5,8 +5,8 @@ Test qamrovi:
 - Komissiya BOTSPACE_REVENUE_USER_ID bilan yoziladi
 - Ikki marta webhook → bir marta kredit (idempotency)
 - Cancelled → refund (subtract) idempotent
-- Eski raqamli merchant_trans_id → TransactionModel oqimi buzilmagan
-- ord_ prefiks → PaymentOrder oqimi
+- Eski raqamli merchant_trans_id (txn.pk, payment_order yo'q) → subscription oqimi buzilmagan
+- Yangi oqim: TransactionModel.pk → PaymentOrder topiladi → order oqimi
 """
 
 from decimal import Decimal
@@ -38,7 +38,12 @@ def project(owner):
 
 
 @pytest.fixture
-def order(project, owner):
+def txn(owner):
+    return TransactionModel.objects.create(user=owner, amount=Decimal("10000"))
+
+
+@pytest.fixture
+def order(project, owner, txn):
     return PaymentOrderModel.objects.create(
         project=project,
         owner=owner,
@@ -47,6 +52,7 @@ def order(project, owner):
         commission=Decimal("500"),
         net_amount=Decimal("9500"),
         status=PaymentOrderStatusEnum.CREATED,
+        transaction=txn,
     )
 
 
@@ -60,9 +66,9 @@ def disable_notify():
 # ---------- success oqimi ----------
 
 @pytest.mark.django_db
-def test_webhook_order_success_credits_net(order, owner):
+def test_webhook_order_success_credits_net(order, txn, owner):
     view = ClickWebhookAPIView()
-    params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-111")
+    params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-111")
 
     view.successfully_payment(params)
 
@@ -79,10 +85,10 @@ def test_webhook_order_success_credits_net(order, owner):
 
 
 @pytest.mark.django_db
-def test_webhook_order_success_idempotent(order, owner):
+def test_webhook_order_success_idempotent(order, txn, owner):
     """Ikki marta webhook kelsa faqat bir marta kredit."""
     view = ClickWebhookAPIView()
-    params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-222")
+    params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-222")
 
     view.successfully_payment(params)
     view.successfully_payment(params)  # retry
@@ -93,13 +99,13 @@ def test_webhook_order_success_idempotent(order, owner):
 
 
 @pytest.mark.django_db
-def test_webhook_order_success_botspace_commission(order, owner, settings):
+def test_webhook_order_success_botspace_commission(order, txn, owner, settings):
     """BOTSPACE_REVENUE_USER_ID o'rnatilgan bo'lsa komissiya kreditlanadi."""
     revenue_user = baker.make(User)
     settings.BOTSPACE_REVENUE_USER_ID = revenue_user.pk
 
     view = ClickWebhookAPIView()
-    params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-333")
+    params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-333")
     view.successfully_payment(params)
 
     revenue_user.refresh_from_db()
@@ -109,11 +115,11 @@ def test_webhook_order_success_botspace_commission(order, owner, settings):
 # ---------- cancelled oqimi ----------
 
 @pytest.mark.django_db
-def test_webhook_order_cancelled_refunds_if_paid(order, owner):
+def test_webhook_order_cancelled_refunds_if_paid(order, txn, owner):
     """Agar to'langan bo'lsa cancelled → subtract."""
     view = ClickWebhookAPIView()
-    success_params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-444")
-    cancel_params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-444")
+    success_params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-444")
+    cancel_params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-444")
 
     view.successfully_payment(success_params)
     view.cancelled_payment(cancel_params)
@@ -124,11 +130,11 @@ def test_webhook_order_cancelled_refunds_if_paid(order, owner):
 
 
 @pytest.mark.django_db
-def test_webhook_order_cancelled_idempotent(order, owner):
+def test_webhook_order_cancelled_idempotent(order, txn, owner):
     """Cancelled webhook ikki marta kelsa bir marta subtract."""
     view = ClickWebhookAPIView()
-    success_params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="click-555")
-    cancel_params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}")
+    success_params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="click-555")
+    cancel_params = SimpleNamespace(merchant_trans_id=txn.pk)
 
     view.successfully_payment(success_params)
     view.cancelled_payment(cancel_params)
@@ -140,10 +146,10 @@ def test_webhook_order_cancelled_idempotent(order, owner):
 
 
 @pytest.mark.django_db
-def test_webhook_order_cancelled_without_payment(order, owner):
+def test_webhook_order_cancelled_without_payment(order, txn, owner):
     """To'lov bo'lmasa cancel → balans o'zgarmaydi."""
     view = ClickWebhookAPIView()
-    params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}")
+    params = SimpleNamespace(merchant_trans_id=txn.pk)
 
     view.cancelled_payment(params)
 
@@ -153,11 +159,11 @@ def test_webhook_order_cancelled_without_payment(order, owner):
     assert order.status == PaymentOrderStatusEnum.CANCELLED
 
 
-# ---------- Marshrutlash: eski oqim buzilmasligi ----------
+# ---------- Marshrutlash: subscription oqimi (payment_order yo'q txn) ----------
 
 @pytest.mark.django_db
-def test_numeric_merchant_trans_id_routes_to_transaction(owner, db):
-    """Raqamli merchant_trans_id → eski TransactionModel oqimi."""
+def test_txn_without_order_routes_to_subscription(owner, db):
+    """PaymentOrder bog'liq bo'lmagan TransactionModel → subscription (balance) oqimi."""
     txn = TransactionModel.objects.create(user=owner, amount=Decimal("12000"), status=False)
 
     view = ClickWebhookAPIView()
@@ -172,12 +178,17 @@ def test_numeric_merchant_trans_id_routes_to_transaction(owner, db):
 
 
 @pytest.mark.django_db
-def test_ord_prefix_does_not_touch_transactions(order, owner):
-    """ord_ prefiksli id Transaction oqimiga tushmaydi."""
+def test_order_txn_does_not_touch_subscription_balance(order, txn, owner):
+    """PaymentOrder bog'liq txn → order oqimi, txn.user balansi net bilan oshadi (egasi)."""
     view = ClickWebhookAPIView()
-    params = SimpleNamespace(merchant_trans_id=f"ord_{order.pk}", click_trans_id="x")
+    params = SimpleNamespace(merchant_trans_id=txn.pk, click_trans_id="x")
 
     view.successfully_payment(params)
 
-    # TransactionModel mutlaqo tegmadi
-    assert TransactionModel.objects.count() == 0
+    # Egasi balansi net bilan oshdi
+    owner.refresh_from_db()
+    assert owner.balance == 9500
+
+    # txn.status o'zgarmaydi — order oqimida txn.status yangilanmaydi
+    txn.refresh_from_db()
+    assert txn.status is False
