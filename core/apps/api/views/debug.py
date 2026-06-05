@@ -28,6 +28,11 @@ class DebugNodeEventView(APIView):
     # The engine has no user — we authenticate manually below.
     authentication_classes = []
     permission_classes = [AllowAny]
+    # Ichki endpoint (X-Internal-Token) — global anon throttle (60/min/IP) bu yerda
+    # MUTLAQO yaroqsiz: bitta faol debug sessiya minutiga o'nlab event yuboradi va
+    # limit tugagach eventlar 429 bilan yo'qolib, paneldagi node statuslar "o'lib"
+    # qolardi. Auth tokeni tekshiriladi, throttle kerak emas.
+    throttle_classes = []
 
     def post(self, request):
         expected = getattr(settings, "INTERNAL_API_TOKEN", None)
