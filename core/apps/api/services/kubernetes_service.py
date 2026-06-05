@@ -631,11 +631,19 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
     _env.append(f"PROJECT_ID={project.id}")
 
+    # PaymentNode: engine calls backend POST /api/payment/order/create/ with
+    # X-Internal-Token and the backend verifies /payment-callback against the
+    # same token. Both must equal the backend's INTERNAL_API_TOKEN. The engine
+    # reads API_TOKEN (createOrder header) and INTERNAL_TOKEN (callback verify).
+    internal_token = env.str("INTERNAL_API_TOKEN", default="")
+    if internal_token:
+        _env.append(f"API_TOKEN={internal_token}")
+        _env.append(f"INTERNAL_TOKEN={internal_token}")
+
     # Debug bots emit per-node execution events to the backend, which relays
     # them to the constructor over WS (n8n-style live node highlighting).
     if prefix == "debug":
         _env.append("DEBUG_MODE=true")
-        internal_token = env.str("INTERNAL_API_TOKEN", default="")
         if internal_token:
             _env.append(f"DEBUG_EVENT_TOKEN={internal_token}")
 
