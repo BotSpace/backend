@@ -35,9 +35,10 @@ def custom_exception_handler(exc: Exception, context: dict[str, Any]):
 
     RunningBotLimitExceeded = _get_running_bot_limit_exc()
     if isinstance(exc, RunningBotLimitExceeded):
+        # BaseViewSetMixin.finalize_response bu javobni {"status": false, "data": {...}}
+        # ko'rinishida o'raydi — shuning uchun payload'ni toza qaytaramiz.
         return Response(
             {
-                "status": False,
                 "detail": str(exc.detail),
                 "code": exc.default_code,
                 "limit": exc.limit,

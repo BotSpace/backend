@@ -48,7 +48,12 @@ def _set_debug_running(project: ProjectModel, status: str = RUNNING) -> DebugMod
 
 
 def _make_release(project: ProjectModel, status: str = RUNNING) -> RelaseModel:
-    return RelaseModel.objects.create(project=project, version=1, status=status)
+    release = RelaseModel.objects.create(project=project, version=1, status=status)
+    # RelaseSignal post_save'da statusni INIT'ga qayta yozadi (deploy oqimi) —
+    # testda kerakli statusni signal'larsiz, to'g'ridan-to'g'ri DB'da tiklaymiz.
+    RelaseModel.objects.filter(pk=release.pk).update(status=status)
+    release.refresh_from_db()
+    return release
 
 
 def _make_auth_client(user: User) -> APIClient:
@@ -100,13 +105,13 @@ def test_release_blocked_when_limit_reached():
 
     # Majburiy maydonlar
     assert body["status"] is False
-    assert body["code"] == "running_bot_limit"
-    assert body["limit"] == 10
-    assert isinstance(body["running"], list)
-    assert len(body["running"]) == 10
+    assert body["data"]["code"] == "running_bot_limit"
+    assert body["data"]["limit"] == 10
+    assert isinstance(body["data"]["running"], list)
+    assert len(body["data"]["running"]) == 10
 
     # running ro'yxatidagi har bir element shakli
-    for entry in body["running"]:
+    for entry in body["data"]["running"]:
         assert "project_id" in entry
         assert "name" in entry
         assert entry["kind"] in ("debug", "release")
@@ -114,7 +119,7 @@ def test_release_blocked_when_limit_reached():
             assert "release_id" in entry
 
     # detail matnida limit ko'rsatilishi shart
-    assert "10" in body["detail"]
+    assert "10" in body["data"]["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -192,9 +197,9 @@ def test_debug_blocked_when_limit_reached():
     assert response.status_code == 409, response.json()
     body = response.json()
     assert body["status"] is False
-    assert body["code"] == "running_bot_limit"
-    assert body["limit"] == 10
-    assert len(body["running"]) == 10
+    assert body["data"]["code"] == "running_bot_limit"
+    assert body["data"]["limit"] == 10
+    assert len(body["data"]["running"]) == 10
 
 
 @pytest.mark.django_db
@@ -273,8 +278,8 @@ def test_create_from_template_blocked_when_limit_reached(_lps):
     assert response.status_code == 409, response.json()
     body = response.json()
     assert body["status"] is False
-    assert body["code"] == "running_bot_limit"
-    assert body["limit"] == 10
+    assert body["data"]["code"] == "running_bot_limit"
+    assert body["data"]["limit"] == 10
 
 
 # ---------------------------------------------------------------------------
