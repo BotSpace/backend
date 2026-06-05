@@ -43,7 +43,7 @@ def _engine_url(project) -> str | None:
     return f"http://bot-{uuid}:{_ENGINE_WEBHOOK_PORT}"
 
 
-def notify_bot_payment(order: "PaymentOrderModel") -> bool:
+def notify_bot_payment(order: "PaymentOrderModel", status: str = "paid") -> bool:
     """To'lov tasdiqlangandan keyin release bot engine'iga POST yuboradi.
 
     Payload (ExternalWebhookTriggerNode kontrakt):
@@ -76,19 +76,30 @@ def notify_bot_payment(order: "PaymentOrderModel") -> bool:
         )
         return False
 
-    url = f"{base_url}/custom-webhook/click/{order.payer_chat_id}"
+    # Maxsus PaymentNode kontrakt: engine pauza qilingan flow'ni order_id/chat_id
+    # bo'yicha topib `paid`/`failed` tarmog'idan davom ettiradi.
+    url = f"{base_url}/payment-callback"
     payload = {
         "order_id": order.pk,
+        "chat_id": order.payer_chat_id,
         "amount": str(order.amount),
         "net": str(order.net_amount),
         "commission": str(order.commission),
-        "status": "paid",
+        "status": status,
         "comment": order.comment or "",
+        "provider": order.provider,
     }
+
+    from django.conf import settings
+
+    headers = {}
+    token = getattr(settings, "INTERNAL_API_TOKEN", None)
+    if token:
+        headers["X-Internal-Token"] = token
 
     try:
         with httpx.Client(timeout=httpx.Timeout(connect=5, read=10, write=10, pool=5)) as client:
-            response = client.post(url, json=payload)
+            response = client.post(url, json=payload, headers=headers)
         if response.status_code < 300:
             logger.info(
                 "notify_bot_payment: engine xabardor qilindi order_id=%s project_id=%s status=%s",
