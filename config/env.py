@@ -33,4 +33,5 @@ env = environ.Env(
     INTERNAL_API_TOKEN=(str, ""),
     OAUTH_ISSUER=(str, "https://api.botspace.uz"),
     OAUTH_AUTHORIZE_PAGE=(str, "https://botspace.uz/oauth/authorize"),
+    RUNNING_BOT_LIMIT=(int, 10),
 )
