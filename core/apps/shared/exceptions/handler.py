@@ -21,12 +21,30 @@ from rest_framework.views import exception_handler as drf_default_handler
 
 logger = logging.getLogger(__name__)
 
+# Import lazily to avoid circular imports at module load time.
+def _get_running_bot_limit_exc():
+    from core.apps.api.exceptions.running_bot_limit import RunningBotLimitExceeded  # noqa: PLC0415
+    return RunningBotLimitExceeded
+
 
 def custom_exception_handler(exc: Exception, context: dict[str, Any]):
     if isinstance(exc, Http404):
         exc = exceptions.NotFound()
     if isinstance(exc, DjangoPermissionDenied):
         exc = exceptions.PermissionDenied()
+
+    RunningBotLimitExceeded = _get_running_bot_limit_exc()
+    if isinstance(exc, RunningBotLimitExceeded):
+        return Response(
+            {
+                "status": False,
+                "detail": str(exc.detail),
+                "code": exc.default_code,
+                "limit": exc.limit,
+                "running": exc.running,
+            },
+            status=exc.status_code,
+        )
 
     response = drf_default_handler(exc, context)
     if response is not None:

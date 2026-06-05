@@ -32,6 +32,7 @@ from core.apps.api.serializers.project.debug import CreateDebugSerializer, ListD
 from core.apps.api.serializers.project.project import CreateProjectFromTemplate
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.api.services.docker_service import deploy_service, remove_service
+from core.apps.api.services.running_bot_limit import check_running_bot_limit
 from core.apps.api.services.kubernetes_service import deployment_logs_snapshot
 from core.apps.api.services.enviroment import project_enviroment
 from core.throttle.ip_throttle import DebugContainerThrottle, ReleaseCreateThrottle
@@ -234,6 +235,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
 
+        # Limit tekshiruvi: yangi loyiha hali running emas, shuning uchun exclude kerak emas.
+        check_running_bot_limit(request.user)
+
         instance = ProjectModel.objects.create(
             name=data.get("name"),
             flow=template.project.flow,
@@ -347,6 +351,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     @action(methods=["GET"], detail=True, url_name="debug", url_path="debug", throttle_classes=[DebugContainerThrottle])
     def debug(self, request, pk):
         instance = self.get_object()
+        check_running_bot_limit(request.user, exclude_project_id=instance.pk)
         debug, _created = DebugModel.objects.get_or_create(project=instance)
         try:
             service = deploy_service(
@@ -555,6 +560,19 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
         except ApiException as exc:
             raise _deployment_error(exc) from exc
 
+    def perform_create(self, serializer):
+        project = serializer.validated_data.get("project")
+        check_running_bot_limit(self.request.user, exclude_project_id=project.pk if project else None)
+
+        serializer.validated_data.pop("plan_id", None)
+        serializer.validated_data.pop("months", None)
+
+        set_webhook(project, "release")
+        relase = RelaseModel.objects.filter(project=project).last()
+        version = 1 if relase is None else relase.version
+
+        serializer.save(version=version + 1, flow=project.flow)
+
     @extend_schema(
         summary="Releaseni to'xtatish",
         description="Ishlab turgan release konteynerini to'xtatadi.",
@@ -629,17 +647,6 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
             since = None
         snapshot = deployment_logs_snapshot(instance.service_id, tail_lines=tail, since_seconds=since)
         return Response(data=snapshot)
-
-    def perform_create(self, serializer):
-        project = serializer.validated_data.get("project")
-        serializer.validated_data.pop("plan_id", None)
-        serializer.validated_data.pop("months", None)
-
-        set_webhook(project, "release")
-        relase = RelaseModel.objects.filter(project=project).last()
-        version = 1 if relase is None else relase.version
-
-        serializer.save(version=version + 1, flow=project.flow)
 
 
 @extend_schema(tags=["enviroment"])
