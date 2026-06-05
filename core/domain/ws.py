@@ -37,6 +37,11 @@ class NodeExecutionStatus(BaseModel):
     status: str  # running | success | error
     error: Optional[str] = None
     ts: Optional[int] = None
+    # Engine 3.5.31+: run_id — har Telegram update uchun monotonik; seq — global
+    # atomik hisoblagich. Frontend eventlarni tarmoq tartibiga emas, shu raqamlarga
+    # qarab tartiblaydi. Eski engine'lar yubormaydi (None) — frontend ts fallback.
+    run_id: Optional[int] = None
+    seq: Optional[int] = None
 
     model_config = ConfigDict(use_enum_values=True)
 

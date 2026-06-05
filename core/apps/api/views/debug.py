@@ -52,6 +52,8 @@ class DebugNodeEventView(APIView):
                 status=str(data.get("status", "")),
                 error=data.get("error") or None,
                 ts=int(data["ts"]) if data.get("ts") else None,
+                run_id=int(data["run_id"]) if data.get("run_id") else None,
+                seq=int(data["seq"]) if data.get("seq") else None,
             )
             ws_publish(project.owner_id, schema, EventTypes.NODE_EXECUTION)
         except Exception as exc:
