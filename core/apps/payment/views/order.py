@@ -22,6 +22,7 @@ from core.apps.api.models.project import ProjectModel
 from core.apps.payment.enums.payment import PaymentOrderStatusEnum
 from core.apps.payment.filters.order import PaymentOrderFilter  # type: ignore[import]
 from core.apps.payment.models.order import PaymentOrderModel
+from core.apps.payment.models.transaction import TransactionModel
 from core.apps.payment.serializers.order import (
     CreateOrderSerializer,
     EarningsOrderSerializer,
@@ -70,7 +71,12 @@ def order_create(request):
     if idempotency_key:
         existing = PaymentOrderModel.objects.filter(idempotency_key=idempotency_key).first()
         if existing:
-            pay_url = _generate_pay_url(existing.pk, existing.amount, provider)
+            # Mavjud order uchun txn bo'lmasa (eski order) — txn yaratib bog'laymiz
+            if existing.transaction_id is None:
+                txn = TransactionModel.objects.create(user=owner, amount=existing.amount)
+                existing.transaction = txn
+                existing.save(update_fields=["transaction"])
+            pay_url = _generate_pay_url(existing.transaction_id, existing.amount, provider)
             return Response(
                 {
                     "status": True,
@@ -87,6 +93,9 @@ def order_create(request):
     # Komissiya audit uchun order yaratilayotganda hisoblanadi
     commission, net_amount = calculate_commission(amount)
 
+    # Har order uchun TransactionModel yaratamiz — Click Prepare shu id'ni qidiradi
+    txn = TransactionModel.objects.create(user=owner, amount=amount)
+
     order = PaymentOrderModel.objects.create(
         project=project,
         owner=owner,
@@ -98,9 +107,10 @@ def order_create(request):
         comment=comment,
         status=PaymentOrderStatusEnum.CREATED,
         idempotency_key=idempotency_key,
+        transaction=txn,
     )
 
-    pay_url = _generate_pay_url(order.pk, amount, provider)
+    pay_url = _generate_pay_url(txn.pk, amount, provider)
 
     return Response(
         {
@@ -117,8 +127,8 @@ def order_create(request):
     )
 
 
-def _generate_pay_url(order_pk: int, amount, provider: str) -> str:
-    """Click pay_url generatsiya qiladi. merchant_trans_id = ord_<pk>."""
+def _generate_pay_url(txn_pk: int, amount, provider: str) -> str:
+    """Click pay_url generatsiya qiladi. merchant_trans_id = txn.pk (raqamli, prefikssiz)."""
     if provider == "click":
         click_up = ClickUp(
             service_id=env.str("CLICK_SERVICE_ID"),
@@ -126,7 +136,7 @@ def _generate_pay_url(order_pk: int, amount, provider: str) -> str:
         )
         return_url = getattr(settings, "PAYMENT_RETURN_URL", "https://botspace.uz")
         return click_up.initializer.generate_pay_link(
-            id=f"ord_{order_pk}",
+            id=txn_pk,
             amount=amount,
             return_url=return_url,
         )
