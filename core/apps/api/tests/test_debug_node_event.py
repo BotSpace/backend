@@ -39,6 +39,8 @@ def test_node_event_publishes_ws(project, client, settings):
                 "status": "running",
                 "error": "",
                 "ts": 1700000000000,
+                "run_id": 7,
+                "seq": 12,
             },
             format="json",
             HTTP_X_INTERNAL_TOKEN=INTERNAL_TOKEN,
@@ -47,6 +49,9 @@ def test_node_event_publishes_ws(project, client, settings):
     assert resp.data["ok"] is True
     mock_publish.assert_called_once()
     assert mock_publish.call_args[0][0] == project.owner_id
+    schema = mock_publish.call_args[0][1]
+    assert schema.run_id == 7
+    assert schema.seq == 12
 
 
 @pytest.mark.django_db
