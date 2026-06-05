@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -12,30 +14,23 @@ from core.apps.api.models import ProjectModel
 @pytest.fixture
 def user(db):
     """Create a regular user"""
-    return User.objects.create_user(
-        phone="+998901234567",
-        username="testuser",
-        password="testpass123"
-    )
+    return User.objects.create_user(phone="+998901234567", username="testuser", password="testpass123")
 
 
 @pytest.fixture
 def another_user(db):
     """Create another regular user"""
-    return User.objects.create_user(
-        phone="+998901234569",
-        username="anotheruser",
-        password="testpass123"
-    )
+    return User.objects.create_user(phone="+998901234569", username="anotheruser", password="testpass123")
 
 
 @pytest.fixture
 def project(db, user):
-    """Create a project"""
+    """Create a project with no env refs in flow"""
     return ProjectModel.objects.create(
         name="Test Project",
         description="Test Description",
-        owner=user
+        owner=user,
+        flow={"nodes": [], "edges": []},
     )
 
 
@@ -49,7 +44,8 @@ def submission(db, user, project):
         short_description="Short description",
         description="Long description",
         original_price=Decimal("100.00"),
-        status=TemplateSubmissionStatusEnum.PENDING.value
+        status=TemplateSubmissionStatusEnum.PENDING.value,
+        required_envs=[],
     )
 
 
@@ -63,19 +59,20 @@ def api_client():
 def test_create_submission(api_client, user, project):
     """Test creating a template submission"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-list")
     data = {
         "project": project.id,
         "name": "New Template",
         "short_description": "Short desc",
         "description": "Long desc",
-        "original_price": "150.00"
+        "original_price": "150.00",
+        "required_envs": json.dumps([]),
     }
-    
+
     response = api_client.post(url, data=data)
     assert response.status_code == 201
-    
+
     # Check that submission was created
     submission = TemplateSubmissionRequestModel.objects.get(name="New Template")
     assert submission.user == user
@@ -87,10 +84,10 @@ def test_create_submission(api_client, user, project):
 def test_list_submissions_user(api_client, user, submission):
     """Test that users can only see their own submissions"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-list")
     response = api_client.get(url)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] is True
@@ -102,20 +99,21 @@ def test_list_submissions_user(api_client, user, submission):
 def test_user_cannot_see_other_users_submissions(api_client, user, another_user, project):
     """Test that users cannot see other users' submissions"""
     # Create submission by another user
-    other_submission = TemplateSubmissionRequestModel.objects.create(
+    TemplateSubmissionRequestModel.objects.create(
         user=another_user,
         project=project,
         name="Other User Template",
         short_description="Short description",
         description="Long description",
-        original_price=Decimal("100.00")
+        original_price=Decimal("100.00"),
+        required_envs=[],
     )
-    
+
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-list")
     response = api_client.get(url)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] is True
@@ -128,10 +126,10 @@ def test_user_cannot_see_other_users_submissions(api_client, user, another_user,
 def test_retrieve_submission(api_client, user, submission):
     """Test retrieving a submission detail"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-detail", kwargs={"pk": submission.id})
     response = api_client.get(url)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] is True
@@ -148,9 +146,10 @@ def test_unauthenticated_cannot_create_submission(api_client, project):
         "name": "New Template",
         "short_description": "Short desc",
         "description": "Long desc",
-        "original_price": "150.00"
+        "original_price": "150.00",
+        "required_envs": json.dumps([]),
     }
-    
+
     response = api_client.post(url, data=data)
     assert response.status_code == 401
 
@@ -159,16 +158,17 @@ def test_unauthenticated_cannot_create_submission(api_client, project):
 def test_update_pending_submission(api_client, user, submission):
     """Test updating a pending submission"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-detail", kwargs={"pk": submission.id})
     data = {
         "name": "Updated Template Name",
-        "short_description": "Updated description"
+        "short_description": "Updated description",
+        "required_envs": json.dumps([]),
     }
-    
+
     response = api_client.patch(url, data=data)
     assert response.status_code == 200
-    
+
     submission.refresh_from_db()
     assert submission.name == "Updated Template Name"
 
@@ -177,10 +177,10 @@ def test_update_pending_submission(api_client, user, submission):
 def test_delete_pending_submission(api_client, user, submission):
     """Test deleting a pending submission"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-detail", kwargs={"pk": submission.id})
     response = api_client.delete(url)
-    
+
     assert response.status_code == 204
     assert not TemplateSubmissionRequestModel.objects.filter(id=submission.id).exists()
 
@@ -189,19 +189,20 @@ def test_delete_pending_submission(api_client, user, submission):
 def test_create_submission_without_categories_and_features(api_client, user, project):
     """Test creating a template submission without categories and features"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-list")
     data = {
         "project": project.id,
         "name": "Template Without Categories",
         "short_description": "Short desc",
         "description": "Long desc",
-        "original_price": "100.00"
+        "original_price": "100.00",
+        "required_envs": json.dumps([]),
     }
-    
+
     response = api_client.post(url, data=data)
     assert response.status_code == 201
-    
+
     # Check that submission was created without categories and features
     submission = TemplateSubmissionRequestModel.objects.get(name="Template Without Categories")
     assert submission.user == user
@@ -215,7 +216,7 @@ def test_create_submission_without_categories_and_features(api_client, user, pro
 def test_create_submission_with_empty_categories_and_features(api_client, user, project):
     """Test creating a template submission with explicitly empty categories and features"""
     api_client.force_authenticate(user=user)
-    
+
     url = reverse("submission-list")
     data = {
         "project": project.id,
@@ -224,12 +225,13 @@ def test_create_submission_with_empty_categories_and_features(api_client, user, 
         "description": "Long desc",
         "original_price": "100.00",
         "categories": [],
-        "features": []
+        "features": [],
+        "required_envs": json.dumps([]),
     }
-    
+
     response = api_client.post(url, data=data)
     assert response.status_code == 201
-    
+
     # Check that submission was created with empty categories and features
     submission = TemplateSubmissionRequestModel.objects.get(name="Template With Empty Lists")
     assert submission.user == user

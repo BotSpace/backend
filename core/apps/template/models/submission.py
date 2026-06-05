@@ -108,6 +108,12 @@ class TemplateSubmissionRequestModel(AbstractBaseModel):
         blank=True,
         verbose_name=_("reviewed at")
     )
+    required_envs = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("required envs"),
+        help_text=_('List of required env vars. Format: [{"key": "ADMIN_CHAT_ID", "description": "..."}]'),
+    )
 
     def __str__(self):
         return f"{self.name} - {self.user.phone} ({self.status})"

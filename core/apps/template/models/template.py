@@ -34,6 +34,12 @@ class TemplateModel(AbstractBaseModel):
     views = models.BigIntegerField(default=0)
     is_verify = models.BooleanField(verbose_name=_("is verify"), default=False)
     demo_url = models.URLField(null=True, blank=True)
+    required_envs = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("required envs"),
+        help_text=_('List of required env vars. Format: [{"key": "ADMIN_CHAT_ID", "description": "..."}]'),
+    )
     discount_type = models.CharField(
         max_length=255,
         choices=DiscountTypeEnum.choices,

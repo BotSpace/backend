@@ -242,6 +242,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         EnviromentModel.objects.create(
             key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
         )
+        envs = data.get("envs") or {}
+        for key, value in envs.items():
+            EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
         copy_collections(template.project, instance)
         set_webhook(instance, "release")

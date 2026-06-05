@@ -99,6 +99,30 @@ class CreateProjectFromTemplate(serializers.Serializer):
     template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all(), help_text="Shablon ID")
     name = serializers.CharField(max_length=255, help_text="Loyiha nomi")
     token = serializers.CharField(max_length=255, help_text="Release bot tokeni")
+    envs = serializers.DictField(
+        child=serializers.CharField(allow_blank=False),
+        required=False,
+        default=dict,
+        help_text="Template'ning required_envs kalitlari uchun qiymatlar: {KEY: value}",
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        template = attrs.get("template")
+        envs = attrs.get("envs", {})
+        required_envs = getattr(template, "required_envs", []) or []
+        missing = []
+        for item in required_envs:
+            key = item.get("key", "")
+            if not key:
+                continue
+            if not envs.get(key, "").strip():
+                missing.append(key)
+        if missing:
+            raise serializers.ValidationError(
+                {"envs": [f"{key} majburiy" for key in missing]}
+            )
+        return attrs
 
     class Meta:
         examples = [
@@ -108,6 +132,7 @@ class CreateProjectFromTemplate(serializers.Serializer):
                     "template": 1,
                     "name": "Mening shablon loyiham",
                     "token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+                    "envs": {"ADMIN_CHAT_ID": "123456789"},
                 },
                 description="Sotib olingan shablondan loyiha yaratish",
             )
