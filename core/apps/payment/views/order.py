@@ -66,6 +66,7 @@ def order_create(request):
     provider = data.get("provider", "click")
     comment = data.get("comment") or ""
     idempotency_key = data.get("idempotency_key") or None
+    is_debug = data.get("is_debug", False)
 
     # Idempotency: agar bunday key bilan order mavjud bo'lsa uni qaytaramiz
     if idempotency_key:
@@ -108,6 +109,7 @@ def order_create(request):
         status=PaymentOrderStatusEnum.CREATED,
         idempotency_key=idempotency_key,
         transaction=txn,
+        is_debug=is_debug,
     )
 
     pay_url = _generate_pay_url(txn.pk, amount, provider)

@@ -29,15 +29,21 @@ logger = logging.getLogger(__name__)
 _ENGINE_WEBHOOK_PORT = 8000
 
 
-def _engine_url(project) -> str | None:
-    """Release bot engine'ining in-cluster base URL'ini qaytaradi.
+def _engine_url(project, is_debug: bool = False) -> str | None:
+    """Bot engine'ining in-cluster base URL'ini qaytaradi.
 
-    Service nomi deploy_engine -> create_service: `bot-{release_webhook_uuid}`.
+    Service nomi deploy_engine -> create_service: `bot-{webhook_uuid}`, bu yerda
+    webhook_uuid order qaysi engine'da yaratilganiga bog'liq:
+        is_debug=True  -> project.debug_webhook_uuid   (debug konteyner)
+        is_debug=False -> project.release_webhook_uuid (release konteyner)
+
     Kubernetes ClusterIP Service orqali `http://bot-<uuid>:8000` ga murojaat qilinadi.
-
-    Agar release_webhook_uuid yo'q yoki RelaseModel topilmasa None qaytaradi.
+    Agar mos webhook_uuid yo'q bo'lsa None qaytaradi.
     """
-    uuid = getattr(project, "release_webhook_uuid", None)
+    if is_debug:
+        uuid = getattr(project, "debug_webhook_uuid", None)
+    else:
+        uuid = getattr(project, "release_webhook_uuid", None)
     if not uuid:
         return None
     return f"http://bot-{uuid}:{_ENGINE_WEBHOOK_PORT}"
@@ -66,13 +72,14 @@ def notify_bot_payment(order: "PaymentOrderModel", status: str = "paid") -> bool
           dinamik URL qo'llab-quvvatlanadi.
     """
     project = order.project
-    base_url = _engine_url(project)
+    base_url = _engine_url(project, is_debug=order.is_debug)
     if not base_url:
         logger.warning(
-            "notify_bot_payment: release_webhook_uuid topilmadi, xabardor qilinmadi "
-            "order_id=%s project_id=%s",
+            "notify_bot_payment: webhook_uuid topilmadi, xabardor qilinmadi "
+            "order_id=%s project_id=%s is_debug=%s",
             order.pk,
             project.pk,
+            order.is_debug,
         )
         return False
 

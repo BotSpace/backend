@@ -101,6 +101,14 @@ class PaymentOrderModel(SoftDeleteModel):
         null=True,
         blank=True,
     )
+    is_debug = models.BooleanField(
+        verbose_name=_("is debug"),
+        default=False,
+        help_text=_(
+            "True if the order was created by the debug engine. Determines which "
+            "engine service (debug vs release webhook uuid) receives the payment callback."
+        ),
+    )
 
     def __str__(self):
         return f"PaymentOrder #{self.pk} | {self.project_id} | {self.status}"

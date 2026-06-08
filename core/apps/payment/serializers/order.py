@@ -22,6 +22,7 @@ class CreateOrderSerializer(serializers.Serializer):
         default=PaymentMethosEnum.CLICK,
     )
     idempotency_key = serializers.CharField(max_length=128, required=False, allow_blank=True, default=None)
+    is_debug = serializers.BooleanField(required=False, default=False)
 
 
 class OrderStatusSerializer(serializers.ModelSerializer):
