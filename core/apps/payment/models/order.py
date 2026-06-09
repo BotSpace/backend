@@ -34,6 +34,24 @@ class PaymentOrderModel(SoftDeleteModel):
         verbose_name=_("payer chat id"),
         help_text=_("Telegram chat_id of the bot user who is paying"),
     )
+    payer_first_name = models.CharField(
+        verbose_name=_("payer first name"),
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    payer_last_name = models.CharField(
+        verbose_name=_("payer last name"),
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    payer_username = models.CharField(
+        verbose_name=_("payer username"),
+        max_length=255,
+        null=True,
+        blank=True,
+    )
     amount = models.DecimalField(
         verbose_name=_("amount"),
         max_digits=20,

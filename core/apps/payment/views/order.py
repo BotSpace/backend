@@ -67,6 +67,9 @@ def order_create(request):
     comment = data.get("comment") or ""
     idempotency_key = data.get("idempotency_key") or None
     is_debug = data.get("is_debug", False)
+    payer_first_name = data.get("payer_first_name") or ""
+    payer_last_name = data.get("payer_last_name") or ""
+    payer_username = data.get("payer_username") or ""
 
     # Idempotency: agar bunday key bilan order mavjud bo'lsa uni qaytaramiz
     if idempotency_key:
@@ -101,6 +104,9 @@ def order_create(request):
         project=project,
         owner=owner,
         payer_chat_id=data["payer_chat_id"],
+        payer_first_name=payer_first_name,
+        payer_last_name=payer_last_name,
+        payer_username=payer_username,
         amount=amount,
         commission=commission,
         net_amount=net_amount,
@@ -181,8 +187,12 @@ def _check_internal_token(request) -> bool:
 
 
 @extend_schema(tags=["payment-order"])
-class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
-    """Egasining daromadlari: balans + bot to'lovlari ro'yxati (paid orderlar)."""
+class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
+    """Egasining daromadlari: balans + bot to'lovlari ro'yxati (paid orderlar).
+
+    ``GET /api/earnings/<id>/`` — bitta order tafsiloti (to'lovchi ma'lumotlari
+    bilan), egaga tegishli har qanday holatdagi order.
+    """
 
     permission_classes = [IsAuthenticated]
     serializer_class = EarningsOrderSerializer
@@ -190,14 +200,11 @@ class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
     filterset_class = PaymentOrderFilter
 
     def get_queryset(self):
-        return (
-            PaymentOrderModel.objects.filter(
-                owner=self.request.user,
-                status=PaymentOrderStatusEnum.PAID,
-            )
-            .select_related("project")
-            .order_by("-paid_at", "-id")
-        )
+        qs = PaymentOrderModel.objects.filter(owner=self.request.user).select_related("project")
+        # Detail uchun istalgan holatdagi order; ro'yxat uchun faqat paid.
+        if self.action == "retrieve":
+            return qs
+        return qs.filter(status=PaymentOrderStatusEnum.PAID).order_by("-paid_at", "-id")
 
     def list(self, request, *args, **kwargs):
         # Umumiy ko'rsatkichlar (balans, jami, bot bo'yicha taqsimot) har doim

@@ -23,6 +23,10 @@ class CreateOrderSerializer(serializers.Serializer):
     )
     idempotency_key = serializers.CharField(max_length=128, required=False, allow_blank=True, default=None)
     is_debug = serializers.BooleanField(required=False, default=False)
+    # To'lovchi (bot foydalanuvchisi) ma'lumotlari — engine yuboradi.
+    payer_first_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    payer_last_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    payer_username = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
 
 
 class OrderStatusSerializer(serializers.ModelSerializer):
@@ -42,12 +46,16 @@ class EarningsOrderSerializer(serializers.ModelSerializer):
             "project_id",
             "project_name",
             "payer_chat_id",
+            "payer_first_name",
+            "payer_last_name",
+            "payer_username",
             "amount",
             "commission",
             "net_amount",
             "status",
             "provider",
             "comment",
+            "external_id",
             "created_at",
             "paid_at",
         ]
