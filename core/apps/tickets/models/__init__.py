@@ -1,1 +1,1 @@
-from .ticket import TicketModel  # noqa
+from .ticket import TicketMessageModel, TicketModel  # noqa
