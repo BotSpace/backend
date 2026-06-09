@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
     ai_token_usage = serializers.SerializerMethodField()
+    is_kyc_verified = serializers.SerializerMethodField()
 
     class Meta:
         exclude = [
@@ -14,6 +15,9 @@ class UserSerializer(serializers.ModelSerializer):
             "user_permissions"
         ]
         model = get_user_model()
+
+    def get_is_kyc_verified(self, obj) -> bool:
+        return obj.kyc_verified_at is not None
 
     def get_ai_token_usage(self, obj):
         from core.apps.api.enums.plan import PlanStatus, PlanType

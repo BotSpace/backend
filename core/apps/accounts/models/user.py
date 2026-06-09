@@ -13,6 +13,7 @@ class User(auth_models.AbstractUser):
     validated_at = models.DateTimeField(null=True, blank=True)
     balance = models.BigIntegerField(default=0)
     template_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    kyc_verified_at = models.DateTimeField(null=True, blank=True)
     role = models.CharField(
         max_length=255,
         choices=RoleChoice,
@@ -21,6 +22,11 @@ class User(auth_models.AbstractUser):
 
     USERNAME_FIELD = "phone"
     objects = UserManager()
+
+    @property
+    def is_kyc_verified(self) -> bool:
+        """Pul yechish uchun KYC verifikatsiyadan o'tganmi."""
+        return self.kyc_verified_at is not None
 
     @classmethod
     def _create_fake(cls):

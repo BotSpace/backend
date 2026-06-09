@@ -16,6 +16,8 @@ from rest_framework.routers import DefaultRouter
 # and the URL conf reads as a top-level table.
 from core.apps.administration.views import (
     audit_log as audit_log_views,
+    bot_withdrawals as bot_withdrawals_views,
+    kyc as kyc_views,
     plans as plans_views,
     projects as projects_views,
     settings as settings_views,
@@ -38,6 +40,8 @@ router.register(
     basename="admin-template-submissions",
 )
 router.register("withdrawals", withdrawals_views.AdminWithdrawalsView, basename="admin-withdrawals")
+router.register("bot-withdrawals", bot_withdrawals_views.AdminBotWithdrawalsView, basename="admin-bot-withdrawals")
+router.register("kyc-verifications", kyc_views.AdminKycVerificationView, basename="admin-kyc-verifications")
 router.register("transactions", transactions_views.AdminTransactionsView, basename="admin-transactions")
 router.register("plans", plans_views.AdminPlansView, basename="admin-plans")
 router.register("tickets", tickets_views.AdminTicketsView, basename="admin-tickets")

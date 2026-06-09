@@ -1,7 +1,7 @@
 from decimal import Decimal
 import logging
 
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.conf import settings
 
@@ -200,22 +200,45 @@ class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
         )
 
     def list(self, request, *args, **kwargs):
-        qs = self.filter_queryset(self.get_queryset())
+        # Umumiy ko'rsatkichlar (balans, jami, bot bo'yicha taqsimot) har doim
+        # to'liq to'plamdan hisoblanadi; faqat orders ro'yxati filtrlanadi
+        # (bot bo'yicha filtr orders jadvaliga tegishli).
+        base_qs = self.get_queryset()
 
-        agg = qs.aggregate(
+        agg = base_qs.aggregate(
             total_earned=Coalesce(Sum("net_amount"), Decimal("0")),
             total_commission=Coalesce(Sum("commission"), Decimal("0")),
         )
         request.user.refresh_from_db(fields=["balance"])
 
-        # Tekis payload: balans/jami + pagination meta + orders bir darajada.
+        # Bot bo'yicha taqsimot: qaysi botdan qancha daromad tushgani.
+        by_bot = (
+            base_qs.values("project_id", "project__name")
+            .annotate(
+                total_earned=Coalesce(Sum("net_amount"), Decimal("0")),
+                count=Count("id"),
+            )
+            .order_by("-total_earned")
+        )
+
+        # Tekis payload: balans/jami + bot taqsimoti + pagination meta + orders.
         # BaseViewSetMixin.finalize_response uni {status, data: payload} ga o'raydi.
         payload = {
             "balance": request.user.balance,
             "total_earned": str(agg["total_earned"]),
             "total_commission": str(agg["total_commission"]),
+            "by_bot": [
+                {
+                    "project_id": row["project_id"],
+                    "project_name": row["project__name"],
+                    "total_earned": str(row["total_earned"]),
+                    "count": row["count"],
+                }
+                for row in by_bot
+            ],
         }
 
+        qs = self.filter_queryset(base_qs)
         page = self.paginate_queryset(qs)
         if page is not None:
             orders_data = EarningsOrderSerializer(page, many=True).data

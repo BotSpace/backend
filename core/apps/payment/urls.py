@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from core.apps.payment.views.click import ClickWebhookAPIView
 from core.apps.payment.views.order import EarningsView, order_create, order_status
 from core.apps.payment.views.payment import payment_link
+from core.apps.payment.views.withdrawal import WithdrawalView
 
 from .views import HistoryView, PaymeCallBackAPIView, TransactionView
 
@@ -11,6 +12,7 @@ router = DefaultRouter()
 router.register("history", HistoryView, basename="history")
 router.register("transaction", TransactionView, basename="transaction")
 router.register("earnings", EarningsView, basename="earnings")
+router.register("withdrawal", WithdrawalView, basename="payment-withdrawal")
 
 urlpatterns = [
     path("", include(router.urls)),
