@@ -8,4 +8,5 @@ MODULES = [
     "core.apps.payment",
     "core.apps.template",
     "core.apps.administration",
+    "core.apps.tickets",
 ]

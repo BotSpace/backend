@@ -32,6 +32,7 @@ api_v1_patterns = [
     path("", include("core.apps.payment.urls")),
     path("", include("core.apps.template.urls")),
     path("", include("core.apps.administration.urls")),
+    path("", include("core.apps.tickets.urls")),
 ]
 
 
@@ -54,6 +55,7 @@ urlpatterns = [
     path("api/", include("core.apps.payment.urls")),
     path("api/", include("core.apps.template.urls")),
     path("api/", include("core.apps.administration.urls")),
+    path("api/", include("core.apps.tickets.urls")),
     # Old custom paths preserved verbatim
     path("api/user/balance/", BalanceView.as_view({"get": "get_balance"}), name="legacy-get-balance"),
     path("sse/api/project/<str:service_id>/logs/", logs, name="legacy-project-logs"),
