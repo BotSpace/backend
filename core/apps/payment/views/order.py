@@ -221,10 +221,20 @@ class EarningsView(BaseViewSetMixin, mixins.ListModelMixin, GenericViewSet):
             .order_by("-total_earned")
         )
 
+        # Yechiladigan bot daromadi: jami sof daromad − band qilingan yechishlar
+        # (o'zi to'ldirgan pul hisobga olinmaydi).
+        from core.apps.payment.services.withdrawal import get_reserved
+
+        reserved = get_reserved(request.user)
+        withdrawable = agg["total_earned"] - reserved
+        if withdrawable < 0:
+            withdrawable = Decimal("0")
+
         # Tekis payload: balans/jami + bot taqsimoti + pagination meta + orders.
         # BaseViewSetMixin.finalize_response uni {status, data: payload} ga o'raydi.
         payload = {
             "balance": request.user.balance,
+            "withdrawable": str(withdrawable),
             "total_earned": str(agg["total_earned"]),
             "total_commission": str(agg["total_commission"]),
             "by_bot": [

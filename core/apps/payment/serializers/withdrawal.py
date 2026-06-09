@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core.apps.payment.models.withdrawal import WithdrawalRequestModel
+from core.apps.payment.services.withdrawal import get_withdrawable_balance
 
 MIN_WITHDRAWAL = Decimal("1000")
 
@@ -52,9 +53,12 @@ class CreateWithdrawalSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         if value < MIN_WITHDRAWAL:
             raise serializers.ValidationError(_("Minimal yechish summasi 1000 so'm"))
-        if value > user.balance:
+        # Faqat bot daromadi yechiladi (o'zi to'ldirgan pul emas).
+        withdrawable = get_withdrawable_balance(user)
+        if value > withdrawable:
             raise serializers.ValidationError(
-                _("Balans yetarli emas. Mavjud: %(balance)s so'm") % {"balance": user.balance}
+                _("Yechiladigan bot daromadi yetarli emas. Mavjud: %(balance)s so'm")
+                % {"balance": withdrawable}
             )
         return value
 
