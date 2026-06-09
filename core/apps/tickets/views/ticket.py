@@ -1,5 +1,6 @@
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import extend_schema
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet, mixins
 
@@ -19,6 +20,7 @@ class TicketView(
     """Foydalanuvchining support murojaatlari: o'zinikini ko'rish va yangi yaratish."""
 
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
     serializer_class = TicketSerializer
 
     action_serializer_class = {

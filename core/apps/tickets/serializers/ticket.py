@@ -12,18 +12,20 @@ class TicketSerializer(serializers.ModelSerializer):
             "id",
             "subject",
             "message",
+            "attachment",
             "status",
             "admin_reply",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "status", "admin_reply", "created_at", "updated_at"]
+        read_only_fields = ["id", "attachment", "status", "admin_reply", "created_at", "updated_at"]
 
 
 class CreateTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketModel
-        fields = ["subject", "message"]
+        fields = ["subject", "message", "attachment"]
+        extra_kwargs = {"attachment": {"required": False}}
 
     def validate_subject(self, value):
         value = (value or "").strip()
