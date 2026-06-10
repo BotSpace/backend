@@ -1,5 +1,5 @@
 # type: ignore
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery
 from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, viewsets
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from core.apps.administration.permissions import IsAdminUser
 from core.apps.administration.serializers.projects import AdminProjectSerializer
 from core.apps.administration.services import log_admin_action
-from core.apps.api.models.project import ProjectModel
+from core.apps.api.models.project import ProjectModel, RelaseModel
 
 
 class AdminProjectsView(
@@ -21,7 +21,18 @@ class AdminProjectsView(
     serializer_class = AdminProjectSerializer
 
     def get_queryset(self):
-        qs = ProjectModel.objects.select_related("owner").order_by("-id")
+        # Oxirgi relizning holatini bitta Subquery bilan annotate qilamiz
+        # (N+1 yo'q) — ro'yxatda "bot ishlayaptimi" ko'rsatish uchun.
+        latest_status = (
+            RelaseModel.objects.filter(project=OuterRef("pk"))
+            .order_by("-version")
+            .values("status")[:1]
+        )
+        qs = (
+            ProjectModel.objects.select_related("owner")
+            .annotate(latest_release_status=Subquery(latest_status))
+            .order_by("-id")
+        )
         p = self.request.query_params
         search = p.get("search", "").strip()
         if search:
