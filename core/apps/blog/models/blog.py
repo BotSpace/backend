@@ -29,13 +29,6 @@ class BlogPostModel(AbstractBaseModel):
         help_text=_("Qisqa tavsif (ro'yxat kartochkalarida ko'rsatiladi)"),
     )
     content = models.TextField(verbose_name=_("content"), help_text=_("Markdown matni"))
-    cover_image = models.URLField(
-        verbose_name=_("cover image"),
-        max_length=1000,
-        blank=True,
-        null=True,
-        help_text=_("Muqova rasmi havolasi (ixtiyoriy)"),
-    )
     is_published = models.BooleanField(verbose_name=_("is published"), default=False, db_index=True)
     author = models.ForeignKey(
         User,

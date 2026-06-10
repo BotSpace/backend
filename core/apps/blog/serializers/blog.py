@@ -15,7 +15,6 @@ class BlogPostListSerializer(serializers.ModelSerializer):
             "title",
             "slug",
             "excerpt",
-            "cover_image",
             "reading_time",
             "published_at",
         ]
@@ -36,7 +35,6 @@ class BlogPostDetailSerializer(serializers.ModelSerializer):
             "slug",
             "excerpt",
             "content",
-            "cover_image",
             "reading_time",
             "author_name",
             "published_at",
@@ -65,7 +63,6 @@ class AdminBlogPostSerializer(serializers.ModelSerializer):
             "slug",
             "excerpt",
             "content",
-            "cover_image",
             "is_published",
             "author",
             "author_name",
