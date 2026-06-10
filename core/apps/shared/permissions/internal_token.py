@@ -13,6 +13,8 @@ Returns HTTP 401 when the header is absent or does not match settings.INTERNAL_A
 
 from __future__ import annotations
 
+import hmac
+
 from django.conf import settings
 from rest_framework import permissions
 from rest_framework.exceptions import AuthenticationFailed
@@ -33,6 +35,6 @@ class IsInternalTokenOnly(permissions.BasePermission):
             # Token not configured on this instance — deny to avoid leaking data.
             raise AuthenticationFailed(self.message)
         provided = request.META.get("HTTP_X_INTERNAL_TOKEN", "")
-        if not provided or provided != expected:
+        if not provided or not hmac.compare_digest(str(provided), str(expected)):
             raise AuthenticationFailed(self.message)
         return True

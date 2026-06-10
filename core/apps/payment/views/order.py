@@ -179,11 +179,13 @@ def order_status(request, order_id: int):
 
 
 def _check_internal_token(request) -> bool:
+    import hmac
+
     expected = getattr(settings, "INTERNAL_API_TOKEN", None)
     if not expected:
         return False
     provided = request.META.get("HTTP_X_INTERNAL_TOKEN", "")
-    return bool(provided and provided == expected)
+    return bool(provided and hmac.compare_digest(str(provided), str(expected)))
 
 
 @extend_schema(tags=["payment-order"])

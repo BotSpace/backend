@@ -17,6 +17,8 @@ next auth class can still accept a regular Bearer JWT.
 
 from __future__ import annotations
 
+import hmac
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import authentication, exceptions
@@ -32,9 +34,10 @@ class InternalTokenAuthentication(authentication.BaseAuthentication):
         if not internal_token:
             return None
         expected = getattr(settings, "INTERNAL_API_TOKEN", None)
-        if not expected or internal_token != expected:
+        if not expected or not hmac.compare_digest(str(internal_token), str(expected)):
             # Wrong token -> let the next auth class decide. We don't
             # want to leak whether the token format is recognized.
+            # compare_digest is constant-time (no timing oracle).
             return None
         user_id = request.META.get("HTTP_X_USER_ID")
         if not user_id:

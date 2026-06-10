@@ -25,6 +25,29 @@ from core.apps.cms.services.validator import ValidationError
 
 from ._common import get_collection_or_404
 
+# Mongo operatorlari ichida server-side JS bajaradigan/xavfli operatorlar.
+# Bular filter orqali ruxsat etilmaydi (NoSQL injection / JS exec / ReDoS).
+_FORBIDDEN_MONGO_OPERATORS = {"$where", "$function", "$accumulator", "$expr", "$merge", "$out"}
+
+
+def _find_forbidden_operator(node, depth: int = 0):
+    """Filter ichida taqiqlangan operator bo'lsa uning nomini qaytaradi, aks holda None."""
+    if depth > 12:
+        return "$depth"
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if isinstance(key, str) and key in _FORBIDDEN_MONGO_OPERATORS:
+                return key
+            found = _find_forbidden_operator(value, depth + 1)
+            if found:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _find_forbidden_operator(item, depth + 1)
+            if found:
+                return found
+    return None
+
 
 @extend_schema(tags=["cms"])
 class DocumentViewSet(ViewSet):
@@ -53,6 +76,11 @@ class DocumentViewSet(ViewSet):
             filter = _json.loads(filter_raw) if filter_raw else {}
         except _json.JSONDecodeError:
             return Response({"detail": "filter must be JSON"}, status=400)
+        if not isinstance(filter, dict):
+            return Response({"detail": "filter must be a JSON object"}, status=400)
+        bad_op = _find_forbidden_operator(filter)
+        if bad_op:
+            return Response({"detail": f"operator {bad_op} is not allowed in filter"}, status=400)
         items = mongo.find(
             coll.project_id,
             coll.name,
