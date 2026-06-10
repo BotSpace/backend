@@ -18,6 +18,7 @@ from core.apps.administration.views import (
     audit_log as audit_log_views,
     bot_withdrawals as bot_withdrawals_views,
     kyc as kyc_views,
+    orders as orders_views,
     plans as plans_views,
     projects as projects_views,
     settings as settings_views,
@@ -43,6 +44,7 @@ router.register("withdrawals", withdrawals_views.AdminWithdrawalsView, basename=
 router.register("bot-withdrawals", bot_withdrawals_views.AdminBotWithdrawalsView, basename="admin-bot-withdrawals")
 router.register("kyc-verifications", kyc_views.AdminKycVerificationView, basename="admin-kyc-verifications")
 router.register("transactions", transactions_views.AdminTransactionsView, basename="admin-transactions")
+router.register("bot-orders", orders_views.AdminBotOrdersView, basename="admin-bot-orders")
 router.register("plans", plans_views.AdminPlansView, basename="admin-plans")
 router.register("tickets", tickets_views.AdminTicketsView, basename="admin-tickets")
 router.register("audit-log", audit_log_views.AdminAuditLogView, basename="admin-audit-log")
