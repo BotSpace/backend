@@ -48,10 +48,13 @@ def payment_link(request):
     paylink = ""
     if method == "click":
         click_up = ClickUp(service_id=env.str("CLICK_SERVICE_ID"), merchant_id=env.str("CLICK_MERCHANT_ID"))
+        # To'lovdan keyin foydalanuvchi qaytadigan sahifa. order.py bilan bir xil
+        # PAYMENT_RETURN_URL setting'idan olinadi (eski botmother.uz qotirilmaydi).
+        return_url = getattr(settings, "PAYMENT_RETURN_URL", "https://botspace.uz")
         paylink = click_up.initializer.generate_pay_link(
             id=transaction.pk,
             amount=amount,
-            return_url="https://botmother.uz",
+            return_url=return_url,
         )
     elif method == "payme":
         payme = Payme(
