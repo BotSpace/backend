@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from core.apps.accounts.models import User
 from core.services import UserService
 from core.apps.accounts.serializers import UserSerializer
+from core.apps.shared.observability import metrics
 from ..management.commands.base import bot
 from datetime import datetime
 
@@ -30,6 +31,8 @@ class LoginView(APIView):
         )
         service = UserService()
         token = service.validate_user(user)
+        # Muvaffaqiyatli Telegram login — aktivlikning vaqt taqsimoti uchun.
+        metrics.safe_inc(metrics.USER_LOGINS, method="telegram")
         try:
             bot.edit_message_text(
                 chat_id=code.user.user_id,

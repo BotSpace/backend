@@ -239,6 +239,13 @@ class SubscriptionViewSet(viewsets.ViewSet):
             tokens_used_output=F("tokens_used_output") + output_tokens,
         )
 
+        # AI'dan foydalanish metrikalari (vaqt bo'yicha grafik uchun).
+        from core.apps.shared.observability import metrics
+
+        metrics.safe_inc(metrics.AI_RUNS)
+        metrics.safe_inc(metrics.AI_TOKENS, input_tokens, kind="input")
+        metrics.safe_inc(metrics.AI_TOKENS, output_tokens, kind="output")
+
         logger.info(
             "Token usage reported: user=%d project=%d input=%d output=%d",
             user_id,
