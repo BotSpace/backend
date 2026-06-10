@@ -9,4 +9,5 @@ MODULES = [
     "core.apps.template",
     "core.apps.administration",
     "core.apps.tickets",
+    "core.apps.blog",
 ]
