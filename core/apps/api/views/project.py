@@ -302,6 +302,24 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         )
 
     @extend_schema(
+        summary="Collab WS token",
+        description=(
+            "Real-time kollaborativ tahrirlash uchun project_id claim'li qisqa "
+            "muddatli WS token. Faqat loyiha egasi oladi (get_queryset egalik "
+            "bo'yicha filtrlaydi). Konstruktor shu token bilan websocket-golang'ga "
+            "ulanib `project_<id>` xonasiga kiradi."
+        ),
+    )
+    @action(methods=["GET"], detail=True, url_name="collab-token", url_path="collab-token")
+    def collab_token(self, request, pk):
+        from rest_framework_simplejwt.tokens import AccessToken
+
+        project = self.get_object()  # egasi bo'lmasa get_queryset 404 qaytaradi
+        token = AccessToken.for_user(request.user)
+        token["project_id"] = project.id
+        return Response(data={"token": str(token), "room": "project_%s" % project.id})
+
+    @extend_schema(
         summary="Debug holati",
         description="Loyihaning debug konteynerining joriy holati va ma'lumotlarini qaytaradi.",
         responses={
