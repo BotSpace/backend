@@ -8,5 +8,16 @@ from core.apps.payment.models import HistoryModel
 class HistoryAdmin(ModelAdmin):
     list_display = (
         "id",
-        "__str__",
+        "user",
+        "type_display",
+        "amount",
+        "comment",
+        "created_at",
     )
+    list_filter = ("type",)
+    search_fields = ("user__phone", "comment")
+
+    @admin.display(description="Tur", ordering="type")
+    def type_display(self, obj):
+        # Kirim / Chiqim (choices label)
+        return obj.get_type_display()

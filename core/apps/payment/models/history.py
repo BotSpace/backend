@@ -11,12 +11,12 @@ User = get_user_model()
 
 class HistoryModel(SoftDeleteModel):
     TYPES = (
-        ("income", "income"),
-        ("expense", "expense"),
+        ("income", _("Kirim")),
+        ("expense", _("Chiqim")),
     )
     amount = models.DecimalField(max_digits=30, decimal_places=2)
     comment = models.CharField(max_length=255, null=True, blank=True)
-    type = models.CharField(choices=TYPES, default="cpu")
+    type = models.CharField(choices=TYPES, default="income")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=False)
     idempotency_key = models.CharField(
         max_length=128,
