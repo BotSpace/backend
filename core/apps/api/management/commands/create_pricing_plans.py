@@ -41,7 +41,7 @@ class Command(BaseCommand):
             },
             {
                 'name': PlanType.PRO,
-                'price': Decimal('10.00'),
+                'price': Decimal('120000.00'),  # so'm/oy (balans so'mda)
                 'max_bots': 5,
                 'max_input_tokens': 8_000_000,
                 'max_output_tokens': 2_000_000,  # jami 10M token/oy
@@ -51,7 +51,7 @@ class Command(BaseCommand):
             },
             {
                 'name': PlanType.MAX,
-                'price': Decimal('30.00'),
+                'price': Decimal('240000.00'),  # so'm/oy (balans so'mda)
                 'max_bots': 0,  # cheksiz
                 'max_input_tokens': 40_000_000,
                 'max_output_tokens': 10_000_000,  # jami 50M token/oy
