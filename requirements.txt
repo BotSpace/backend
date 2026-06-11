@@ -65,3 +65,4 @@ click-pkg
 payme-pkg==3.3.0
 openpyxl==3.1.2
 gevent
+msgpack==1.1.0
