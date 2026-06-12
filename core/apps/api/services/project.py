@@ -1,6 +1,10 @@
+import logging
+
 from core.apps.api.models.project import ProjectModel
 from core.apps.cms_legacy.enums.cms import FieldType
 from core.apps.cms_legacy.models.cms import CollectionModel, FieldModel
+
+logger = logging.getLogger(__name__)
 
 
 def default_flow() -> dict:
@@ -141,3 +145,231 @@ def copy_collections(from_instance: ProjectModel, to_instance: ProjectModel):
                 )
             )
         FieldModel.objects.bulk_create(fields)
+
+
+# ── cmsv2 (new CMS) template copy ────────────────────────────────────────────
+
+# Collections that must NEVER receive copied data (runtime/user data only).
+NEVER_COPY_DATA = {"users", "chat"}
+# Collections that are always system schemas.
+SYSTEM_COLLECTION_NAMES = {"users", "chat"}
+
+# Flow node types that READ a collection (catalog candidates).
+_LOAD_NODE_TYPES = {"LoadCollectionListNode", "LoadCollectionItemNode"}
+# Flow node types that WRITE a collection (disqualifies it from being a catalog).
+_WRITE_NODE_TYPES = {"CollectionNode"}
+
+
+def _flow_nodes(flow) -> list:
+    """Defensively extract the node list from a flow (dict or list)."""
+    if isinstance(flow, dict):
+        nodes = flow.get("nodes", [])
+    elif isinstance(flow, list):
+        nodes = flow
+    else:
+        nodes = []
+    return [n for n in nodes if isinstance(n, dict)]
+
+
+def _node_collection_name(data: dict) -> str | None:
+    """Pull the referenced collection name out of a node's `data` dict.
+
+    Supports both `collection_name` (flat) and `collection.name`/`collection: str`.
+    """
+    if not isinstance(data, dict):
+        return None
+    name = data.get("collection_name")
+    if isinstance(name, str) and name:
+        return name
+    coll = data.get("collection")
+    if isinstance(coll, dict):
+        cname = coll.get("name")
+        if isinstance(cname, str) and cname:
+            return cname
+    elif isinstance(coll, str) and coll:
+        return coll
+    return None
+
+
+def collection_is_catalog(flow, name: str) -> bool:
+    """A collection is a CATALOG (static data to copy) when the flow READS it
+    (via a Load* node) and never WRITES it (via a Collection save node).
+
+    Pure function over the flow JSON — no Mongo access — so it is unit-testable.
+    `users`/`chat` are never catalogs.
+    """
+    if name in NEVER_COPY_DATA:
+        return False
+
+    read = False
+    write = False
+    for node in _flow_nodes(flow):
+        ntype = node.get("type")
+        cname = _node_collection_name(node.get("data", {}))
+        if cname != name:
+            continue
+        if ntype in _LOAD_NODE_TYPES:
+            read = True
+        elif ntype in _WRITE_NODE_TYPES:
+            write = True
+
+    return read and not write
+
+
+def _new_fields_from_source_collection(src_collection, target_collection):
+    """Build cmsv2 Field rows from a source cmsv2 Collection's fields."""
+    from core.apps.cms.models.field import Field
+
+    fields = []
+    for f in src_collection.fields.all():
+        fields.append(
+            Field(
+                collection=target_collection,
+                name=f.name,
+                label=f.label,
+                kind=f.kind,
+                required=f.required,
+                default=f.default,
+                validators=f.validators or {},
+                order=f.order,
+            )
+        )
+    return fields
+
+
+def _new_fields_from_legacy_collection(legacy_collection, target_collection):
+    """Build cmsv2 Field rows from a legacy CollectionModel's fields.
+
+    Legacy types are NOT mapped — everything becomes a safe TEXT field.
+    """
+    from core.apps.cms.enums import FieldKind
+    from core.apps.cms.models.field import Field
+
+    fields = []
+    for i, f in enumerate(legacy_collection.fields.all()):
+        fields.append(
+            Field(
+                collection=target_collection,
+                name=f.name,
+                kind=FieldKind.TEXT,
+                required=bool(f.required),
+                order=i,
+            )
+        )
+    return fields
+
+
+def _new_fields_from_sample(sample_doc, target_collection):
+    """Infer cmsv2 Field rows from a sample Mongo document (non `_` keys)."""
+    from core.apps.cms.enums import FieldKind
+    from core.apps.cms.models.field import Field
+
+    fields = []
+    if not isinstance(sample_doc, dict):
+        return fields
+    order = 0
+    for key in sample_doc:
+        if not isinstance(key, str) or key.startswith("_"):
+            continue
+        fields.append(
+            Field(
+                collection=target_collection,
+                name=key,
+                kind=FieldKind.TEXT,
+                order=order,
+            )
+        )
+        order += 1
+    return fields
+
+
+def copy_cms_collections(from_project, to_project, flow=None):
+    """Register the SOURCE project's collections in the NEW CMS for `to_project`
+    and copy MongoDB DATA for CATALOG collections only.
+
+    Defensive: never raises out in a way that would break project creation.
+    Idempotent: existing cmsv2 collections are skipped.
+    """
+    from core.apps.cms.models.collection import Collection
+    from core.apps.cms.models.field import Field
+    from core.apps.cms.services.mongo import get_mongo_client
+
+    flow = flow if flow is not None else getattr(from_project, "flow", None)
+
+    try:
+        client = get_mongo_client()
+        src_db = client.get_project_database(from_project.id)
+        names = src_db.list_collection_names()
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("copy_cms_collections: failed to list source collections (project=%s)", from_project.id)
+        return
+
+    owner_id = getattr(to_project, "owner_id", None) or getattr(to_project, "user_id", None)
+
+    for name in names:
+        if not isinstance(name, str) or name.startswith("system."):
+            continue
+        try:
+            existing = Collection.objects.filter(
+                project=to_project, name=name, deleted_at__isnull=True
+            ).first()
+            if existing is None:
+                is_system = name in SYSTEM_COLLECTION_NAMES
+
+                # Resolve a source cmsv2 collection (preferred) for label/primary_field.
+                src_cms = from_project.cms_collections.filter(name=name, deleted_at__isnull=True).first()
+                src_legacy = CollectionModel.objects.filter(project=from_project, name=name).first()
+
+                label = ""
+                primary_field = ""
+                description = ""
+                if src_cms is not None:
+                    label = src_cms.label
+                    primary_field = src_cms.primary_field
+                    description = src_cms.description
+
+                target = Collection.objects.create(
+                    project=to_project,
+                    owner_id=owner_id,
+                    name=name,
+                    label=label,
+                    description=description,
+                    primary_field=primary_field,
+                    system=is_system,
+                )
+
+                # Derive fields: cmsv2 source → legacy source → sample doc.
+                if src_cms is not None:
+                    new_fields = _new_fields_from_source_collection(src_cms, target)
+                elif src_legacy is not None:
+                    new_fields = _new_fields_from_legacy_collection(src_legacy, target)
+                else:
+                    sample = src_db[name].find_one({}) if name in names else None
+                    new_fields = _new_fields_from_sample(sample, target)
+
+                if new_fields:
+                    Field.objects.bulk_create(new_fields, ignore_conflicts=True)
+            # else: schema already present — leave as-is (idempotent).
+
+            # ── Copy DATA only for CATALOG collections ──────────────────────
+            if name in NEVER_COPY_DATA:
+                continue
+            if not collection_is_catalog(flow, name):
+                continue
+
+            docs = list(src_db[name].find({}))
+            if not docs:
+                continue
+
+            dest_coll = client.get_project_database(to_project.id)[name]
+            # Idempotent-ish: don't double-insert if data already present.
+            if dest_coll.estimated_document_count() == 0:
+                dest_coll.insert_many(docs)
+        except Exception:  # pragma: no cover - defensive
+            logger.exception(
+                "copy_cms_collections: failed for collection %r (from=%s to=%s)",
+                name,
+                from_project.id,
+                to_project.id,
+            )
+            continue

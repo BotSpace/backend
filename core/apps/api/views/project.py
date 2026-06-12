@@ -11,7 +11,12 @@ from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveMode
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from core.apps.api.services.project import copy_collections, create_default_collections, default_flow
+from core.apps.api.services.project import (
+    copy_cms_collections,
+    copy_collections,
+    create_default_collections,
+    default_flow,
+)
 from core.apps.cms.services.system_collections import ensure_system_collections
 
 from core.apps.api.enums.container import ContainerStatusEnum
@@ -250,7 +255,11 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         for key, value in envs.items():
             EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+        # Legacy CMS schema copy (kept for backward compat).
         copy_collections(template.project, instance)
+        # New CMS: register collections in cmsv2 + copy MongoDB catalog data so the
+        # new bot actually has usable collections (visible in dashboard/MCP).
+        copy_cms_collections(template.project, instance, flow=instance.flow)
         set_webhook(instance, "release")
         return Response(data=ListProjectSerializer(instance=instance).data)
 
