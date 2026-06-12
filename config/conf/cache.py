@@ -22,8 +22,10 @@ CACHEOPS = {
     # status deploy'dan keyin 5 daqiqagacha eski "init" holatda ko'rinib qoladi
     # (refresh ham yordam bermaydi). Shuning uchun ularni keshlamaymiz —
     # model-specific profil "api.*" wildcard'idan ustun turadi.
-    "api.relasemodel": {"ops": ()},
-    "api.debugmodel": {"ops": ()},
+    # ops=() => keshlamaymiz; timeout cacheops uchun integer bo'lishi SHART
+    # (default CACHE_TIMEOUT string, shuning uchun bu yerda aniq beramiz).
+    "api.relasemodel": {"ops": (), "timeout": 60},
+    "api.debugmodel": {"ops": (), "timeout": 60},
     # !NOTE: api => "you app name"
     "api.*": {
         "ops": "all",  # Barcha turdagi so'rovlarni keshga olish
