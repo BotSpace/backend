@@ -81,6 +81,23 @@ class DocumentViewSet(ViewSet):
         bad_op = _find_forbidden_operator(filter)
         if bad_op:
             return Response({"detail": f"operator {bad_op} is not allowed in filter"}, status=400)
+
+        # Server-side qidiruv: collection'ning primary_field'i bo'yicha (escape
+        # qilingan regex — ReDoS'siz). Relation tanlovida minglab hujjat ichidan
+        # qidirish uchun.
+        search = (request.query_params.get("search") or "").strip()
+        if search and coll.primary_field:
+            import re as _re
+
+            filter = dict(filter)
+            filter[coll.primary_field] = {"$regex": _re.escape(search), "$options": "i"}
+
+        # Kursor (cursor) paginatsiya: `cursor` parametri BERILGAN bo'lsa (bo'sh
+        # bo'lsa ham) — relation tanlovi uchun infinite-scroll rejimi. Aks holda
+        # eski offset (skip/limit) — data-grid uchun, o'zgarmaydi.
+        use_cursor = "cursor" in request.query_params
+        cursor_after = (request.query_params.get("cursor") or "").strip() or None
+
         items = mongo.find(
             coll.project_id,
             coll.name,
@@ -89,7 +106,12 @@ class DocumentViewSet(ViewSet):
             limit=limit,
             skip=skip,
             include_deleted=request.query_params.get("include_deleted") == "1",
+            after_id=cursor_after if use_cursor else None,
         )
+        if use_cursor:
+            next_cursor = items[-1]["_id"] if (items and len(items) == limit) else None
+            return Response({"results": items, "limit": limit, "next_cursor": next_cursor})
+
         total = mongo.count(coll.project_id, coll.name, filter)
         return Response({"results": items, "total": total, "limit": limit, "skip": skip})
 

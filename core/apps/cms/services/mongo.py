@@ -136,8 +136,23 @@ def find(
     skip: int = 0,
     projection: dict[str, Any] | None = None,
     include_deleted: bool = False,
+    after_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Hujjatlarni qaytaradi.
+
+    `after_id` berilsa — kursor (cursor) paginatsiya: `_id` bo'yicha o'sish
+    tartibida, berilgan `_id`'dan KEYINGI hujjatlardan boshlanadi (minglab
+    hujjatli relation tanlovida "pastga scroll → keyingisini yukla" uchun).
+    Bunda `sort`/`skip` e'tiborga olinmaydi (deterministik `_id` tartibi shart).
+    """
     f = _scoped(project_id, filter, include_deleted=include_deleted)
+    if after_id:
+        try:
+            f["_id"] = {"$gt": ObjectId(after_id)}
+        except Exception:
+            pass
+        sort = [("_id", 1)]
+        skip = 0
     cursor = _coll(project_id, collection).find(f, projection=projection)
     if sort:
         cursor = cursor.sort(sort)
