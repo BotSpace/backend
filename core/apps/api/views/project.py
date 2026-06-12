@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django_core.mixins import BaseViewSetMixin
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiExample, extend_schema
 from kubernetes.client.rest import ApiException
-from rest_framework import exceptions
+from rest_framework import exceptions, status
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated
@@ -481,7 +481,7 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
         return queryset
 
     def get_throttles(self):
-        if self.action == "create":
+        if self.action in ("create", "rollback"):
             return [ReleaseCreateThrottle()]
         return super().get_throttles()
 
@@ -615,9 +615,42 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
     def stop(self, request, pk):
         instance = self.get_object()
         remove_service(instance.service_id)
-        instance.status = ContainerStatusEnum.STOPPING.value
+        # Deployment sinxron o'chirildi — STOPPED'ga o'tishni watcher'ning DELETED
+        # eventiga qoldirmaymiz (poyga qilib STOPPING'da qotib qolardi).
+        instance.status = ContainerStatusEnum.STOPPED.value
         instance.save()
         return Response(data={"detail": _("Stopped")})
+
+    @extend_schema(
+        summary="Eski release'ga qaytarish (rollback)",
+        description=(
+            "Tanlangan release'ning flow snapshot'i bilan YANGI release yaratadi va deploy qiladi. "
+            "Loyihaning joriy (draft) flow'i ham shu snapshotga tiklanadi, shunda konstruktor jonli "
+            "versiyaga mos bo'ladi. Versiya avtomatik oshiriladi; eski ishlab turgan release to'xtatiladi."
+        ),
+        request=None,
+        responses={
+            201: ListRelaseSerializer,
+            404: _error_response("Release topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
+        },
+    )
+    @action(methods=["POST"], detail=True, url_path="rollback", url_name="rollback")
+    def rollback(self, request, pk):
+        source = self.get_object()  # egalik get_queryset orqali tekshiriladi (begona loyiha → 404)
+        project = source.project
+        check_running_bot_limit(request.user, exclude_project_id=project.pk)
+        set_webhook(project, "release")
+
+        # Eski release flow snapshot'ini joriy draft'ga tiklaymiz (konstruktor mos bo'lsin).
+        project.flow = source.flow
+        project.save(update_fields=["flow"])
+
+        last = RelaseModel.objects.filter(project=project).order_by("version").last()
+        version = 1 if last is None else last.version + 1
+        # create() RelaseSignal'ni ishga tushiradi: yangi flow'ni deploy qiladi +
+        # eski ishlab turgan release'larni STOPPED qiladi.
+        release = RelaseModel.objects.create(project=project, version=version, flow=source.flow)
+        return Response(ListRelaseSerializer(release).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary="Release loglarini olish (snapshot)",
