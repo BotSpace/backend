@@ -603,7 +603,22 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
 
     # Create ConfigMap with flow
     flow_json = json.dumps(flow, indent=4)
-    create_configmap(configmap_name, {"flow.json": flow_json})
+
+    # Build a schema map of the project's collections so the engine can coerce
+    # CMS field values to their declared kind (text/int/bool/...) on filter+save.
+    import json as _json
+
+    from core.apps.cms.models import Collection
+
+    try:
+        schemas = {
+            c.name: {f.name: f.kind for f in c.fields.all()}
+            for c in Collection.objects.filter(project=project, deleted_at__isnull=True)
+        }
+    except Exception:
+        schemas = {}
+
+    create_configmap(configmap_name, {"flow.json": flow_json, "schemas.json": _json.dumps(schemas)})
 
     # Build environment variables
     if prefix == "release" and not has_env("BOT_TOKEN"):
@@ -613,6 +628,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     if not has_env("BOT_TOKEN"):
         _env.append(f"BOT_TOKEN={env.str('TEST_BOT_TOKEN')}")
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
+    _env.append("SCHEMAS_FILE_PATH=/app/assets/schemas.json")
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
     _env.append("REDIS_ENABLED=true")
