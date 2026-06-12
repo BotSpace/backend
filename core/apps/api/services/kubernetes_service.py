@@ -605,14 +605,6 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     flow_json = json.dumps(flow, indent=4)
     create_configmap(configmap_name, {"flow.json": flow_json})
 
-    # Get MongoDB credentials
-    try:
-        mongo_credentials = project.get_mongo_credentials()
-        logger.info("Using MongoDB credentials for project %s: %s", project.id, mongo_credentials["username"])
-    except Exception as e:
-        logger.error("Failed to get MongoDB credentials for project %s: %s", project.id, e)
-        mongo_credentials = {"connection_string": env.str("MONGO_URL"), "database": f"project_{project.id}"}
-
     # Build environment variables
     if prefix == "release" and not has_env("BOT_TOKEN"):
         release_token = get_env_value("RELEASE_BOT_TOKEN")
@@ -627,24 +619,11 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append(f"REDIS_ADDR={env.str('REDIS_HOST', default='redis')}:{env.str('REDIS_PORT', default='6379')}")
     _env.append(f"REDIS_PASSWORD={env.str("REDIS_PASSWORD")}")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
-    # Shared-tenancy: per-project Mongo user faqat o'z project_<id> DB'siga ruxsatli —
-    # umumiy DB uchun ALOHIDA shared user (MONGO_SHARED_URL, botspace_cms'ga readWrite)
-    # ishlatiladi; tenant izolyatsiya engine ichida _project_id bilan ta'minlanadi.
-    if env.bool("CMS_SHARED_TENANCY", default=False):
-        _env.append(f"MONGO_ADDR={env.str('MONGO_SHARED_URL', default=env.str('MONGO_URL'))}")
-        _env.append(f"MONGO_DB_NAME={env.str('CMS_SHARED_DB', default='botspace_cms')}")
-    else:
-        _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
-        _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
+    # CMS: bitta umumiy MongoDB DB (shared user) — engine hujjatlarni _project_id
+    # bilan filtrlaydi. MONGO_DB_NAME = umumiy DB, PROJECT_ID = tenant kaliti.
+    _env.append(f"MONGO_ADDR={env.str('MONGO_SHARED_URL', default=env.str('MONGO_URL'))}")
+    _env.append(f"MONGO_DB_NAME={env.str('CMS_SHARED_DB', default='botspace_cms')}")
     _env.append(f"PROJECT_ID={project.id}")
-
-    # CMS shared-tenancy: bots inherit the flag + shared DB name from the
-    # backend's own env (single source of truth) so engine Mongo access scopes
-    # by _project_id in the shared database when the cutover is enabled.
-    if not has_env("CMS_SHARED_TENANCY"):
-        _env.append(f"CMS_SHARED_TENANCY={str(env.bool('CMS_SHARED_TENANCY', default=False)).lower()}")
-    if not has_env("CMS_SHARED_DB"):
-        _env.append(f"CMS_SHARED_DB={env.str('CMS_SHARED_DB', default='botspace_cms')}")
 
     # PaymentNode: engine calls backend POST /api/payment/order/create/ with
     # X-Internal-Token and the backend verifies /payment-callback against the

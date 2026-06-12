@@ -296,9 +296,8 @@ def copy_cms_collections(from_project, to_project, flow=None):
 
     flow = flow if flow is not None else getattr(from_project, "flow", None)
 
-    # Enumerate collection names from the REGISTRIES (not MongoDB) so this works
-    # identically in per-project and shared-tenancy modes. Templates' content
-    # collections live in the LEGACY registry, so we union both.
+    # Collection nomlarini registry'dan (MongoDB'dan emas) yig'amiz. Template'ning
+    # kontent collection'lari LEGACY registry'da, shuning uchun ikkalasini birlashtiramiz.
     try:
         names: set[str] = set()
         names.update(

@@ -1,17 +1,9 @@
-"""Thin wrapper over the cms MongoDBClient with CRUD + soft-delete.
+"""CMS hujjatlari uchun MongoDB CRUD qatlami.
 
-Tenancy modeli (CMS_SHARED_TENANCY flag bilan boshqariladi):
-
-  * OFF (default, ESKI):  har loyiha uchun alohida MongoDB database
-        (`project_<id>`). 257 bot = 257 database → namespace portlashi.
-  * ON  (YANGI):  BITTA umumiy database (`CMS_SHARED_DB`), collection'lar
-        nomi bo'yicha, har hujjatda `_project_id` maydoni. Har bir so'rov
-        SHU YERDA, yagona chokepoint'da `_project_id` bilan scoping qilinadi —
-        ya'ni custom code'ning to'liq Mongo mosligi saqlanadi (foydalanuvchi
-        filtri faqat `_project_id` bilan birga $and qilinadi).
-
-Flag default OFF — shuning uchun bu o'zgarish productionga push qilinsa ham
-xatti-harakat o'zgarmaydi. Migratsiya + tekshiruvdan keyin flag yoqiladi.
+Barcha loyihalar hujjatlari bitta umumiy database'da (`CMS_SHARED_DB`, default
+botspace_cms), collection nomi bo'yicha saqlanadi; har hujjatda `_project_id`
+maydoni bo'ladi. Har bir so'rov yagona chokepoint'da `_project_id` bilan
+filtrlanadi (tenant izolyatsiya), foydalanuvchi filtri shu bilan birga qo'llanadi.
 """
 
 from __future__ import annotations
@@ -24,11 +16,8 @@ from bson import ObjectId
 from config.env import env
 from core.apps.cms_legacy.services.mongo import MongoDBClient
 
-# ── Tenancy konfiguratsiyasi ─────────────────────────────────────────────────
-SHARED_TENANCY: bool = env.bool("CMS_SHARED_TENANCY", default=False)
+# Umumiy CMS database nomi va ichki tenant maydoni.
 SHARED_DB_NAME: str = env.str("CMS_SHARED_DB", default="botspace_cms")
-
-# Hujjatdagi tenant maydoni (ichki — API'da ko'rsatilmaydi).
 TENANT_FIELD = "_project_id"
 
 
@@ -43,30 +32,20 @@ def get_mongo_client() -> MongoDBClient:
 
 
 def _coll(project_id: int, name: str):
-    """Yagona chokepoint. Shared rejimda umumiy DB'dagi collection'ni, aks holda
-    loyiha DB'sini qaytaradi. DIQQAT: shared rejimda bu collection BARCHA
-    tenant'larnikini saqlaydi — so'rovlar `_scoped()` bilan filtrlanishi SHART."""
-    if SHARED_TENANCY:
-        return get_mongo_client().client[SHARED_DB_NAME][name]
-    return get_mongo_client().get_project_database(project_id)[name]
+    """Yagona chokepoint — umumiy DB'dagi collection. BARCHA tenant'larnikini
+    saqlaydi, shuning uchun so'rovlar `_scoped()`/`_tenant()` bilan filtrlanishi SHART."""
+    return get_mongo_client().client[SHARED_DB_NAME][name]
 
 
 def _tenant(project_id: int, filter: dict[str, Any]) -> dict[str, Any]:
-    """Shared rejimda filtrga `_project_id` ni majburiy qo'shadi (tenant izolyatsiya)."""
-    if SHARED_TENANCY:
-        filter[TENANT_FIELD] = project_id
+    """Filtrga `_project_id` ni majburiy qo'shadi (tenant izolyatsiya)."""
+    filter[TENANT_FIELD] = project_id
     return filter
 
 
-def _scoped(
-    project_id: int,
-    filter: dict[str, Any] | None,
-    *,
-    include_deleted: bool = False,
-) -> dict[str, Any]:
+def _scoped(project_id: int, filter: dict[str, Any] | None, *, include_deleted: bool = False) -> dict[str, Any]:
     """Yagona filtr quruvchi: _id coerce + soft-delete + tenant scoping.
-    BARCHA o'qish/update/delete funksiyalari shuni ishlatadi — shunda hech bir
-    so'rov tenant'siz qolmaydi."""
+    BARCHA o'qish/update/delete funksiyalari shuni ishlatadi."""
     return _tenant(project_id, _alive_filter(_coerce_id(filter or {}), include_deleted))
 
 
@@ -76,8 +55,7 @@ def _stamp_create(doc: dict[str, Any], project_id: int) -> dict[str, Any]:
     doc.setdefault("_updated_at", now)
     doc.setdefault("_version", 1)
     doc.setdefault("_deleted_at", None)
-    if SHARED_TENANCY:
-        doc[TENANT_FIELD] = project_id
+    doc[TENANT_FIELD] = project_id
     return doc
 
 
@@ -91,7 +69,7 @@ def _serialize(doc: dict[str, Any] | None) -> dict[str, Any] | None:
         return None
     out: dict[str, Any] = {}
     for k, v in doc.items():
-        if k == TENANT_FIELD:  # ichki tenant maydonini API'da ko'rsatmaymiz
+        if k == TENANT_FIELD:  # ichki tenant maydoni API'da ko'rinmaydi
             continue
         if isinstance(v, ObjectId):
             out[k] = str(v)
@@ -276,14 +254,12 @@ def aggregate(
     limit: int = 500,
     include_deleted: bool = False,
 ) -> list[dict[str, Any]]:
-    # Tenant + soft-delete $match'ni pipeline boshiga MAJBURIY qo'yamiz — shared
-    # rejimda bu boshqa tenant'lar hujjatlarini ko'rishdan saqlaydi.
-    match: dict[str, Any] = {}
-    if SHARED_TENANCY:
-        match[TENANT_FIELD] = project_id
+    # Tenant + soft-delete $match'ni pipeline boshiga MAJBURIY qo'yamiz —
+    # boshqa tenant hujjatlarini ko'rishdan saqlaydi.
+    match: dict[str, Any] = {TENANT_FIELD: project_id}
     if not include_deleted:
         match["_deleted_at"] = None
-    pipe = [{"$match": match}, *pipeline] if match else list(pipeline)
+    pipe = [{"$match": match}, *pipeline]
     out: list[dict[str, Any]] = []
     for doc in _coll(project_id, collection).aggregate(pipe):
         out.append(_serialize(doc) or {})
@@ -303,9 +279,6 @@ def distinct(
 
 
 def drop_collection(project_id: int, collection: str) -> None:
-    # Shared rejimda collection BARCHA tenant'larniki — DROP qilib bo'lmaydi,
-    # faqat shu loyihaning hujjatlarini o'chiramiz.
-    if SHARED_TENANCY:
-        _coll(project_id, collection).delete_many({TENANT_FIELD: project_id})
-    else:
-        _coll(project_id, collection).drop()
+    # Umumiy collection BARCHA tenant'larniki — DROP qilmaymiz, faqat shu
+    # loyihaning hujjatlarini o'chiramiz.
+    _coll(project_id, collection).delete_many({TENANT_FIELD: project_id})
