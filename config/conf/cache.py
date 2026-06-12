@@ -16,6 +16,14 @@ CACHEOPS_DEFAULTS = {
     "timeout": env.str("CACHE_TIMEOUT"),
 }
 CACHEOPS = {
+    # RelaseModel/DebugModel statuslarini k8s-watcher (alohida Go servis)
+    # Postgres'ga TO'G'RIDAN-TO'G'RI yozadi — Django ORM orqali emas, shuning
+    # uchun cacheops invalidatsiyasi ishlamaydi. Bu modellarni keshlasak,
+    # status deploy'dan keyin 5 daqiqagacha eski "init" holatda ko'rinib qoladi
+    # (refresh ham yordam bermaydi). Shuning uchun ularni keshlamaymiz —
+    # model-specific profil "api.*" wildcard'idan ustun turadi.
+    "api.relasemodel": {"ops": ()},
+    "api.debugmodel": {"ops": ()},
     # !NOTE: api => "you app name"
     "api.*": {
         "ops": "all",  # Barcha turdagi so'rovlarni keshga olish
