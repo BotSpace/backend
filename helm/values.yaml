@@ -49,6 +49,9 @@ configMaps:
     REDIS_PORT: "6379"
     CACHE_ENABLED: "true"
     CACHE_TIMEOUT: "120"
+    # CMS tenancy: bitta umumiy MongoDB DB + _project_id (database-per-bot o'rniga).
+    CMS_SHARED_TENANCY: "true"
+    CMS_SHARED_DB: "botspace_cms"
     VITE_LIVE: "false"
     VITE_PORT: "5173"
     VITE_HOST: "127.0.0.1"
