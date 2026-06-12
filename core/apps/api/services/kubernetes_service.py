@@ -627,8 +627,15 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append(f"REDIS_ADDR={env.str('REDIS_HOST', default='redis')}:{env.str('REDIS_PORT', default='6379')}")
     _env.append(f"REDIS_PASSWORD={env.str("REDIS_PASSWORD")}")
     _env.append(f"REDIS_PREFIX={prefix}_{key}")
-    _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
-    _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
+    # Shared-tenancy: per-project Mongo user faqat o'z project_<id> DB'siga ruxsatli —
+    # umumiy DB uchun ALOHIDA shared user (MONGO_SHARED_URL, botspace_cms'ga readWrite)
+    # ishlatiladi; tenant izolyatsiya engine ichida _project_id bilan ta'minlanadi.
+    if env.bool("CMS_SHARED_TENANCY", default=False):
+        _env.append(f"MONGO_ADDR={env.str('MONGO_SHARED_URL', default=env.str('MONGO_URL'))}")
+        _env.append(f"MONGO_DB_NAME={env.str('CMS_SHARED_DB', default='botspace_cms')}")
+    else:
+        _env.append(f"MONGO_ADDR={mongo_credentials.get('connection_string', env.str('MONGO_URL'))}")
+        _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
     _env.append(f"PROJECT_ID={project.id}")
 
     # CMS shared-tenancy: bots inherit the flag + shared DB name from the
