@@ -92,10 +92,10 @@ class DocumentViewSet(ViewSet):
             filter = dict(filter)
             filter[coll.primary_field] = {"$regex": _re.escape(search), "$options": "i"}
 
-        # Kursor (cursor) paginatsiya: `cursor` parametri BERILGAN bo'lsa (bo'sh
-        # bo'lsa ham) — relation tanlovi uchun infinite-scroll rejimi. Aks holda
-        # eski offset (skip/limit) — data-grid uchun, o'zgarmaydi.
-        use_cursor = "cursor" in request.query_params
+        # Kursor (cursor) paginatsiya: `paginate=cursor` bo'lsa — relation tanlovi
+        # uchun infinite-scroll rejimi (birinchi sahifada `cursor` bo'sh bo'ladi).
+        # Aks holda eski offset (skip/limit) — data-grid uchun, o'zgarmaydi.
+        use_cursor = request.query_params.get("paginate") == "cursor"
         cursor_after = (request.query_params.get("cursor") or "").strip() or None
 
         items = mongo.find(
