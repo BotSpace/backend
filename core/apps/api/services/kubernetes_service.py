@@ -631,6 +631,14 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     _env.append(f"MONGO_DB_NAME={mongo_credentials.get('database', f'project_{project.id}')}")
     _env.append(f"PROJECT_ID={project.id}")
 
+    # CMS shared-tenancy: bots inherit the flag + shared DB name from the
+    # backend's own env (single source of truth) so engine Mongo access scopes
+    # by _project_id in the shared database when the cutover is enabled.
+    if not has_env("CMS_SHARED_TENANCY"):
+        _env.append(f"CMS_SHARED_TENANCY={str(env.bool('CMS_SHARED_TENANCY', default=False)).lower()}")
+    if not has_env("CMS_SHARED_DB"):
+        _env.append(f"CMS_SHARED_DB={env.str('CMS_SHARED_DB', default='botspace_cms')}")
+
     # PaymentNode: engine calls backend POST /api/payment/order/create/ with
     # X-Internal-Token and the backend verifies /payment-callback against the
     # same token. Both must equal the backend's INTERNAL_API_TOKEN. The engine

@@ -292,14 +292,21 @@ def copy_cms_collections(from_project, to_project, flow=None):
     """
     from core.apps.cms.models.collection import Collection
     from core.apps.cms.models.field import Field
-    from core.apps.cms.services.mongo import get_mongo_client
+    from core.apps.cms.services import mongo as cms_mongo
 
     flow = flow if flow is not None else getattr(from_project, "flow", None)
 
+    # Enumerate collection names from the REGISTRIES (not MongoDB) so this works
+    # identically in per-project and shared-tenancy modes. Templates' content
+    # collections live in the LEGACY registry, so we union both.
     try:
-        client = get_mongo_client()
-        src_db = client.get_project_database(from_project.id)
-        names = src_db.list_collection_names()
+        names: set[str] = set()
+        names.update(
+            CollectionModel.objects.filter(project=from_project).values_list("name", flat=True)
+        )
+        names.update(
+            from_project.cms_collections.filter(deleted_at__isnull=True).values_list("name", flat=True)
+        )
     except Exception:  # pragma: no cover - defensive
         logger.exception("copy_cms_collections: failed to list source collections (project=%s)", from_project.id)
         return
@@ -344,7 +351,7 @@ def copy_cms_collections(from_project, to_project, flow=None):
                 elif src_legacy is not None:
                     new_fields = _new_fields_from_legacy_collection(src_legacy, target)
                 else:
-                    sample = src_db[name].find_one({}) if name in names else None
+                    sample = (cms_mongo.find(from_project.id, name, limit=1) or [None])[0]
                     new_fields = _new_fields_from_sample(sample, target)
 
                 if new_fields:
@@ -357,14 +364,22 @@ def copy_cms_collections(from_project, to_project, flow=None):
             if not collection_is_catalog(flow, name):
                 continue
 
-            docs = list(src_db[name].find({}))
+            # Guard against double-insert (idempotent re-run).
+            if cms_mongo.count(to_project.id, name) != 0:
+                continue
+
+            docs = cms_mongo.find(from_project.id, name, limit=100000, include_deleted=False)
             if not docs:
                 continue
 
-            dest_coll = client.get_project_database(to_project.id)[name]
-            # Idempotent-ish: don't double-insert if data already present.
-            if dest_coll.estimated_document_count() == 0:
-                dest_coll.insert_many(docs)
+            # Strip storage-managed keys so Mongo assigns a FRESH `_id` and the
+            # data layer re-stamps metadata + tags the NEW tenant. Preserving
+            # `_id` would collide in the shared collection.
+            for doc in docs:
+                for k in ("_id", "_project_id", "_created_at", "_updated_at", "_version", "_deleted_at"):
+                    doc.pop(k, None)
+
+            cms_mongo.insert_many(to_project.id, name, docs)
         except Exception:  # pragma: no cover - defensive
             logger.exception(
                 "copy_cms_collections: failed for collection %r (from=%s to=%s)",

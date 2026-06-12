@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 
 from django.core.management.base import BaseCommand
-from pymongo.errors import BulkWriteError
+from pymongo.errors import DuplicateKeyError
 from rich.console import Console
 
 from core.apps.cms.services.mongo import SHARED_DB_NAME, TENANT_FIELD, get_mongo_client
@@ -60,7 +60,7 @@ class Command(BaseCommand):
         console.print(f"\n[cyan]Migratsiya:[/cyan] {len(targets)} ta loyiha DB → '{SHARED_DB_NAME}'"
                       f"{' [yellow](DRY RUN)[/yellow]' if dry else ''}\n")
 
-        total_copied = total_dup = 0
+        total_copied = total_dup = total_regen = 0
         touched_collections: set[str] = set()
 
         for db_name, pid in targets:
@@ -79,10 +79,11 @@ class Command(BaseCommand):
 
                 for d in docs:
                     d[TENANT_FIELD] = pid  # tenant tegi
-                copied, dup = self._insert_batch(shared[coll_name], docs)
+                copied, dup, regen = self._insert_batch(shared[coll_name], docs)
                 total_copied += copied
                 total_dup += dup
-                console.print(f"  proj {pid:<6} {coll_name:<18} +{copied} (dup {dup})")
+                total_regen += regen
+                console.print(f"  proj {pid:<6} {coll_name:<18} +{copied} (dup {dup}, regen {regen})")
 
         # Umumiy collection'larga tenant index'larini qo'yamiz.
         if not dry:
@@ -93,25 +94,55 @@ class Command(BaseCommand):
                     console.print(f"  [red]index xato {coll_name}: {exc}[/red]")
 
         console.print(f"\n[bold]Jami:[/bold] ko'chirildi={total_copied} dublikat={total_dup} "
-                      f"collection={len(touched_collections)}")
+                      f"yangi_id={total_regen} collection={len(touched_collections)}")
         if dry:
             console.print("[yellow]DRY RUN — hech narsa o'zgartirilmadi.[/yellow]")
         else:
             console.print("[green]✓ Tayyor. Endi CMS_SHARED_TENANCY=true qilib tekshiring.[/green]\n")
 
     @staticmethod
-    def _insert_batch(dest, docs: list[dict]) -> tuple[int, int]:
-        """insert_many(ordered=False) — mavjud _id'lar (idempotent qayta ishga tushish)
-        dublikat sifatida o'tkazib yuboriladi."""
-        copied = dup = 0
-        for i in range(0, len(docs), _BATCH):
-            chunk = docs[i : i + _BATCH]
+    def _insert_batch(dest, docs: list[dict]) -> tuple[int, int, int]:
+        """Per-document insert (correctness over speed — one-time migration).
+
+        Shared collection'da `_id` ikki xil sababdan to'qnashishi mumkin:
+          1. Idempotent qayta ishga tushish — SHU loyihaning hujjati allaqachon
+             ko'chirilgan (aynan o'sha `_project_id` + `_id`) → dublikat, o'tkazib
+             yuboramiz.
+          2. Boshqa loyiha bilan `_id` to'qnashuvi — template-copy `_id` ni
+             saqlab qolgani uchun ikki loyiha bir xil `_id` ga ega bo'lishi mumkin.
+             Bu holda `_id` ni tashlab, Mongo'ga YANGI `_id` berdiramiz.
+
+        Returns: (copied, dup, regenerated).
+        """
+        copied = dup = regen = 0
+        for doc in docs:
             try:
-                res = dest.insert_many(chunk, ordered=False)
-                copied += len(res.inserted_ids)
-            except BulkWriteError as bwe:
-                we = bwe.details.get("writeErrors", [])
-                dups = sum(1 for e in we if e.get("code") == 11000)
-                dup += dups
-                copied += len(chunk) - len(we)
-        return copied, dup
+                dest.insert_one(doc)
+                copied += 1
+                continue
+            except DuplicateKeyError:
+                pass
+
+            # `_id` to'qnashdi. Ikki holat bor:
+            #   (a) idempotent qayta ishga tushish — AYNAN shu tenant'ning hujjati
+            #       (bir xil `_id` + `_project_id`) allaqachon bor → o'tkazib yuboramiz.
+            #   (b) boshqa tenant bilan `_id` to'qnashuvi (template-copy `_id` ni
+            #       saqlagan) → yangi `_id` bilan qayta kiritamiz.
+            doc_id = doc.get("_id")
+            tenant = doc.get(TENANT_FIELD)
+            already = doc_id is not None and dest.count_documents(
+                {"_id": doc_id, TENANT_FIELD: tenant}, limit=1
+            )
+            if already:
+                dup += 1
+                continue
+
+            doc.pop("_id", None)  # Mongo yangi `_id` beradi
+            try:
+                dest.insert_one(doc)
+                copied += 1
+                regen += 1
+            except DuplicateKeyError:
+                # Yangi `_id` ham to'qnashsa (deyarli imkonsiz) — o'tkazib yuboramiz.
+                dup += 1
+        return copied, dup, regen
