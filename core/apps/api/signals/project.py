@@ -86,7 +86,13 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
                         release.id,
                         release.service_id,
                     )
-            release.status = ContainerStatusEnum.STOPPING.value
+            # Deployment'ni shu yerda SINXRON o'chiryapmiz. Avval STOPPING qo'yib,
+            # STOPPED'ga o'tkazishni k8s-watcher'ning DELETED eventiga qoldirardik —
+            # lekin bu save watcher'ning async yozuvi bilan poyga qilardi va deyarli
+            # har doim undan keyin tushib, eski release STOPPING'da abadiy qotib
+            # qolardi (deployment o'chgani uchun boshqa event kelmaydi). Shuning
+            # uchun to'g'ridan-to'g'ri STOPPED qo'yamiz.
+            release.status = ContainerStatusEnum.STOPPED.value
             release.save()
         service = deploy_service(
             instance.project,
