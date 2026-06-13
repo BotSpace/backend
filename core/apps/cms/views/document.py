@@ -10,6 +10,7 @@ URL pattern:
 
 from __future__ import annotations
 
+from bson import ObjectId
 from bson.errors import BSONError
 from drf_spectacular.utils import extend_schema
 from pymongo.errors import PyMongoError
@@ -24,6 +25,95 @@ from core.apps.cms.services import mongo
 from core.apps.cms.services.validator import ValidationError
 
 from ._common import get_collection_or_404
+
+# Relation label'i sifatida ishlatiladigan matn turidagi field kind'lari
+# (primary_field bo'sh bo'lsa, birinchi shu turdagi field label bo'ladi).
+_LABEL_TEXT_KINDS = {"text", "longtext", "email", "url", "phone"}
+
+
+def _pick_label(doc: dict, target_coll, target_fields: list) -> str:
+    """Bog'langan hujjatdan ko'rsatiladigan label'ni tanlaydi:
+    primary_field → birinchi matnli field → _id'ning oxirgi 8 belgisi."""
+    if target_coll.primary_field:
+        v = doc.get(target_coll.primary_field)
+        if v not in (None, ""):
+            return str(v)
+    for f in target_fields:
+        if f.kind in _LABEL_TEXT_KINDS:
+            v = doc.get(f.name)
+            if v not in (None, ""):
+                return str(v)
+    return str(doc.get("_id", ""))[-8:]
+
+
+def _attach_relation_labels(coll, items: list[dict]) -> None:
+    """Har hujjatga relation field'lar uchun yechilgan label'larni `_rel`
+    map'i sifatida qo'shadi (joyida o'zgartiradi).
+
+    N+1 so'rovni oldini oladi: har bir bog'langan collection uchun BITTA
+    `_id $in [...]` so'rovi bilan barcha label'lar yechiladi (sahifadagi
+    o'nlab hujjat uchun frontend qo'shimcha so'rov yubormaydi, miltillamaydi).
+    """
+    if not items:
+        return
+    # Bitta so'rov bilan relation field'lar + ularning target collection'i (FK).
+    rel_fields = list(
+        coll.fields.select_related("relation_collection")
+        .filter(kind="relation", relation_collection__isnull=False)
+    )
+    if not rel_fields:
+        return
+
+    # 1) Bog'langan collection bo'yicha kerakli _id'larni yig'amiz.
+    targets: dict[int, object] = {}
+    ids_by_coll: dict[int, set[str]] = {}
+    for f in rel_fields:
+        tc = f.relation_collection
+        if tc is None:
+            continue
+        targets[tc.id] = tc
+        bucket = ids_by_coll.setdefault(tc.id, set())
+        for it in items:
+            v = it.get(f.name)
+            for one in v if isinstance(v, list) else [v]:
+                if one not in (None, "", []):
+                    bucket.add(str(one))
+
+    # 2) Har bir target collection uchun BITTA so'rov bilan label'larni yechamiz.
+    label_maps: dict[int, dict[str, str]] = {}
+    for cid, tc in targets.items():
+        ids = ids_by_coll.get(cid) or set()
+        if not ids:
+            label_maps[cid] = {}
+            continue
+        oids = []
+        for s in ids:
+            try:
+                oids.append(ObjectId(s))
+            except Exception:
+                continue
+        if not oids:
+            label_maps[cid] = {}
+            continue
+        docs = mongo.find(tc.project_id, tc.name, filter={"_id": {"$in": oids}}, limit=len(oids))
+        tfields = list(tc.fields.all())
+        label_maps[cid] = {str(d.get("_id")): _pick_label(d, tc, tfields) for d in docs}
+
+    # 3) Har hujjatga `_rel` map'ini qo'shamiz.
+    for it in items:
+        rel: dict[str, object] = {}
+        for f in rel_fields:
+            tc = f.relation_collection
+            if tc is None:
+                continue
+            m = label_maps.get(tc.id, {})
+            v = it.get(f.name)
+            if isinstance(v, list):
+                rel[f.name] = [m.get(str(x), str(x)) for x in v if x not in (None, "", [])]
+            elif v not in (None, "", []):
+                rel[f.name] = m.get(str(v), str(v))
+        if rel:
+            it["_rel"] = rel
 
 # Mongo operatorlari ichida server-side JS bajaradigan/xavfli operatorlar.
 # Bular filter orqali ruxsat etilmaydi (NoSQL injection / JS exec / ReDoS).
@@ -109,9 +199,13 @@ class DocumentViewSet(ViewSet):
             after_id=cursor_after if use_cursor else None,
         )
         if use_cursor:
+            # Relation tanlovi (picker) — label'lar shart emas (qatorlar o'zi label).
             next_cursor = items[-1]["_id"] if (items and len(items) == limit) else None
             return Response({"results": items, "limit": limit, "next_cursor": next_cursor})
 
+        # Relation field label'larini server tomonda yechib, har hujjatga `_rel`
+        # sifatida qo'shamiz (frontend N ta qo'shimcha so'rov yubormasin).
+        _attach_relation_labels(coll, items)
         total = mongo.count(coll.project_id, coll.name, filter)
         return Response({"results": items, "total": total, "limit": limit, "skip": skip})
 
@@ -120,6 +214,7 @@ class DocumentViewSet(ViewSet):
         item = mongo.find_one(coll.project_id, coll.name, {"_id": pk})
         if item is None:
             return Response({"detail": "not found"}, status=404)
+        _attach_relation_labels(coll, [item])
         return Response(item)
 
     def create(self, request, project_id=None, collection_name=None):
