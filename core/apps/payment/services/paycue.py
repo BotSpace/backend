@@ -30,16 +30,18 @@ def create_transaction(amount: int, *, timeout: int = 15) -> dict:
     Paycue REST API: POST {base}/api/transactions, Authorization: Bearer <token>,
     body {card_id, amount} → {status, data:{amount, card_id, transaction_id}}.
     """
+    from core.apps.shared.utils.settings import paycue_api_token, paycue_card_id
+
     base = settings.PAYCUE_BASE_URL.rstrip("/")
     url = f"{base}/api/transactions"
 
-    card_id = int(getattr(settings, "PAYCUE_CARD_ID", 0) or 0)
+    card_id = paycue_card_id()
     if card_id <= 0:
-        raise PaycueError("PAYCUE_CARD_ID sozlanmagan")
+        raise PaycueError("paycue card_id sozlanmagan")
 
     headers = {"Content-Type": "application/json"}
-    # Account token — Authorization: Bearer (middleware Bearer/X-API-Key qabul qiladi).
-    api_key = getattr(settings, "PAYCUE_API_KEY", "")
+    # Account token — Authorization: Bearer (admin panel config, env fallback).
+    api_key = paycue_api_token()
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
