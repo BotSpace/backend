@@ -8,7 +8,9 @@ transaction_id = order_create paytida saqlangan PaymentOrderModel.external_id.
 """
 import logging
 
+from django.conf import settings
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,6 +29,15 @@ class PaycueWebhookAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Webhook'ni soxtalashtirmaslik uchun X-API-Key tekshiriladi (paycue
+        # webhook'ni shu header bilan yuboradi). Kalit o'rnatilmagan bo'lsa —
+        # fail-closed (hammasini rad etamiz).
+        expected = getattr(settings, "PAYCUE_API_KEY", "")
+        provided = request.headers.get("X-API-Key", "")
+        if not expected or not constant_time_compare(provided, expected):
+            logger.warning("paycue webhook: noto'g'ri yoki yo'q X-API-Key")
+            return Response({"ok": False, "detail": "invalid api key"}, status=401)
+
         action = request.data.get("action")
         transaction_id = request.data.get("transaction_id")
         if not transaction_id:
