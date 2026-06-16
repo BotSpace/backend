@@ -32,6 +32,7 @@ env = environ.Env(
     PAYTECH_API_KEY=(str, ""),
     PAYCUE_BASE_URL=(str, "https://paycue.iprogrammer.uz"),
     PAYCUE_API_KEY=(str, ""),
+    PAYCUE_WEBHOOK_KEY=(str, ""),
     PAYCUE_CARD=(str, ""),
     INTERNAL_API_TOKEN=(str, ""),
     OAUTH_ISSUER=(str, "https://api.botspace.uz"),

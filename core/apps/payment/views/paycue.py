@@ -30,9 +30,10 @@ class PaycueWebhookAPIView(APIView):
 
     def post(self, request):
         # Webhook'ni soxtalashtirmaslik uchun X-API-Key tekshiriladi (paycue
-        # webhook'ni shu header bilan yuboradi). Kalit o'rnatilmagan bo'lsa —
-        # fail-closed (hammasini rad etamiz).
-        expected = getattr(settings, "PAYCUE_API_KEY", "")
+        # webhook'ni shu header bilan yuboradi). Webhook kaliti alohida
+        # (PAYCUE_WEBHOOK_KEY); bo'sh bo'lsa create kaliti (PAYCUE_API_KEY)
+        # ishlatiladi. Kalit umuman yo'q bo'lsa — fail-closed (rad etamiz).
+        expected = getattr(settings, "PAYCUE_WEBHOOK_KEY", "") or getattr(settings, "PAYCUE_API_KEY", "")
         provided = request.headers.get("X-API-Key", "")
         if not expected or not constant_time_compare(provided, expected):
             logger.warning("paycue webhook: noto'g'ri yoki yo'q X-API-Key")
