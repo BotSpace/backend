@@ -26,18 +26,27 @@ def create_transaction(amount: int, *, timeout: int = 15) -> dict:
 
     `amount` — so'ralgan summa (butun so'm). Qaytgan `amount` — foydalanuvchi
     o'tkazishi kerak bo'lgan MOSLASHTIRILGAN summa (so'ralgandan biroz ko'p).
+
+    Paycue REST API: POST {base}/api/transactions, Authorization: Bearer <token>,
+    body {card_id, amount} → {status, data:{amount, card_id, transaction_id}}.
     """
     base = settings.PAYCUE_BASE_URL.rstrip("/")
-    url = f"{base}/create/transaction/"
+    url = f"{base}/api/transactions"
+
+    card_id = int(getattr(settings, "PAYCUE_CARD_ID", 0) or 0)
+    if card_id <= 0:
+        raise PaycueError("PAYCUE_CARD_ID sozlanmagan")
 
     headers = {"Content-Type": "application/json"}
-    # Paycue X-API-Key header bilan auth qiladi (middleware.APIKey).
+    # Account token — Authorization: Bearer (middleware Bearer/X-API-Key qabul qiladi).
     api_key = getattr(settings, "PAYCUE_API_KEY", "")
     if api_key:
-        headers["X-API-Key"] = api_key
+        headers["Authorization"] = f"Bearer {api_key}"
 
     try:
-        resp = requests.post(url, json={"amount": int(amount)}, headers=headers, timeout=timeout)
+        resp = requests.post(
+            url, json={"card_id": card_id, "amount": int(amount)}, headers=headers, timeout=timeout
+        )
     except requests.RequestException as exc:
         logger.error("paycue create_transaction: ulanib bo'lmadi url=%s err=%s", url, exc)
         raise PaycueError(f"paycue unreachable: {exc}") from exc

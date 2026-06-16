@@ -11,5 +11,7 @@ PAYCUE_API_KEY = env.str("PAYCUE_API_KEY", default="")
 # Webhook KELGANDA tekshiriladigan kalit (incoming — paycue webhook'ni shu
 # X-API-Key bilan yuboradi). Bo'sh bo'lsa PAYCUE_API_KEY ishlatiladi.
 PAYCUE_WEBHOOK_KEY = env.str("PAYCUE_WEBHOOK_KEY", default="")
+# Paycue'dagi karta id (POST /api/transactions body'da card_id sifatida ketadi).
+PAYCUE_CARD_ID = env.int("PAYCUE_CARD_ID", default=0)
 # Foydalanuvchiga ko'rsatiladigan Humo karta raqami (to'lov ko'rsatmasi uchun).
 PAYCUE_CARD = env.str("PAYCUE_CARD", default="")
