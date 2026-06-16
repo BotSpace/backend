@@ -21,13 +21,15 @@ from django.conf import settings
 
 
 class AllowMetricsHostMiddleware:
-    METRICS_PATH = "/metrics/"
+    # django_prometheus serves /metrics WITHOUT a trailing slash, but Prometheus
+    # may scrape either form — match both ("/metrics" and "/metrics/...").
+    METRICS_PATH = "/metrics"
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path == self.METRICS_PATH or request.path.startswith(self.METRICS_PATH):
+        if request.path.rstrip("/") == self.METRICS_PATH or request.path.startswith(self.METRICS_PATH + "/"):
             # Read raw Host header from WSGI environ — Django's
             # request.get_host() would itself trigger the ALLOWED_HOSTS
             # check we're trying to bypass.
