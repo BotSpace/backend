@@ -136,7 +136,9 @@ def order_create(request):
         # Webhook tranzaksiyani transaction_id bo'yicha topadi.
         order.external_id = pc["transaction_id"]
         order.save(update_fields=["external_id"])
-        pay_instruction = _paycue_instruction(pc["amount"], getattr(settings, "PAYCUE_CARD", ""))
+        # Karta tranzaksiya bilan keladi; bo'lmasa PAYCUE_CARD env'ga fallback.
+        card_number = pc.get("card_number") or getattr(settings, "PAYCUE_CARD", "")
+        pay_instruction = _paycue_instruction(pc["amount"], card_number, pc.get("card_owner", ""))
     else:
         pay_url = _generate_pay_url(txn.pk, amount, provider)
 
@@ -156,12 +158,14 @@ def order_create(request):
     )
 
 
-def _paycue_instruction(amount: int, card: str) -> str:
+def _paycue_instruction(amount: int, card_number: str, card_owner: str = "") -> str:
     """Paycue to'lov ko'rsatmasi matni (HTML). Foydalanuvchi ANIQ shu summani yuboradi."""
     amount_str = f"{amount:,}".replace(",", " ")
     lines = [f"💳 To'lov uchun ANIQ <b>{amount_str} so'm</b> o'tkazing:"]
-    if card:
-        lines.append(f"\n💳 Karta: <code>{card}</code>")
+    if card_number:
+        lines.append(f"\n💳 Karta: <code>{card_number}</code>")
+        if card_owner:
+            lines.append(f"\n👤 {card_owner}")
     lines.append("\n\n⚠️ Summani O'ZGARTIRMANG — aniq shu miqdorni yuboring. To'lov avtomatik tasdiqlanadi.")
     return "".join(lines)
 

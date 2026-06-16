@@ -28,16 +28,14 @@ def create_transaction(amount: int, *, timeout: int = 15) -> dict:
     o'tkazishi kerak bo'lgan MOSLASHTIRILGAN summa (so'ralgandan biroz ko'p).
 
     Paycue REST API: POST {base}/api/transactions, Authorization: Bearer <token>,
-    body {card_id, amount} → {status, data:{amount, card_id, transaction_id}}.
+    body {amount} (card_id ixtiyoriy — berilmasa paycue avtomatik tanlaydi) →
+    {status, data:{amount, card_id, transaction_id, card:{number, last4, owner_name}}}.
+    Qaytgan dict: amount, transaction_id va karta (card_number, card_owner, card_last4).
     """
     from core.apps.shared.utils.settings import paycue_api_token, paycue_card_id
 
     base = settings.PAYCUE_BASE_URL.rstrip("/")
     url = f"{base}/api/transactions"
-
-    card_id = paycue_card_id()
-    if card_id <= 0:
-        raise PaycueError("paycue card_id sozlanmagan")
 
     headers = {"Content-Type": "application/json"}
     # Account token — Authorization: Bearer (admin panel config, env fallback).
@@ -45,10 +43,15 @@ def create_transaction(amount: int, *, timeout: int = 15) -> dict:
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
+    # card_id berilmaydi (paycue avtomatik tanlaydi) — faqat config'da aniq
+    # pin qilingan bo'lsa (>0) yuboriladi.
+    body = {"amount": int(amount)}
+    card_id = paycue_card_id()
+    if card_id > 0:
+        body["card_id"] = card_id
+
     try:
-        resp = requests.post(
-            url, json={"card_id": card_id, "amount": int(amount)}, headers=headers, timeout=timeout
-        )
+        resp = requests.post(url, json=body, headers=headers, timeout=timeout)
     except requests.RequestException as exc:
         logger.error("paycue create_transaction: ulanib bo'lmadi url=%s err=%s", url, exc)
         raise PaycueError(f"paycue unreachable: {exc}") from exc
@@ -68,4 +71,13 @@ def create_transaction(amount: int, *, timeout: int = 15) -> dict:
     if not txn_id or adjusted is None:
         raise PaycueError(f"paycue response missing fields: {payload}")
 
-    return {"transaction_id": str(txn_id), "amount": int(adjusted)}
+    # Tranzaksiya qaysi kartada yaratilgani — javobdan keladi (foydalanuvchiga
+    # ko'rsatish uchun).
+    card = data.get("card") or {}
+    return {
+        "transaction_id": str(txn_id),
+        "amount": int(adjusted),
+        "card_number": str(card.get("number") or ""),
+        "card_owner": str(card.get("owner_name") or ""),
+        "card_last4": str(card.get("last4") or ""),
+    }
