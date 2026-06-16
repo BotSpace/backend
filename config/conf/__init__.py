@@ -14,4 +14,5 @@ from .storage import *  # noqa
 from .channels import *  # noqa
 from .price import *  # noqa
 from .click import *  # noqa
+from .paycue import *  # noqa
 from .payme import *  # noqa

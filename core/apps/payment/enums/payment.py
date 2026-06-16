@@ -3,6 +3,7 @@ from django.db import models
 
 class PaymentMethosEnum(models.TextChoices):
     CLICK = "click"
+    PAYCUE = "paycue"
     PAYME = "payme"
     PAYNET = "paynet"
     UZUM = "uzum"

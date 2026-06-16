@@ -118,7 +118,27 @@ def order_create(request):
         is_debug=is_debug,
     )
 
-    pay_url = _generate_pay_url(txn.pk, amount, provider)
+    # Paycue (Humo-karta avtomatizatsiyasi) — pay_url YO'Q. Foydalanuvchi
+    # moslashtirilgan summani kartaga o'tkazadi; pay_instruction matni qaytadi.
+    pay_url = ""
+    pay_instruction = ""
+    if provider == "paycue":
+        from core.apps.payment.services.paycue import PaycueError, create_transaction
+
+        try:
+            pc = create_transaction(int(amount))
+        except PaycueError as exc:
+            logger.error("order_create paycue: %s order_id=%s", exc, order.pk)
+            return Response(
+                {"status": False, "data": {"provider": f"paycue: {exc}"}},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        # Webhook tranzaksiyani transaction_id bo'yicha topadi.
+        order.external_id = pc["transaction_id"]
+        order.save(update_fields=["external_id"])
+        pay_instruction = _paycue_instruction(pc["amount"], getattr(settings, "PAYCUE_CARD", ""))
+    else:
+        pay_url = _generate_pay_url(txn.pk, amount, provider)
 
     return Response(
         {
@@ -126,6 +146,7 @@ def order_create(request):
             "data": {
                 "order_id": order.pk,
                 "pay_url": pay_url,
+                "pay_instruction": pay_instruction,
                 "amount": str(order.amount),
                 "net_amount": str(order.net_amount),
                 "commission": str(order.commission),
@@ -133,6 +154,16 @@ def order_create(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+def _paycue_instruction(amount: int, card: str) -> str:
+    """Paycue to'lov ko'rsatmasi matni (HTML). Foydalanuvchi ANIQ shu summani yuboradi."""
+    amount_str = f"{amount:,}".replace(",", " ")
+    lines = [f"💳 To'lov uchun ANIQ <b>{amount_str} so'm</b> o'tkazing:"]
+    if card:
+        lines.append(f"\n💳 Karta: <code>{card}</code>")
+    lines.append("\n\n⚠️ Summani O'ZGARTIRMANG — aniq shu miqdorni yuboring. To'lov avtomatik tasdiqlanadi.")
+    return "".join(lines)
 
 
 def _generate_pay_url(txn_pk: int, amount, provider: str) -> str:
