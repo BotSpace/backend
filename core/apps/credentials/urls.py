@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from core.apps.credentials.views import CredentialTypeListView, CredentialViewSet
+from core.apps.credentials.views import CredentialTypeListView, CredentialViewSet, OAuthCallbackView, OAuthStartView
 
 cred_list = CredentialViewSet.as_view({"get": "list", "post": "create"})
 cred_detail = CredentialViewSet.as_view(
@@ -17,4 +17,7 @@ urlpatterns = [
     path("credentials/", cred_list, name="credential-list"),
     path("credentials/<int:pk>/", cred_detail, name="credential-detail"),
     path("credentials/<int:pk>/test/", cred_test, name="credential-test"),
+    # OAuth2 flow
+    path("credentials/oauth/<str:provider>/start/", OAuthStartView.as_view(), name="credential-oauth-start"),
+    path("credentials/oauth/<str:provider>/callback/", OAuthCallbackView.as_view(), name="credential-oauth-callback"),
 ]

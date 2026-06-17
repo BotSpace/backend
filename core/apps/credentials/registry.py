@@ -56,7 +56,7 @@ CREDENTIAL_TYPES: list[dict] = [
             {"name": "password", "label": "Password", "type": "password", "secret": True, "required": True},
         ],
     },
-    # --- placeholder types (structure ready; exact fields TBD later) ---
+    # --- developer-added types ---
     {
         "key": "telegram",
         "label": "Telegram",
@@ -65,17 +65,46 @@ CREDENTIAL_TYPES: list[dict] = [
         "fields": [
             {"name": "bot_token", "label": "Bot token", "type": "password", "secret": True, "required": True},
         ],
-        "todo": "final fields TBD (account/session?)",
+    },
+    # --- OAuth2 types (Google) ---
+    {
+        "key": "google_email",
+        "label": "Google (Email)",
+        "icon": "mail",
+        "mode": "oauth2",
+        "provider": "google",
+        "scopes": [
+            "openid",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile",
+        ],
+        "fields": [],
     },
     {
-        "key": "google",
-        "label": "Google",
-        "icon": "globe",
-        "mode": "none",
-        "fields": [
-            {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": True},
+        "key": "google_sheets",
+        "label": "Google Sheets",
+        "icon": "table",
+        "mode": "oauth2",
+        "provider": "google",
+        "scopes": [
+            "openid",
+            "email",
+            "https://www.googleapis.com/auth/spreadsheets",
         ],
-        "todo": "final fields TBD (OAuth account?)",
+        "fields": [],
+    },
+    {
+        "key": "google_drive",
+        "label": "Google Drive",
+        "icon": "folder",
+        "mode": "oauth2",
+        "provider": "google",
+        "scopes": [
+            "openid",
+            "email",
+            "https://www.googleapis.com/auth/drive.file",
+        ],
+        "fields": [],
     },
 ]
 
@@ -88,5 +117,5 @@ def get_type(key: str) -> dict | None:
 
 
 def list_types() -> list[dict]:
-    """Return all registered credential types."""
+    """Return all registered credential types (including provider/scopes for oauth2)."""
     return list(CREDENTIAL_TYPES)

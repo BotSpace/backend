@@ -61,12 +61,26 @@ def credential_by_id(request, pk):
         return Response({"detail": "Decryption error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     type_info = get_type(cred.type_key) or {}
+    mode = type_info.get("mode")
+
+    # For oauth2 credentials: refresh token if expired, inject fresh access_token
+    if mode == "oauth2":
+        try:
+            from core.apps.credentials.services.oauth import get_valid_access_token
+            fresh_token = get_valid_access_token(cred)
+            decrypted["access_token"] = fresh_token
+        except Exception as exc:
+            return Response(
+                {"detail": f"Token refresh failed: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     return Response(
         {
             "id": cred.id,
             "name": cred.name,
             "type_key": cred.type_key,
-            "mode": type_info.get("mode"),
+            "mode": mode,
             "data": decrypted,
         },
         status=status.HTTP_200_OK,

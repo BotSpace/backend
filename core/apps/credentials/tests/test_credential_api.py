@@ -179,4 +179,6 @@ def test_types_list(auth_client):
     assert "basic_auth" in keys
     assert "header_auth" in keys
     assert "telegram" in keys
-    assert "google" in keys
+    assert "google_email" in keys
+    assert "google_sheets" in keys
+    assert "google_drive" in keys

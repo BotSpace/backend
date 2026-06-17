@@ -3,7 +3,7 @@ import pytest
 
 from core.apps.credentials.registry import get_type, list_types
 
-EXPECTED_KEYS = ["api_key", "bearer", "header_auth", "basic_auth", "telegram", "google"]
+EXPECTED_KEYS = ["api_key", "bearer", "header_auth", "basic_auth", "telegram", "google_email", "google_sheets", "google_drive"]
 
 
 def test_all_builtin_types_present():

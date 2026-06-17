@@ -15,8 +15,23 @@ def _mask(value: str) -> str:
     return "••••" + str(value)[-4:]
 
 
-def _mask_data(fields_schema: list, data: dict) -> dict:
-    """Return data dict with secret fields masked."""
+def _mask_data(fields_schema: list, data: dict, mode: str = "") -> dict:
+    """Return data dict with secret fields masked.
+
+    For oauth2 credentials (empty fields_schema), mask access_token and refresh_token
+    but surface account_email and scope as non-secret info.
+    """
+    if mode == "oauth2":
+        # Tokens are always secret; account_email and scope are surfaced plaintext
+        secret_keys = {"access_token", "refresh_token"}
+        result = {}
+        for key, val in data.items():
+            if key in secret_keys:
+                result[key] = _mask(str(val)) if val else None
+            else:
+                result[key] = val
+        return result
+
     secret_names = {f["name"] for f in fields_schema if f.get("secret")}
     result = {}
     for key, val in data.items():
@@ -55,6 +70,8 @@ class CredentialRegistryTypeSerializer(serializers.Serializer):
     icon = serializers.CharField()
     mode = serializers.CharField()
     fields = serializers.ListField()
+    provider = serializers.CharField(required=False, allow_null=True, default=None)
+    scopes = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 
 class CredentialListSerializer(serializers.ModelSerializer):
@@ -108,8 +125,9 @@ class CredentialListSerializer(serializers.ModelSerializer):
     def get_data(self, obj: Credential) -> dict:
         info = self._type_info(obj)
         fields_schema = info.get("fields", [])
+        mode = info.get("mode", "")
         raw = self._decrypted(obj)
-        return _mask_data(fields_schema, raw)
+        return _mask_data(fields_schema, raw, mode=mode)
 
 
 class CredentialDetailSerializer(CredentialListSerializer):
@@ -140,7 +158,9 @@ class CredentialCreateSerializer(serializers.Serializer):
         if type_key:
             info = get_type(type_key)
             if info:
-                _validate_data_against_fields(info["fields"], data)
+                # oauth2 types have empty fields — skip field validation (tokens come from callback)
+                if info.get("mode") != "oauth2":
+                    _validate_data_against_fields(info["fields"], data)
         return attrs
 
     def create(self, validated_data):
@@ -164,24 +184,32 @@ class CredentialPatchSerializer(serializers.Serializer):
             instance: Credential = self.instance
             info = get_type(instance.type_key) or {}
             fields_schema = info.get("fields", [])
+            mode = info.get("mode", "")
             try:
                 old_data = crypto.decrypt(instance.data_encrypted)
             except Exception:
                 old_data = {}
 
             new_data = attrs["data"]
-            secret_names = {f["name"] for f in fields_schema if f.get("secret")}
 
-            # Merge: secret field empty or absent => keep old value
-            merged = dict(old_data)
-            for key, val in new_data.items():
-                if key in secret_names and (val is None or val == ""):
-                    pass  # keep old
-                else:
-                    merged[key] = val
+            if mode == "oauth2":
+                # oauth2: merge new into old (e.g. manual token update), no field schema validation
+                merged = dict(old_data)
+                merged.update(new_data)
+                attrs["data"] = merged
+            else:
+                secret_names = {f["name"] for f in fields_schema if f.get("secret")}
 
-            _validate_data_against_fields(fields_schema, merged)
-            attrs["data"] = merged
+                # Merge: secret field empty or absent => keep old value
+                merged = dict(old_data)
+                for key, val in new_data.items():
+                    if key in secret_names and (val is None or val == ""):
+                        pass  # keep old
+                    else:
+                        merged[key] = val
+
+                _validate_data_against_fields(fields_schema, merged)
+                attrs["data"] = merged
         return attrs
 
     def update(self, instance: Credential, validated_data: dict):
