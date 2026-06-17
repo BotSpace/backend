@@ -1,9 +1,15 @@
-from .credential import CredentialCreateSerializer, CredentialDetailSerializer, CredentialListSerializer
-from .credential_type import CredentialTypeSerializer
+from .credential import (
+    CredentialCreateSerializer,
+    CredentialDetailSerializer,
+    CredentialListSerializer,
+    CredentialPatchSerializer,
+    CredentialRegistryTypeSerializer,
+)
 
 __all__ = [
-    "CredentialTypeSerializer",
+    "CredentialRegistryTypeSerializer",
     "CredentialListSerializer",
     "CredentialDetailSerializer",
     "CredentialCreateSerializer",
+    "CredentialPatchSerializer",
 ]

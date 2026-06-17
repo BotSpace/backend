@@ -23,38 +23,50 @@ def _internal_token_ok(request) -> bool:
 def credential_by_id(request, pk):
     """Resolve and decrypt a credential for the engine.
 
-    Header: X-Internal-Token: <settings.INTERNAL_API_TOKEN>
-    Returns 200 with decrypted data or 404 if missing/soft-deleted.
-    Returns 401 if token is missing or invalid.
+    Headers:
+      X-Internal-Token: <settings.INTERNAL_API_TOKEN>
+      X-Project-Id:     <project id> — used for cross-tenant owner guard
+
+    Returns:
+      200 { id, name, type_key, mode, data:{...decrypted...} }
+      401 if token is missing or invalid
+      403 if credential.owner != project.owner (cross-tenant guard)
+      404 if missing/soft-deleted
     """
     if not _internal_token_ok(request):
         return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
     from core.apps.credentials.models import Credential
+    from core.apps.credentials.registry import get_type
     from core.apps.credentials.services import crypto
 
     try:
-        cred = (
-            Credential.objects.select_related("type", "project")
-            .get(pk=pk, deleted_at__isnull=True)
-        )
+        cred = Credential.objects.select_related("owner").get(pk=pk, deleted_at__isnull=True)
     except Credential.DoesNotExist:
         return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Cross-tenant owner guard
+    project_id = request.headers.get("X-Project-Id")
+    if project_id:
+        try:
+            project = ProjectModel.objects.get(pk=project_id)
+        except ProjectModel.DoesNotExist:
+            return Response({"detail": "Project not found"}, status=status.HTTP_403_FORBIDDEN)
+        if project.owner_id != cred.owner_id:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
     try:
         decrypted = crypto.decrypt(cred.data_encrypted)
     except Exception:
         return Response({"detail": "Decryption error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    type_info = get_type(cred.type_key) or {}
     return Response(
         {
             "id": cred.id,
             "name": cred.name,
-            "project_id": cred.project_id,
-            "type": {
-                "key": cred.type.key,
-                "mode": cred.type.mode,
-            },
+            "type_key": cred.type_key,
+            "mode": type_info.get("mode"),
             "data": decrypted,
         },
         status=status.HTTP_200_OK,

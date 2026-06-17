@@ -1,11 +1,12 @@
-"""/api/v1/credentials/projects/<project_id>/credentials/ — Credential CRUD."""
+"""/api/v1/credentials/ — Owner-scoped Credential CRUD (v2)."""
 from __future__ import annotations
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework import filters, status
+from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
@@ -15,91 +16,66 @@ from core.apps.credentials.serializers import (
     CredentialCreateSerializer,
     CredentialDetailSerializer,
     CredentialListSerializer,
+    CredentialPatchSerializer,
 )
-from core.apps.credentials.serializers.credential import CredentialPatchSerializer
-
-from ._common import get_project_or_404
 
 
 @extend_schema(tags=["credentials"])
 class CredentialViewSet(ViewSet):
-    """Project-scoped credential CRUD."""
+    """Owner-scoped credential CRUD — request.user scope, no project in path."""
 
     permission_classes = [IsAuthenticated]
 
-    def _get_project(self, project_id):
-        return get_project_or_404(project_id, user=self.request.user)
-
-    def _get_qs(self, project):
-        qs = Credential.objects.filter(project=project, deleted_at__isnull=True).select_related("type")
-        # Filter by type key
-        type_key = self.request.query_params.get("type")
+    def _get_qs(self):
+        qs = Credential.objects.filter(owner=self.request.user, deleted_at__isnull=True)
+        type_key = self.request.query_params.get("type_key")
         if type_key:
-            qs = qs.filter(type__key=type_key)
+            qs = qs.filter(type_key=type_key)
         return qs.order_by("name")
 
-    def list(self, request, project_id=None):
-        project = self._get_project(project_id)
-        qs = self._get_qs(project)
+    def _get_object(self, pk):
+        cred = self._get_qs().filter(pk=pk).first()
+        if cred is None:
+            raise NotFound("Credential not found")
+        return cred
 
-        # Pagination
-        from rest_framework.pagination import PageNumberPagination
+    def list(self, request):
+        qs = self._get_qs()
         paginator = PageNumberPagination()
         paginator.page_size = int(request.query_params.get("page_size", 20))
         paginator.max_page_size = 100
         page = paginator.paginate_queryset(qs, request)
-        serializer = CredentialListSerializer(page, many=True, context={"request": request})
+        serializer = CredentialListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-    def create(self, request, project_id=None):
-        project = self._get_project(project_id)
-        serializer = CredentialCreateSerializer(
-            data=request.data,
-            context={"request": request, "project": project},
-        )
+    def create(self, request):
+        serializer = CredentialCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         credential = serializer.save()
         return Response(
-            CredentialDetailSerializer(credential, context={"request": request}).data,
+            CredentialDetailSerializer(credential).data,
             status=status.HTTP_201_CREATED,
         )
 
-    def retrieve(self, request, project_id=None, pk=None):
-        project = self._get_project(project_id)
-        cred = self._get_qs(project).filter(pk=pk).first()
-        if cred is None:
-            raise NotFound("Credential not found")
-        return Response(CredentialDetailSerializer(cred, context={"request": request}).data)
+    def retrieve(self, request, pk=None):
+        cred = self._get_object(pk)
+        return Response(CredentialDetailSerializer(cred).data)
 
-    def partial_update(self, request, project_id=None, pk=None):
-        project = self._get_project(project_id)
-        cred = self._get_qs(project).filter(pk=pk).first()
-        if cred is None:
-            raise NotFound("Credential not found")
-        serializer = CredentialPatchSerializer(
-            cred,
-            data=request.data,
-            partial=True,
-            context={"request": request},
-        )
+    def partial_update(self, request, pk=None):
+        cred = self._get_object(pk)
+        serializer = CredentialPatchSerializer(cred, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated = serializer.save()
-        return Response(CredentialDetailSerializer(updated, context={"request": request}).data)
+        return Response(CredentialDetailSerializer(updated).data)
 
-    def destroy(self, request, project_id=None, pk=None):
-        project = self._get_project(project_id)
-        cred = self._get_qs(project).filter(pk=pk).first()
-        if cred is None:
-            raise NotFound("Credential not found")
+    def destroy(self, request, pk=None):
+        cred = self._get_object(pk)
         cred.deleted_at = timezone.now()
         cred.save(update_fields=["deleted_at", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="test")
-    def test_credential(self, request, project_id=None, pk=None):
+    def test_credential(self, request, pk=None):
         """Stub endpoint — always returns ok:true."""
-        project = self._get_project(project_id)
-        cred = self._get_qs(project).filter(pk=pk).first()
-        if cred is None:
-            raise NotFound("Credential not found")
+        self._get_object(pk)
         return Response({"ok": True})
