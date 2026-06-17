@@ -1,11 +1,64 @@
 # type: ignore
-from rest_framework.decorators import api_view, permission_classes
+from django.conf import settings
+from rest_framework import status
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework import status
 
 from core.apps.api.models.project import ProjectModel
 from core.apps.api.services.kubernetes_service import get_pod_ips_by_label
+
+
+def _internal_token_ok(request) -> bool:
+    expected = getattr(settings, "INTERNAL_API_TOKEN", None)
+    if not expected:
+        return False
+    provided = request.headers.get("X-Internal-Token", "")
+    return provided == expected
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def credential_by_id(request, pk):
+    """Resolve and decrypt a credential for the engine.
+
+    Header: X-Internal-Token: <settings.INTERNAL_API_TOKEN>
+    Returns 200 with decrypted data or 404 if missing/soft-deleted.
+    Returns 401 if token is missing or invalid.
+    """
+    if not _internal_token_ok(request):
+        return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    from core.apps.credentials.models import Credential
+    from core.apps.credentials.services import crypto
+
+    try:
+        cred = (
+            Credential.objects.select_related("type", "project")
+            .get(pk=pk, deleted_at__isnull=True)
+        )
+    except Credential.DoesNotExist:
+        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        decrypted = crypto.decrypt(cred.data_encrypted)
+    except Exception:
+        return Response({"detail": "Decryption error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(
+        {
+            "id": cred.id,
+            "name": cred.name,
+            "project_id": cred.project_id,
+            "type": {
+                "key": cred.type.key,
+                "mode": cred.type.mode,
+            },
+            "data": decrypted,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])

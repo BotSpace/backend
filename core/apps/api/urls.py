@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.debug import DebugNodeEventView
-from core.apps.api.views.internal import project_by_debug_uuid, project_by_release_uuid
+from core.apps.api.views.internal import credential_by_id, project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
 from core.apps.api.views.subscription import SubscriptionViewSet
@@ -52,6 +52,7 @@ urlpatterns = [
     # Internal endpoints for Golang webhook service
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
+    path("internal/credentials/<int:pk>/", credential_by_id, name="internal-credential-by-id"),
     # Debug node-execution events from engine.
     # Both with/without trailing slash so engines that strip the slash (≤3.5.15)
     # don't hit an APPEND_SLASH 301 → GET → 405.
