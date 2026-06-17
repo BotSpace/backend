@@ -80,7 +80,6 @@ def _upsert_credential(owner_id: int, type_key: str, token_data: dict) -> Creden
     type_info = get_type(type_key) or {}
     account_email = token_data.get("account_email", "")
     default_label = type_info.get("label", type_key)
-    name = account_email or default_label
 
     encrypted = crypto.encrypt(token_data)
 
@@ -90,17 +89,18 @@ def _upsert_credential(owner_id: int, type_key: str, token_data: dict) -> Creden
     ).first()
 
     if existing:
-        existing.name = name
+        # Re-connect: only refresh the tokens. Keep the existing (possibly user-edited)
+        # name so we never clobber a rename or collide on (owner, name).
         existing.data_encrypted = encrypted
-        existing.save(update_fields=["name", "data_encrypted", "updated_at"])
+        existing.save(update_fields=["data_encrypted", "updated_at"])
         return existing
 
-    # Name collision: if there's already a credential with this name (different type_key), suffix it
-    base_name = name
+    # New credential: a meaningful, de-duplicated default name. Include the type label so the
+    # same Google account used for different types (email/sheets/drive) doesn't collide on name.
+    base_name = f"{default_label} ({account_email})" if account_email else default_label
+    name = base_name
     counter = 1
-    while Credential.objects.filter(owner_id=owner_id, name=name, deleted_at__isnull=True).exclude(
-        type_key=type_key
-    ).exists():
+    while Credential.objects.filter(owner_id=owner_id, name=name, deleted_at__isnull=True).exists():
         name = f"{base_name} ({counter})"
         counter += 1
 
