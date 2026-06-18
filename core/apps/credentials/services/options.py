@@ -76,8 +76,46 @@ def load_google_sheet_columns(token: str, params: dict) -> list[dict]:
     return [{"value": h, "label": h} for h in headers]
 
 
+def load_google_drive_folders(token: str, params: dict) -> list[dict]:
+    """List the user's Google Drive folders (optionally inside parent folder_id)."""
+    q = "mimeType='application/vnd.google-apps.folder' and trashed=false"
+    parent = params.get("folder_id")
+    if parent:
+        q += f" and '{parent}' in parents"
+    resp = requests.get(
+        DRIVE_FILES_URL,
+        headers=_auth_headers(token),
+        params={"q": q, "fields": "files(id,name)", "pageSize": 200, "orderBy": "name"},
+        timeout=_TIMEOUT,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"Drive API error {resp.status_code}: {resp.text[:300]}")
+    files = resp.json().get("files", [])
+    return [{"value": f["id"], "label": f["name"]} for f in files]
+
+
+def load_google_drive_files(token: str, params: dict) -> list[dict]:
+    """List the user's Google Drive files (non-folders; optionally inside folder_id)."""
+    q = "mimeType!='application/vnd.google-apps.folder' and trashed=false"
+    parent = params.get("folder_id")
+    if parent:
+        q += f" and '{parent}' in parents"
+    resp = requests.get(
+        DRIVE_FILES_URL,
+        headers=_auth_headers(token),
+        params={"q": q, "fields": "files(id,name)", "pageSize": 200, "orderBy": "name"},
+        timeout=_TIMEOUT,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"Drive API error {resp.status_code}: {resp.text[:300]}")
+    files = resp.json().get("files", [])
+    return [{"value": f["id"], "label": f["name"]} for f in files]
+
+
 OPTION_LOADERS: dict[str, callable] = {
     "google_spreadsheets": load_google_spreadsheets,
     "google_sheet_tabs": load_google_sheet_tabs,
     "google_sheet_columns": load_google_sheet_columns,
+    "google_drive_folders": load_google_drive_folders,
+    "google_drive_files": load_google_drive_files,
 }
