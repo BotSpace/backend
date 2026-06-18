@@ -71,28 +71,43 @@ def order_create(request):
     payer_last_name = data.get("payer_last_name") or ""
     payer_username = data.get("payer_username") or ""
 
-    # Idempotency: agar bunday key bilan order mavjud bo'lsa uni qaytaramiz
+    # Idempotency: mavjud order FAQAT hali qayta ishlatsa bo'ladigan holatda reuse.
+    # CREATED — hali to'lanmagan, bekor qilinmagan → reuse qilsa bo'ladi.
+    # PAID / CANCELLED / REFUNDED — finallanган, yangi order yaratish kerak.
+    REUSABLE_STATUSES = {PaymentOrderStatusEnum.CREATED}
+
     if idempotency_key:
         existing = PaymentOrderModel.objects.filter(idempotency_key=idempotency_key).first()
         if existing:
-            # Mavjud order uchun txn bo'lmasa (eski order) — txn yaratib bog'laymiz
-            if existing.transaction_id is None:
-                txn = TransactionModel.objects.create(user=owner, amount=existing.amount)
-                existing.transaction = txn
-                existing.save(update_fields=["transaction"])
-            pay_url = _generate_pay_url(existing.transaction_id, existing.amount, provider)
-            return Response(
-                {
-                    "status": True,
-                    "data": {
-                        "order_id": existing.pk,
-                        "pay_url": pay_url,
-                        "amount": str(existing.amount),
-                        "net_amount": str(existing.net_amount),
-                        "commission": str(existing.commission),
-                    },
-                }
-            )
+            if existing.status in REUSABLE_STATUSES:
+                # Mavjud pending order uchun txn bo'lmasa — txn yaratib bog'laymiz
+                if existing.transaction_id is None:
+                    txn = TransactionModel.objects.create(user=owner, amount=existing.amount)
+                    existing.transaction = txn
+                    existing.save(update_fields=["transaction"])
+                pay_url = _generate_pay_url(existing.transaction_id, existing.amount, provider)
+                return Response(
+                    {
+                        "status": True,
+                        "data": {
+                            "order_id": existing.pk,
+                            "pay_url": pay_url,
+                            "amount": str(existing.amount),
+                            "net_amount": str(existing.net_amount),
+                            "commission": str(existing.commission),
+                        },
+                    }
+                )
+            else:
+                # Final holatdagi (paid/cancelled/refunded) order — key'ni bo'shatib
+                # yangi order yaratishga ruxsat beramiz (unique constraint'ni saqlagan holda).
+                logger.info(
+                    "idempotency_key reuse skipped: existing order #%s status=%s — freeing key for new order",
+                    existing.pk,
+                    existing.status,
+                )
+                existing.idempotency_key = None
+                existing.save(update_fields=["idempotency_key"])
 
     # Komissiya audit uchun order yaratilayotganda hisoblanadi
     commission, net_amount = calculate_commission(amount)

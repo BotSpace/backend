@@ -105,7 +105,8 @@ def test_order_create_unknown_project_returns_404(internal_client, settings):
 
 
 @pytest.mark.django_db
-def test_order_create_idempotency(internal_client, project, settings):
+def test_order_create_idempotency_pending_reuse(internal_client, project, settings):
+    """CREATED (pending) order — bir xil key bilan qayta so'rov bir xil order'ni qaytaradi."""
     settings.INTERNAL_API_TOKEN = INTERNAL_TOKEN
     body = {
         "project_id": project.pk,
@@ -119,6 +120,63 @@ def test_order_create_idempotency(internal_client, project, settings):
     assert r1.status_code == 201
     assert r2.json()["data"]["order_id"] == r1.json()["data"]["order_id"]
     assert PaymentOrderModel.objects.filter(idempotency_key="uniq-key-abc").count() == 1
+
+
+@pytest.mark.django_db
+def test_order_create_idempotency_paid_creates_new_order(internal_client, project, settings):
+    """PAID order — bir xil key bilan qayta so'rov YANGI order yaratadi."""
+    settings.INTERNAL_API_TOKEN = INTERNAL_TOKEN
+    body = {
+        "project_id": project.pk,
+        "payer_chat_id": 456,
+        "amount": "3000",
+        "idempotency_key": "paid-key-xyz",
+    }
+    r1 = internal_client.post(ENDPOINT, body, format="json")
+    assert r1.status_code == 201
+    order_id_1 = r1.json()["data"]["order_id"]
+
+    # Order'ni PAID holatiga o'tkazamiz
+    PaymentOrderModel.objects.filter(pk=order_id_1).update(status=PaymentOrderStatusEnum.PAID)
+
+    r2 = internal_client.post(ENDPOINT, body, format="json")
+    assert r2.status_code == 201
+    order_id_2 = r2.json()["data"]["order_id"]
+
+    assert order_id_2 != order_id_1, "Paid order reuse qilinmasligi kerak — yangi order yaratilishi shart"
+    # Yangi order key bilan saqlanadi, eski paid order'ning key'i NULL bo'ladi
+    assert PaymentOrderModel.objects.filter(idempotency_key="paid-key-xyz").count() == 1
+    new_order = PaymentOrderModel.objects.get(pk=order_id_2)
+    assert new_order.idempotency_key == "paid-key-xyz"
+    old_order = PaymentOrderModel.objects.get(pk=order_id_1)
+    assert old_order.idempotency_key is None
+
+
+@pytest.mark.django_db
+def test_order_create_idempotency_cancelled_creates_new_order(internal_client, project, settings):
+    """CANCELLED order — bir xil key bilan qayta so'rov YANGI order yaratadi."""
+    settings.INTERNAL_API_TOKEN = INTERNAL_TOKEN
+    body = {
+        "project_id": project.pk,
+        "payer_chat_id": 789,
+        "amount": "4000",
+        "idempotency_key": "cancelled-key-xyz",
+    }
+    r1 = internal_client.post(ENDPOINT, body, format="json")
+    assert r1.status_code == 201
+    order_id_1 = r1.json()["data"]["order_id"]
+
+    PaymentOrderModel.objects.filter(pk=order_id_1).update(status=PaymentOrderStatusEnum.CANCELLED)
+
+    r2 = internal_client.post(ENDPOINT, body, format="json")
+    assert r2.status_code == 201
+    order_id_2 = r2.json()["data"]["order_id"]
+
+    assert order_id_2 != order_id_1, "Cancelled order reuse qilinmasligi kerak"
+    new_order = PaymentOrderModel.objects.get(pk=order_id_2)
+    assert new_order.idempotency_key == "cancelled-key-xyz"
+    old_order = PaymentOrderModel.objects.get(pk=order_id_1)
+    assert old_order.idempotency_key is None
 
 
 @pytest.mark.django_db
