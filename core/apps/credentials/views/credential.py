@@ -74,6 +74,21 @@ class CredentialViewSet(ViewSet):
         cred.save(update_fields=["deleted_at", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=["get"], url_path="reveal")
+    def reveal(self, request, pk=None):
+        """Return decrypted credential data to the owner (password-manager-style)."""
+        from core.apps.credentials.services import crypto
+
+        cred = self._get_object(pk)
+        try:
+            data = crypto.decrypt(cred.data_encrypted)
+        except Exception as exc:
+            return Response(
+                {"detail": f"Cannot decrypt credential: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response({"data": data})
+
     @action(detail=True, methods=["post"], url_path="test")
     def test_credential(self, request, pk=None):
         """Test credential connectivity — decrypts and calls the real remote API."""

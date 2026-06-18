@@ -172,6 +172,59 @@ def test_test_unsupported_type(auth_client):
 
 
 @pytest.mark.django_db
+def test_reveal_owner_sees_decrypted(auth_client):
+    """Owner calls GET /credentials/<id>/reveal/ and gets plain-text data back."""
+    client, owner = auth_client
+    secret_data = {"token": "supersecret_token_xyz", "base_url": "https://api.example.com"}
+    cred = _make_credential(owner, type_key="bearer", name="Reveal test", data=secret_data)
+    resp = client.get(f"/api/v1/credentials/{cred.id}/reveal/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "data" in body
+    assert body["data"]["token"] == "supersecret_token_xyz"
+    assert body["data"]["base_url"] == "https://api.example.com"
+
+
+@pytest.mark.django_db
+def test_reveal_other_user_gets_404():
+    """User B cannot reveal User A's credential — owner guard returns 404."""
+    project_a = ProjectModel._create_fake()
+    project_b = ProjectModel._create_fake()
+
+    cred_a = _make_credential(project_a.owner, name="A secret", data={"token": "a_token_value"})
+
+    client_b = APIClient()
+    client_b.force_authenticate(project_b.owner)
+
+    resp = client_b.get(f"/api/v1/credentials/{cred_a.id}/reveal/")
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_reveal_soft_deleted_returns_404(auth_client):
+    """Soft-deleted credential is not revealed."""
+    from django.utils import timezone
+
+    client, owner = auth_client
+    cred = _make_credential(owner, name="Deleted cred", data={"token": "gone_token"})
+    cred.deleted_at = timezone.now()
+    cred.save(update_fields=["deleted_at"])
+
+    resp = client.get(f"/api/v1/credentials/{cred.id}/reveal/")
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_reveal_unauthenticated_returns_401():
+    """Unauthenticated request must be rejected."""
+    project = ProjectModel._create_fake()
+    cred = _make_credential(project.owner, name="Auth test")
+    client = APIClient()
+    resp = client.get(f"/api/v1/credentials/{cred.id}/reveal/")
+    assert resp.status_code == 401
+
+
+@pytest.mark.django_db
 def test_types_list(auth_client):
     client, _ = auth_client
     resp = client.get("/api/v1/credentials/types/")
