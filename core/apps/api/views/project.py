@@ -731,10 +731,11 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
         key = serializer.validated_data["key"]
         project = serializer.validated_data["project"]
         value = serializer.validated_data["value"]
+        secret = serializer.validated_data.get("secret", False)
         obj, _ = EnviromentModel.objects.update_or_create(
             key=key,
             project=project,
-            defaults={"value": value, "user": self.request.user},
+            defaults={"value": value, "secret": secret, "user": self.request.user},
         )
         serializer.instance = obj
 

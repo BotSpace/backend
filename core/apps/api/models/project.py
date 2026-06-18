@@ -168,6 +168,7 @@ class EnviromentModel(AbstractBaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     key = models.CharField(verbose_name=_("name"), max_length=255)
     value = models.CharField(_("value"), max_length=255)
+    secret = models.BooleanField(_("secret"), default=False)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

@@ -3,6 +3,8 @@ from rest_framework import serializers
 from core.apps.api.models import EnviromentModel
 from core.apps.api.serializers.fields import ProjectPkOrUuidField
 
+MASKED_VALUE = "••••"
+
 
 class BaseEnviromentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,15 +13,29 @@ class BaseEnviromentSerializer(serializers.ModelSerializer):
             "id",
             "key",
             "value",
+            "secret",
         ]
 
 
 class ListEnviromentSerializer(BaseEnviromentSerializer):
-    class Meta(BaseEnviromentSerializer.Meta): ...
+    value = serializers.SerializerMethodField()
+
+    class Meta(BaseEnviromentSerializer.Meta):
+        fields = [
+            "id",
+            "key",
+            "value",
+            "secret",
+        ]
+
+    def get_value(self, obj: EnviromentModel) -> str:
+        if obj.secret:
+            return MASKED_VALUE
+        return obj.value
 
 
-class RetrieveEnviromentSerializer(BaseEnviromentSerializer):
-    class Meta(BaseEnviromentSerializer.Meta): ...
+class RetrieveEnviromentSerializer(ListEnviromentSerializer):
+    class Meta(ListEnviromentSerializer.Meta): ...
 
 
 class CreateEnviromentSerializer(BaseEnviromentSerializer):
@@ -30,6 +46,7 @@ class CreateEnviromentSerializer(BaseEnviromentSerializer):
             "id",
             "key",
             "value",
+            "secret",
             "project",
         ]
         # Drop the auto-generated UniqueTogetherValidator on (key, project).
