@@ -79,6 +79,7 @@ CREDENTIAL_TYPES: list[dict] = [
             "openid",
             "email",
             "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive.readonly",
         ],
         "fields": [],
     },
