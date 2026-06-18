@@ -42,6 +42,7 @@ from core.apps.api.services.kubernetes_service import deployment_logs_snapshot
 from core.apps.api.services.enviroment import project_enviroment
 from core.throttle.ip_throttle import DebugContainerThrottle, ReleaseCreateThrottle
 from core.apps.api.services.webhook import set_webhook
+from core.apps.api.exceptions.bot import BotTokenNotFound, ReleaseBotTokenNotFound
 from core.apps.cms_legacy.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
 
@@ -329,6 +330,62 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return Response(data={"token": str(token), "room": "project_%s" % project.id})
 
     @extend_schema(
+        summary="Bot tokenini o'rnatish (telegram credential)",
+        description=(
+            "Telegram bot tokenini qabul qiladi, getMe orqali tekshiradi, owner-scoped "
+            "telegram credential yaratadi/yangilaydi va deploy uchun RELEASE_BOT_TOKEN "
+            "(secret) env'ini o'rnatadi. Ishga tushurish (release)dan oldin chaqiriladi."
+        ),
+        request={"application/json": {"type": "object", "properties": {"token": {"type": "string"}}}},
+    )
+    @action(methods=["POST"], detail=True, url_name="set-bot-token", url_path="set-bot-token")
+    def set_bot_token(self, request, pk):
+        from telebot import TeleBot
+        from core.apps.credentials.models import Credential
+        from core.apps.credentials.services import crypto
+
+        project = self.get_object()  # owner-checked via get_queryset
+        token = (request.data.get("token") or "").strip()
+        if not token:
+            return Response({"detail": _("Token kiritilmagan")}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate the token and grab the bot username for a nice credential name.
+        try:
+            bot_username = TeleBot(token).get_me().username
+        except Exception:
+            return Response(
+                {"detail": _("Token noto'g'ri yoki Telegram'ga ulanib bo'lmadi")},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cred_name = ("@%s" % bot_username) if bot_username else (project.name or "Bot token")
+        data_encrypted = crypto.encrypt({"bot_token": token})
+        try:
+            existing = Credential.objects.filter(
+                owner=request.user, name=cred_name, deleted_at__isnull=True
+            ).first()
+            if existing:
+                existing.type_key = "telegram"
+                existing.data_encrypted = data_encrypted
+                existing.save()
+            else:
+                Credential.objects.create(
+                    owner=request.user, name=cred_name, type_key="telegram",
+                    data_encrypted=data_encrypted,
+                )
+        except Exception:
+            # Credential is for management; the env below is what the deploy actually reads.
+            pass
+
+        # Deploy reads RELEASE_BOT_TOKEN — keep it in sync (marked secret so the UI masks it).
+        EnviromentModel.objects.update_or_create(
+            project=project,
+            key="RELEASE_BOT_TOKEN",
+            defaults={"value": token, "user": request.user, "secret": True},
+        )
+        return Response({"detail": _("Saqlandi"), "username": bot_username})
+
+    @extend_schema(
         summary="Debug holati",
         description="Loyihaning debug konteynerining joriy holati va ma'lumotlarini qaytaradi.",
         responses={
@@ -584,6 +641,16 @@ class ReleaseView(BaseViewSetMixin, CreateModelMixin, RetrieveModelMixin, ListMo
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
+        except (BotTokenNotFound, ReleaseBotTokenNotFound):
+            # First release without a bot token — tell the dashboard to ask for a
+            # Telegram credential instead of returning a 500.
+            return Response(
+                {
+                    "detail": _("Ishga tushurishdan oldin Telegram bot tokenini kiriting."),
+                    "code": "bot_token_required",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except ApiException as exc:
             raise _deployment_error(exc) from exc
 
