@@ -42,18 +42,6 @@ CREDENTIAL_TYPES: list[dict] = [
             {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": False},
         ],
     },
-    # --- Search tools ---
-    {
-        "key": "tavily",
-        "label": "Tavily Search",
-        "icon": "search",
-        "color": "#6E56CF",
-        "mode": "bearer",
-        "fields": [
-            {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": True},
-            {"name": "base_url", "label": "Base URL", "type": "text", "required": False, "default": "https://api.tavily.com"},
-        ],
-    },
     # --- Messaging ---
     {
         "key": "telegram",
