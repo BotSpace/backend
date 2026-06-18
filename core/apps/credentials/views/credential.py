@@ -76,6 +76,15 @@ class CredentialViewSet(ViewSet):
 
     @action(detail=True, methods=["post"], url_path="test")
     def test_credential(self, request, pk=None):
-        """Stub endpoint — always returns ok:true."""
-        self._get_object(pk)
-        return Response({"ok": True})
+        """Test credential connectivity — decrypts and calls the real remote API."""
+        from core.apps.credentials.services import crypto
+        from core.apps.credentials.services.credential_tester import test_credential
+
+        cred = self._get_object(pk)
+        try:
+            data = crypto.decrypt(cred.data_encrypted)
+        except Exception as exc:
+            return Response({"ok": False, "message": f"Cannot decrypt credential: {exc}"})
+
+        result = test_credential(cred.type_key, data)
+        return Response(result)

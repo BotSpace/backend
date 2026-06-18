@@ -160,12 +160,15 @@ def test_owner_scoping():
 
 
 @pytest.mark.django_db
-def test_test_stub(auth_client):
+def test_test_unsupported_type(auth_client):
+    """Types without a real tester must return ok=False, not silent success."""
     client, owner = auth_client
-    cred = _make_credential(owner)
+    cred = _make_credential(owner, type_key="bearer")
     resp = client.post(f"/api/v1/credentials/{cred.id}/test/")
     assert resp.status_code == 200
-    assert resp.json() == {"ok": True}
+    body = resp.json()
+    assert body["ok"] is False
+    assert "not supported" in body["message"].lower()
 
 
 @pytest.mark.django_db
