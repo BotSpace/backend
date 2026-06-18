@@ -5,62 +5,49 @@ No DB table, no API to create/edit types.
 """
 from __future__ import annotations
 
+# Each type is purpose-specific (a service), not a generic auth scheme. If a service needs
+# basic/bearer/api-key auth, that is baked into the type's `mode` + fields below.
+# `color` drives the (colored) icon in the UI.
 CREDENTIAL_TYPES: list[dict] = [
+    # --- AI providers ---
     {
-        "key": "api_key",
-        "label": "API Key / Token",
-        "icon": "key",
-        "mode": "apikey",
-        "fields": [
-            {"name": "token", "label": "API Key / Token", "type": "password", "secret": True, "required": True},
-            {"name": "param_name", "label": "Header / query name", "type": "text", "required": True, "default": "X-API-Key"},
-            {
-                "name": "placement",
-                "label": "Joylashuv",
-                "type": "select",
-                "required": True,
-                "default": "header",
-                "options": [
-                    {"value": "header", "label": "Header"},
-                    {"value": "query", "label": "Query param"},
-                ],
-            },
-        ],
-    },
-    {
-        "key": "bearer",
-        "label": "Bearer Token",
-        "icon": "shield",
+        "key": "openai",
+        "label": "ChatGPT (OpenAI)",
+        "icon": "bot",
+        "color": "#10A37F",
         "mode": "bearer",
         "fields": [
-            {"name": "token", "label": "Token", "type": "password", "secret": True, "required": True},
+            {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": True},
+            {"name": "base_url", "label": "Base URL", "type": "text", "required": False, "default": "https://api.openai.com/v1"},
         ],
     },
     {
-        "key": "header_auth",
-        "label": "Header Auth",
-        "icon": "list",
-        "mode": "header",
+        "key": "ai_studio",
+        "label": "Google AI Studio",
+        "icon": "sparkles",
+        "color": "#1A73E8",
+        "mode": "bearer",
         "fields": [
-            {"name": "header_name", "label": "Header nomi", "type": "text", "required": True, "default": "Authorization"},
-            {"name": "header_value", "label": "Header qiymati", "type": "password", "secret": True, "required": True},
+            {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": True},
         ],
     },
     {
-        "key": "basic_auth",
-        "label": "Basic Auth",
-        "icon": "user",
-        "mode": "basic",
+        "key": "ollama",
+        "label": "Ollama",
+        "icon": "boxes",
+        "color": "#F97316",
+        "mode": "bearer",
         "fields": [
-            {"name": "username", "label": "Username", "type": "text", "required": True},
-            {"name": "password", "label": "Password", "type": "password", "secret": True, "required": True},
+            {"name": "base_url", "label": "Base URL", "type": "text", "required": True, "default": "https://ollama.com/v1"},
+            {"name": "api_key", "label": "API key", "type": "password", "secret": True, "required": False},
         ],
     },
-    # --- developer-added types ---
+    # --- Messaging ---
     {
         "key": "telegram",
         "label": "Telegram",
         "icon": "send",
+        "color": "#229ED9",
         "mode": "none",
         "fields": [
             {"name": "bot_token", "label": "Bot token", "type": "password", "secret": True, "required": True},
@@ -71,6 +58,7 @@ CREDENTIAL_TYPES: list[dict] = [
         "key": "google_email",
         "label": "Google (Email)",
         "icon": "mail",
+        "color": "#EA4335",
         "mode": "oauth2",
         "provider": "google",
         "scopes": [
@@ -84,6 +72,7 @@ CREDENTIAL_TYPES: list[dict] = [
         "key": "google_sheets",
         "label": "Google Sheets",
         "icon": "table",
+        "color": "#0F9D58",
         "mode": "oauth2",
         "provider": "google",
         "scopes": [
@@ -97,6 +86,7 @@ CREDENTIAL_TYPES: list[dict] = [
         "key": "google_drive",
         "label": "Google Drive",
         "icon": "folder",
+        "color": "#FBBC04",
         "mode": "oauth2",
         "provider": "google",
         "scopes": [

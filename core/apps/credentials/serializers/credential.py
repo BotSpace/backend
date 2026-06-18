@@ -68,6 +68,7 @@ class CredentialRegistryTypeSerializer(serializers.Serializer):
     key = serializers.CharField()
     label = serializers.CharField()
     icon = serializers.CharField()
+    color = serializers.CharField(required=False, allow_null=True, default=None)
     mode = serializers.CharField()
     fields = serializers.ListField()
     provider = serializers.CharField(required=False, allow_null=True, default=None)
