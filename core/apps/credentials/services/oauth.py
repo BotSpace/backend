@@ -15,7 +15,7 @@ from django.core import signing
 
 # State token max age in seconds (10 minutes)
 STATE_MAX_AGE = 600
-CALLBACK_URL = "https://api.botmother.uz/api/v1/credentials/oauth/{provider}/callback/"
+CALLBACK_URL = "https://api.botspace.uz/api/v1/credentials/oauth/{provider}/callback/"
 
 
 # ---------------------------------------------------------------------------
