@@ -3,7 +3,13 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
-from core.apps.api.views.debug import DebugContextEventView, DebugContextLatestView, DebugNodeEventView
+from core.apps.api.views.debug import (
+    DebugContextEventView,
+    DebugContextLatestView,
+    DebugErrorEventView,
+    DebugErrorListView,
+    DebugNodeEventView,
+)
 from core.apps.api.views.internal import credential_by_id, project_by_debug_uuid, project_by_release_uuid
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
@@ -64,4 +70,9 @@ urlpatterns = [
     # Constructor: ulanganda oxirgi snapshot'ni olish (GET ?project_id=&chat_id=).
     path("debug/context/latest/", DebugContextLatestView.as_view(), name="debug-context-latest"),
     path("debug/context/latest", DebugContextLatestView.as_view(), name="debug-context-latest-noslash"),
+    # Flow error observability: engine POST qiladi, constructor/AI GET qiladi.
+    path("debug/error-event/", DebugErrorEventView.as_view(), name="debug-error-event"),
+    path("debug/error-event", DebugErrorEventView.as_view(), name="debug-error-event-noslash"),
+    path("debug/errors/", DebugErrorListView.as_view(), name="debug-error-list"),
+    path("debug/errors", DebugErrorListView.as_view(), name="debug-error-list-noslash"),
 ]

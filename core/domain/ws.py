@@ -9,6 +9,7 @@ class EventTypes(Enum):
     RELEASE_STATUS = "release_status"
     NODE_EXECUTION = "node_execution"
     CONTEXT_SNAPSHOT = "context"
+    ERROR = "error"
 
 
 class DebugContainerStatus(BaseModel):
@@ -53,6 +54,18 @@ class ContextSnapshot(BaseModel):
     project: int
     chat_id: int
     variables: Any  # dict — engine har xil tuzilma yuborishi mumkin
+    ts: Optional[int] = None
+
+
+class ErrorEvent(BaseModel):
+    """Engine flow xatolarini real-time constructor'ga uzatish uchun WS event schema."""
+
+    project: int
+    chat_id: int
+    node_id: Optional[str] = None
+    node_type: Optional[str] = None
+    message: str
+    detail: Optional[str] = None
     ts: Optional[int] = None
 
 

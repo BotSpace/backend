@@ -1,15 +1,16 @@
 # type: ignore
+import json
 import logging
 
 from django.conf import settings
 from django.core.cache import cache
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.apps.cms.views._common import resolve_project
 from core.apps.websocket.services.events import ws_publish
-from core.domain.ws import ContextSnapshot, EventTypes, NodeExecutionStatus
+from core.domain.ws import ContextSnapshot, ErrorEvent, EventTypes, NodeExecutionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -177,12 +178,138 @@ class DebugContextLatestView(APIView):
             return Response({"detail": "Ruxsat yo'q."}, status=403)
 
         try:
-            import json as _json
-
             raw = cache.get(_context_cache_key(project.pk, chat_id))
             if raw is None:
                 return Response({"snapshot": None})
-            return Response({"snapshot": _json.loads(raw)})
+            return Response({"snapshot": json.loads(raw)})
         except Exception as exc:
             logger.error("DebugContextLatestView cache.get xatosi: %s", exc)
             return Response({"detail": "Cache xatosi."}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# Flow error observability
+# ---------------------------------------------------------------------------
+
+_ERRORS_CACHE_TTL = 86400  # 24 soat
+_ERRORS_CAP = 100  # project bo'yicha saqlanadigan maksimal xato soni
+
+
+def _errors_cache_key(project_pk: int) -> str:
+    return f"proj_errors_{project_pk}"
+
+
+class DebugErrorEventView(APIView):
+    """Engine'dan kelgan flow xatosini qabul qilib, Redis'ga saqlaydi va WS orqali constructor'ga uzatadi.
+
+    Auth: X-Internal-Token == settings.INTERNAL_API_TOKEN (node-event bilan bir xil).
+    Engine yuboradi: {project_id, chat_id, node_id, node_type, message, detail, ts}
+
+    WS event: {event: "error", data: {project, chat_id, node_id, node_type, message, detail, ts}}
+    Redis:    proj_errors_{project.pk} — oxirgi 100 ta xato (JSON list), TTL 24h.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def post(self, request):
+        expected = getattr(settings, "INTERNAL_API_TOKEN", None)
+        if not expected or request.headers.get("X-Internal-Token", "") != expected:
+            return Response({"detail": "Ruxsat etilmagan so'rov."}, status=403)
+
+        data = request.data
+        project_id = data.get("project_id")
+        if not project_id:
+            return Response({"detail": "project_id majburiy."}, status=400)
+
+        message = data.get("message") or ""
+        if not message:
+            return Response({"detail": "message majburiy."}, status=400)
+
+        project = resolve_project(project_id)
+        if project is None:
+            return Response({"detail": "Project topilmadi."}, status=404)
+
+        ts = int(data["ts"]) if data.get("ts") else None
+
+        error_payload = {
+            "project": project.pk,
+            "chat_id": int(data.get("chat_id", 0)),
+            "node_id": data.get("node_id") or None,
+            "node_type": data.get("node_type") or None,
+            "message": message,
+            "detail": data.get("detail") or None,
+            "ts": ts,
+        }
+
+        # Redis ro'yxatiga qo'shamiz (cap=100, TTL=24h).
+        try:
+            key = _errors_cache_key(project.pk)
+            existing_raw = cache.get(key)
+            errors_list = json.loads(existing_raw) if existing_raw else []
+            errors_list.append(error_payload)
+            if len(errors_list) > _ERRORS_CAP:
+                errors_list = errors_list[-_ERRORS_CAP:]
+            cache.set(key, json.dumps(errors_list), timeout=_ERRORS_CACHE_TTL)
+        except Exception as exc:
+            logger.warning("DebugErrorEventView cache xatosi: %s", exc)
+
+        # WS orqali real-time constructor'ga yuborish.
+        try:
+            schema = ErrorEvent(
+                project=project.pk,
+                chat_id=int(data.get("chat_id", 0)),
+                node_id=data.get("node_id") or None,
+                node_type=data.get("node_type") or None,
+                message=message,
+                detail=data.get("detail") or None,
+                ts=ts,
+            )
+            ws_publish(project.owner_id, schema, EventTypes.ERROR)
+        except Exception as exc:
+            logger.error("DebugErrorEventView ws_publish xatosi: %s", exc)
+
+        return Response({"ok": True})
+
+
+class DebugErrorListView(APIView):
+    """Constructor va AI agent uchun: project bo'yicha oxirgi xatolar ro'yxati.
+
+    GET /api/debug/errors/?project_id=<id>&limit=<n>
+    Auth: JWT — faqat project owner.
+    Javob: {errors: [...]} — eng yangi birinchi.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        project_id = request.query_params.get("project_id")
+        if not project_id:
+            return Response({"detail": "project_id majburiy."}, status=400)
+
+        project = resolve_project(project_id)
+        if project is None:
+            return Response({"detail": "Project topilmadi."}, status=404)
+
+        if project.owner_id != request.user.pk:
+            return Response({"detail": "Ruxsat yo'q."}, status=403)
+
+        try:
+            limit_raw = request.query_params.get("limit")
+            limit = int(limit_raw) if limit_raw else _ERRORS_CAP
+            limit = max(1, min(limit, _ERRORS_CAP))
+        except (ValueError, TypeError):
+            limit = _ERRORS_CAP
+
+        try:
+            key = _errors_cache_key(project.pk)
+            raw = cache.get(key)
+            errors_list = json.loads(raw) if raw else []
+            # Eng yangi birinchi (oxirgi qo'shilganlar tepada).
+            errors_list = list(reversed(errors_list[-limit:]))
+        except Exception as exc:
+            logger.error("DebugErrorListView cache xatosi: %s", exc)
+            return Response({"detail": "Cache xatosi."}, status=500)
+
+        return Response({"errors": errors_list})
