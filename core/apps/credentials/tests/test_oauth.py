@@ -26,7 +26,14 @@ from core.apps.credentials.services.oauth import make_state, verify_state, build
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_oauth_credential(owner, type_key="google_email", access_token="tok", refresh_token="rtok"):
+def _make_oauth_credential(
+    owner,
+    type_key="google_email",
+    access_token="tok",
+    refresh_token="rtok",
+    account_email="user@gmail.com",
+    name=None,
+):
     expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
     data = {
         "access_token": access_token,
@@ -34,12 +41,17 @@ def _make_oauth_credential(owner, type_key="google_email", access_token="tok", r
         "expires_at": expires_at,
         "scope": "openid email",
         "token_type": "Bearer",
-        "account_email": "test@example.com",
+        "account_email": account_email,
     }
+    # Default name matches the pattern _upsert_credential uses: "<Label> (<email>)"
+    if name is None:
+        from core.apps.credentials.registry import get_type as _get_type
+        label = (_get_type(type_key) or {}).get("label", type_key)
+        name = f"{label} ({account_email})"
     return Credential.objects.create(
         owner=owner,
         type_key=type_key,
-        name="test@example.com",
+        name=name,
         data_encrypted=crypto.encrypt(data),
     )
 
@@ -239,10 +251,60 @@ def test_oauth_callback_upserts_on_second_call(db):
         )
 
     assert resp.status_code == 200
-    # Still just one credential for this type
+    # Still just one credential for this type (same account)
     assert Credential.objects.filter(owner=owner, type_key="google_email", deleted_at__isnull=True).count() == 1
     cred = Credential.objects.get(owner=owner, type_key="google_email", deleted_at__isnull=True)
     assert crypto.decrypt(cred.data_encrypted)["access_token"] == "updated_tok"
+
+
+@pytest.mark.django_db
+def test_oauth_callback_multiple_accounts_same_type(db):
+    """Connecting a second Gmail account must create a NEW credential, not overwrite the first."""
+    project = ProjectModel._create_fake()
+    owner = project.owner
+
+    # First account already saved
+    _make_oauth_credential(owner, account_email="first@gmail.com")
+
+    state = make_state(owner.pk, "google_email")
+
+    mock_token_resp = MagicMock()
+    mock_token_resp.raise_for_status = MagicMock()
+    mock_token_resp.json.return_value = {**_fake_token_response(), "access_token": "second_tok"}
+
+    # Second account userinfo
+    mock_userinfo_resp = MagicMock()
+    mock_userinfo_resp.ok = True
+    mock_userinfo_resp.json.return_value = {"email": "second@gmail.com", "sub": "999"}
+
+    with patch("core.apps.credentials.oauth_providers._get_google_client_id", return_value="cid"), \
+         patch("core.apps.credentials.oauth_providers._get_google_client_secret", return_value="cs"), \
+         patch("core.apps.credentials.services.oauth.http_requests.post", return_value=mock_token_resp), \
+         patch("core.apps.credentials.services.oauth.http_requests.get", return_value=mock_userinfo_resp):
+        client = APIClient()
+        resp = client.get(
+            "/api/v1/credentials/oauth/google/callback/",
+            {"code": "code_second", "state": state},
+        )
+
+    assert resp.status_code == 200
+
+    # Two separate credentials must exist now
+    qs = Credential.objects.filter(owner=owner, type_key="google_email", deleted_at__isnull=True)
+    assert qs.count() == 2, f"Expected 2, got {qs.count()}: {list(qs.values('name'))}"
+
+    emails_in_names = {c.name for c in qs}
+    assert any("first@gmail.com" in n for n in emails_in_names), emails_in_names
+    assert any("second@gmail.com" in n for n in emails_in_names), emails_in_names
+
+    # First account token is unchanged
+    first_cred = qs.get(name__icontains="first@gmail.com")
+    assert crypto.decrypt(first_cred.data_encrypted)["access_token"] == "tok"
+
+    # Second account token is stored correctly
+    second_cred = qs.get(name__icontains="second@gmail.com")
+    assert crypto.decrypt(second_cred.data_encrypted)["access_token"] == "second_tok"
+    assert crypto.decrypt(second_cred.data_encrypted)["account_email"] == "second@gmail.com"
 
 
 @pytest.mark.django_db

@@ -76,17 +76,36 @@ def _error_html(provider: str, error: str) -> HttpResponse:
 
 
 def _upsert_credential(owner_id: int, type_key: str, token_data: dict) -> Credential:
-    """Create or update oauth2 credential for this owner + type_key."""
+    """Create or update oauth2 credential for this owner + type_key + account_email.
+
+    Lookup key: (owner, type_key, account_email) — so different accounts of the same
+    type each get their own Credential row.  If account_email is unknown (empty string)
+    we fall back to the first existing credential for (owner, type_key) to avoid
+    creating unbounded duplicates when userinfo is unavailable.
+    """
     type_info = get_type(type_key) or {}
     account_email = token_data.get("account_email", "")
     default_label = type_info.get("label", type_key)
 
     encrypted = crypto.encrypt(token_data)
 
-    # Upsert: find existing (not deleted) by owner + type_key, or create new
-    existing = Credential.objects.filter(
-        owner_id=owner_id, type_key=type_key, deleted_at__isnull=True
-    ).first()
+    # Narrow the upsert key by account_email when it is known.
+    if account_email:
+        # Look for a credential that belongs to exactly this account.
+        existing_qs = Credential.objects.filter(
+            owner_id=owner_id, type_key=type_key, deleted_at__isnull=True
+        )
+        # Match on the stored account_email field inside the encrypted blob is not
+        # feasible without decryption, so we match on the credential name instead:
+        # default name pattern is "<Label> (<email>)" — unique per (owner, type, email).
+        # On re-connect the name might have been user-edited, so also check by name.
+        expected_name_prefix = f"{default_label} ({account_email})"
+        existing = existing_qs.filter(name=expected_name_prefix).first()
+    else:
+        # No email info — fall back to first credential of this type (old behaviour).
+        existing = Credential.objects.filter(
+            owner_id=owner_id, type_key=type_key, deleted_at__isnull=True
+        ).first()
 
     if existing:
         # Re-connect: only refresh the tokens. Keep the existing (possibly user-edited)
