@@ -8,6 +8,7 @@ class EventTypes(Enum):
     DEBUG_STATUS = "debug_status"
     RELEASE_STATUS = "release_status"
     NODE_EXECUTION = "node_execution"
+    CONTEXT_SNAPSHOT = "context"
 
 
 class DebugContainerStatus(BaseModel):
@@ -44,6 +45,15 @@ class NodeExecutionStatus(BaseModel):
     seq: Optional[int] = None
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class ContextSnapshot(BaseModel):
+    """Engine debug rejimda yuboradigan flow context (o'zgaruvchilar) snapshot'i."""
+
+    project: int
+    chat_id: int
+    variables: Any  # dict — engine har xil tuzilma yuborishi mumkin
+    ts: Optional[int] = None
 
 
 class WsEvents(BaseModel):
