@@ -26,7 +26,7 @@ def service_send_webhook(service_name, payload):
 
 def set_webhook(instance: ProjectModel, mode: WEBHOOK_MODE):
     base_url = "https://%(domain)s/api/bot-webhook/%(mode)s/" % {
-        "domain": env.str("DOMAIN", "api.botmother.uz"),
+        "domain": env.str("DOMAIN", "api.botspace.uz"),
         "mode": mode,
     }
     token = ""

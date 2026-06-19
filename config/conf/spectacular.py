@@ -22,7 +22,7 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "POSTPROCESSING_HOOKS": ["config.conf.spectacular.custom_postprocessing_hook"],
     "SERVERS": [{"url": "/api/v1", "description": "Stable v1"}],
-    "CONTACT": {"name": "BotMother Engineering", "email": "engineering@botmother.uz"},
+    "CONTACT": {"name": "BotSpace Engineering", "email": "engineering@botspace.uz"},
     "LICENSE": {"name": "Proprietary"},
     "TAGS": [
         {"name": "auth", "description": "Registration, login, token rotation."},
