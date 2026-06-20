@@ -133,25 +133,65 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
     @extend_schema(
         summary="Loyihani yangilash",
-        description="Loyiha ma'lumotlarini to'liq yangilaydi.",
+        description=(
+            "Loyiha ma'lumotlarini to'liq yangilaydi. Response YENGIL — to'liq flow "
+            "qaytarilmaydi, faqat saqlanganini tasdiqlovchi {status, id, updated_at}."
+        ),
         responses={
-            200: ListProjectSerializer,
+            200: OpenApiResponse(
+                description="Saqlandi",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "example": "ok"},
+                        "id": {"type": "integer", "example": 12},
+                        "updated_at": {"type": "string", "example": "2026-06-21T10:00:00Z"},
+                    },
+                },
+            ),
             404: _error_response("Loyiha topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
         },
     )
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        # Yengil response: flow saqlanadi, lekin to'liq flow QAYTARILMAYDI.
+        # Constructor faqat 200 statusni tekshiradi — bandwidth tejaladi.
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(
+            {
+                "status": "ok",
+                "id": instance.id,
+                "updated_at": getattr(instance, "updated_at", None),
+            }
+        )
 
     @extend_schema(
         summary="Loyihani qisman yangilash",
-        description="Loyiha ma'lumotlarini qisman yangilaydi (faqat yuborilgan maydonlar o'zgaradi).",
+        description=(
+            "Loyiha ma'lumotlarini qisman yangilaydi (faqat yuborilgan maydonlar). "
+            "Response YENGIL — to'liq flow qaytarilmaydi, faqat {status, id, updated_at}."
+        ),
         responses={
-            200: ListProjectSerializer,
+            200: OpenApiResponse(
+                description="Saqlandi",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "example": "ok"},
+                        "id": {"type": "integer", "example": 12},
+                        "updated_at": {"type": "string", "example": "2026-06-21T10:00:00Z"},
+                    },
+                },
+            ),
             404: _error_response("Loyiha topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
         },
     )
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
 
     @extend_schema(
         summary="Loyihani o'chirish",
