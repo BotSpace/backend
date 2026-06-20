@@ -1,3 +1,6 @@
+import base64
+import gzip
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +11,7 @@ from core.apps.api.models import ProjectModel, PlanModel
 
 from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.project import create_default_collections
+from core.apps.api.serializers.project.project import flow_to_gz, gz_to_flow
 
 
 # --- GLOBAL PATCH FIXTURE ---
@@ -186,3 +190,130 @@ def test_release_list_rejects_non_numeric_project(project_client):
 
     assert response.status_code == 400
     assert response.json()["status"] is False
+
+
+# --- FLOW GZIP COMPRESSION TESTS ---
+
+def _make_gz(flow) -> str:
+    return base64.b64encode(gzip.compress(json.dumps(flow).encode("utf-8"))).decode("ascii")
+
+
+@pytest.mark.django_db
+def test_flow_gz_helper_roundtrip():
+    """flow_to_gz / gz_to_flow roundtrip."""
+    flow = {"nodes": [{"id": "1"}], "edges": []}
+    gz = flow_to_gz(flow)
+    assert isinstance(gz, str)
+    assert gz_to_flow(gz) == flow
+
+
+@pytest.mark.django_db
+def test_retrieve_plain_flow_by_default(project_client):
+    """?compress param yo'q → plain flow qaytadi, flow_gz yo'q."""
+    client, urls, instance, _ = project_client
+    instance.flow = {"nodes": [], "edges": []}
+    instance.save(update_fields=["flow"])
+
+    response = client.get(urls["retrieve"])
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "flow" in data
+    assert "flow_gz" not in data
+
+
+@pytest.mark.django_db
+def test_retrieve_compress_returns_flow_gz(project_client):
+    """?compress=1 → flow_gz (base64-gzip) qaytadi, flow=None."""
+    client, urls, instance, _ = project_client
+    original_flow = {"nodes": [{"id": "start"}], "edges": []}
+    instance.flow = original_flow
+    instance.save(update_fields=["flow"])
+
+    response = client.get(urls["retrieve"], {"compress": "1"})
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "flow_gz" in data
+    assert data["flow"] is None
+    decoded = gz_to_flow(data["flow_gz"])
+    assert decoded == original_flow
+
+
+@pytest.mark.django_db
+def test_retrieve_compress_true_string(project_client):
+    """?compress=true ham ishlashi kerak."""
+    client, urls, instance, _ = project_client
+    original_flow = {"nodes": [], "edges": []}
+    instance.flow = original_flow
+    instance.save(update_fields=["flow"])
+
+    response = client.get(urls["retrieve"], {"compress": "true"})
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "flow_gz" in data
+    decoded = gz_to_flow(data["flow_gz"])
+    assert decoded == original_flow
+
+
+@pytest.mark.django_db
+def test_partial_update_with_flow_gz(project_client):
+    """PATCH flow_gz → flow sifatida saqlanadi."""
+    client, urls, instance, _ = project_client
+    new_flow = {"nodes": [{"id": "gz-node"}], "edges": []}
+    gz = _make_gz(new_flow)
+
+    response = client.patch(urls["retrieve"], data={"flow_gz": gz}, format="json")
+    assert response.status_code == 200
+
+    instance.refresh_from_db()
+    assert instance.flow == new_flow
+
+
+@pytest.mark.django_db
+def test_partial_update_flow_gz_overrides_plain_flow(project_client):
+    """flow_gz va flow ikkalasi kelsa, flow_gz ustun turadi."""
+    client, urls, instance, _ = project_client
+    gz_flow = {"nodes": [{"id": "from-gz"}], "edges": []}
+    plain_flow = {"nodes": [{"id": "from-plain"}], "edges": []}
+    gz = _make_gz(gz_flow)
+
+    response = client.patch(urls["retrieve"], data={"flow_gz": gz, "flow": plain_flow}, format="json")
+    assert response.status_code == 200
+
+    instance.refresh_from_db()
+    assert instance.flow == gz_flow
+
+
+@pytest.mark.django_db
+def test_partial_update_plain_flow_still_works(project_client):
+    """Backward-compat: plain flow hali ham ishlaydi (flow_gz yo'q)."""
+    client, urls, instance, _ = project_client
+    new_flow = {"nodes": [{"id": "plain"}], "edges": []}
+
+    response = client.patch(urls["retrieve"], data={"flow": new_flow}, format="json")
+    assert response.status_code == 200
+
+    instance.refresh_from_db()
+    assert instance.flow == new_flow
+
+
+@pytest.mark.django_db
+def test_partial_update_bad_flow_gz_returns_400(project_client):
+    """Buzuq flow_gz → 400, flow o'zgarmaydi."""
+    client, urls, instance, _ = project_client
+    original_flow = instance.flow
+
+    response = client.patch(urls["retrieve"], data={"flow_gz": "INVALID_BASE64!!!"}, format="json")
+    assert response.status_code == 400
+
+    instance.refresh_from_db()
+    assert instance.flow == original_flow
+
+
+@pytest.mark.django_db
+def test_partial_update_valid_b64_but_not_gzip_returns_400(project_client):
+    """Valid base64 lekin gzip emas → 400."""
+    client, urls, instance, _ = project_client
+    bad_gz = base64.b64encode(b"this is not gzip data").decode()
+
+    response = client.patch(urls["retrieve"], data={"flow_gz": bad_gz}, format="json")
+    assert response.status_code == 400

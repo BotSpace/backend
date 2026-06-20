@@ -1,3 +1,7 @@
+import base64
+import gzip
+import json
+
 from rest_framework import serializers
 from drf_spectacular.utils import OpenApiExample
 from core.apps.api.models import ProjectModel
@@ -7,6 +11,29 @@ from core.apps.api.serializers.project.relase import ListRelaseSerializer
 from core.apps.api.services.dashboard import DashboardService
 from core.apps.cms_legacy.services.mongo import get_project_collection
 from core.apps.template.models import TemplateModel
+
+
+def flow_to_gz(flow) -> str:
+    """flow (dict/list) → base64(gzip(json.dumps(flow)))"""
+    raw = json.dumps(flow, ensure_ascii=False).encode("utf-8")
+    compressed = gzip.compress(raw)
+    return base64.b64encode(compressed).decode("ascii")
+
+
+def gz_to_flow(flow_gz: str):
+    """base64(gzip(json)) → dict/list. ValueError on bad input."""
+    try:
+        compressed = base64.b64decode(flow_gz)
+    except Exception as exc:
+        raise ValueError("flow_gz: base64 decode xatosi") from exc
+    try:
+        raw = gzip.decompress(compressed)
+    except Exception as exc:
+        raise ValueError("flow_gz: gzip decompress xatosi") from exc
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise ValueError("flow_gz: JSON parse xatosi") from exc
 
 
 class BaseProjectSerializer(serializers.ModelSerializer):
@@ -63,6 +90,16 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
     def get_release_bot(self, obj) -> bool:
         return EnviromentModel.objects.filter(project=obj, key="RELEASE_BOT_TOKEN").exists()
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        compress = request and request.query_params.get("compress") in ("1", "true", "True")
+        if compress:
+            flow_value = data.get("flow")
+            data["flow_gz"] = flow_to_gz(flow_value)
+            data["flow"] = None
+        return data
+
     class Meta(BaseProjectSerializer.Meta):
         fields = [
             *BaseProjectSerializer.Meta.fields,
@@ -78,6 +115,17 @@ class RetrieveProjectSerializer(BaseProjectSerializer):
 class CreateProjectSerializer(BaseProjectSerializer):
     debug = CreateDebugSerializer(required=False)
     release = None
+    flow_gz = serializers.CharField(required=False, write_only=True, allow_blank=False)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        flow_gz = attrs.pop("flow_gz", None)
+        if flow_gz is not None:
+            try:
+                attrs["flow"] = gz_to_flow(flow_gz)
+            except ValueError as exc:
+                raise serializers.ValidationError({"flow_gz": str(exc)}) from exc
+        return attrs
 
     class Meta(BaseProjectSerializer.Meta):
         fields = [
@@ -85,6 +133,7 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "name",
             "debug",
             "flow",
+            "flow_gz",
         ]
         examples = [
             OpenApiExample(
