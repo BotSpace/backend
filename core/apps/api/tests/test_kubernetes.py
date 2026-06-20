@@ -47,6 +47,18 @@ class TestKubernetesService:
         call_kwargs = mock_apps_api.create_namespaced_deployment.call_args[1]
         assert call_kwargs["namespace"] == "botmother"
 
+        # Verify readiness and liveness probes are set on the container
+        deployment_body = call_kwargs["body"]
+        container = deployment_body.spec.template.spec.containers[0]
+        assert container.readiness_probe is not None, "readinessProbe yo'q"
+        assert container.readiness_probe.http_get.path == "/ready"
+        assert container.readiness_probe.http_get.port == 8000
+        assert container.readiness_probe.initial_delay_seconds == 5
+        assert container.liveness_probe is not None, "livenessProbe yo'q"
+        assert container.liveness_probe.http_get.path == "/health"
+        assert container.liveness_probe.http_get.port == 8000
+        assert container.liveness_probe.initial_delay_seconds == 15
+
     @patch('core.apps.api.services.kubernetes_service.delete_configmap')
     @patch('core.apps.api.services.kubernetes_service.delete_secret')
     @patch('core.apps.api.services.kubernetes_service.get_k8s_client')

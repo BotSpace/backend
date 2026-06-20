@@ -35,6 +35,8 @@ from kubernetes.client import (
     V1Service,
     V1ServiceSpec,
     V1ServicePort,
+    V1Probe,
+    V1HTTPGetAction,
 )
 from kubernetes import client, config
 
@@ -225,6 +227,25 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     volume_mounts = kwargs.get("volume_mounts", [])
     volumes = kwargs.get("volumes", [])
 
+    # Readiness probe: engine /ready endpoint — pod faqat tayyor bo'lganda traffic oladi
+    readiness_probe = V1Probe(
+        http_get=V1HTTPGetAction(path="/ready", port=8000),
+        initial_delay_seconds=5,
+        period_seconds=5,
+        timeout_seconds=3,
+        failure_threshold=3,
+        success_threshold=1,
+    )
+
+    # Liveness probe: engine /health endpoint — pod o'lik bo'lsa restart qilinadi
+    liveness_probe = V1Probe(
+        http_get=V1HTTPGetAction(path="/health", port=8000),
+        initial_delay_seconds=15,
+        period_seconds=15,
+        timeout_seconds=3,
+        failure_threshold=3,
+    )
+
     # Container definition with envFrom to load all env vars from Secret
     container = V1Container(
         name="engine",
@@ -233,6 +254,8 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         resources=resources,
         volume_mounts=volume_mounts if volume_mounts else None,
         ports=[V1ContainerPort(container_port=8000, protocol="TCP")],
+        readiness_probe=readiness_probe,
+        liveness_probe=liveness_probe,
     )
 
     # Pod metadata with labels
