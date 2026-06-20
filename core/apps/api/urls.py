@@ -6,6 +6,7 @@ from core.apps.api.views.webhook import BotWebhookView
 from core.apps.api.views.debug import (
     DebugContextEventView,
     DebugContextLatestView,
+    DebugContextListView,
     DebugErrorEventView,
     DebugErrorListView,
     DebugNodeEventView,
@@ -67,9 +68,14 @@ urlpatterns = [
     # Context snapshot: engine POST qiladi → constructor SSE "context" event oladi.
     path("debug/context-event/", DebugContextEventView.as_view(), name="debug-context-event"),
     path("debug/context-event", DebugContextEventView.as_view(), name="debug-context-event-noslash"),
-    # Constructor: ulanganda oxirgi snapshot'ni olish (GET ?project_id=&chat_id=).
+    # Constructor: project bo'yicha barcha faol chatlar snapshot'lari (GET ?project_id=).
+    # MUHIM: "context/latest/" dan OLDIN turishi kerak — aks holda "latest" "context/"
+    # pattern'i ichida yo'qolishi mumkin emas (path() aniq match qiladi), lekin
+    # o'qilishi osonligi uchun ham spetsifik URL avval keladi.
     path("debug/context/latest/", DebugContextLatestView.as_view(), name="debug-context-latest"),
     path("debug/context/latest", DebugContextLatestView.as_view(), name="debug-context-latest-noslash"),
+    path("debug/context/", DebugContextListView.as_view(), name="debug-context-list"),
+    path("debug/context", DebugContextListView.as_view(), name="debug-context-list-noslash"),
     # Flow error observability: engine POST qiladi, constructor/AI GET qiladi.
     path("debug/error-event/", DebugErrorEventView.as_view(), name="debug-error-event"),
     path("debug/error-event", DebugErrorEventView.as_view(), name="debug-error-event-noslash"),

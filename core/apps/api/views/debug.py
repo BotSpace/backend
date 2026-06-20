@@ -18,9 +18,18 @@ logger = logging.getLogger(__name__)
 # TTL: faol debug sessiya davomida (max 10 daqiqa) yangilanib turadi.
 _CONTEXT_CACHE_TTL = 600  # sekund
 
+# Per-project chat_id SET: qaysi chatlar uchun snapshot borligini eslab qolish.
+# TTL uzunroq — foydalanuvchi refresh qilganda ro'yxat yo'qolmasligi kerak.
+_CHATS_SET_TTL = 86400  # 24 soat
+_CHATS_CAP = 50  # proyekt bo'yicha saqlanadigam maksimal chat soni
+
 
 def _context_cache_key(project_pk: int, chat_id: int) -> str:
     return f"debug_ctx_{project_pk}_{chat_id}"
+
+
+def _chats_set_cache_key(project_pk: int) -> str:
+    return f"debug_ctx_chats_{project_pk}"
 
 
 class DebugNodeEventView(APIView):
@@ -134,6 +143,16 @@ class DebugContextEventView(APIView):
 
             snapshot_payload = {"project": project.pk, "chat_id": chat_id, "variables": variables, "ts": ts}
             cache.set(_context_cache_key(project.pk, chat_id), _json.dumps(snapshot_payload), timeout=_CONTEXT_CACHE_TTL)
+
+            # Per-project chat_id SET: refresh'da barcha chatlarni topish uchun.
+            chats_key = _chats_set_cache_key(project.pk)
+            existing_raw = cache.get(chats_key)
+            chats_list: list = json.loads(existing_raw) if existing_raw else []
+            if chat_id not in chats_list:
+                chats_list.append(chat_id)
+                if len(chats_list) > _CHATS_CAP:
+                    chats_list = chats_list[-_CHATS_CAP:]
+            cache.set(chats_key, json.dumps(chats_list), timeout=_CHATS_SET_TTL)
         except Exception as exc:
             logger.warning("DebugContextEventView cache.set xatosi: %s", exc)
 
@@ -185,6 +204,53 @@ class DebugContextLatestView(APIView):
         except Exception as exc:
             logger.error("DebugContextLatestView cache.get xatosi: %s", exc)
             return Response({"detail": "Cache xatosi."}, status=500)
+
+
+class DebugContextListView(APIView):
+    """Constructor uchun: project bo'yicha barcha faol chatlarning oxirgi snapshot'larini qaytaradi.
+
+    GET /api/debug/context/?project_id=<id>
+    Auth: JWT — faqat project owner.
+    Javob: {chats: [{chat_id, variables, ts, project}, ...]} — TTL o'tgan chatlar o'tkazib yuboriladi.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        project_id = request.query_params.get("project_id")
+        if not project_id:
+            return Response({"detail": "project_id majburiy."}, status=400)
+
+        project = resolve_project(project_id)
+        if project is None:
+            return Response({"detail": "Project topilmadi."}, status=404)
+
+        if project.owner_id != request.user.pk:
+            return Response({"detail": "Ruxsat yo'q."}, status=403)
+
+        try:
+            chats_key = _chats_set_cache_key(project.pk)
+            chats_raw = cache.get(chats_key)
+            chat_ids: list = json.loads(chats_raw) if chats_raw else []
+        except Exception as exc:
+            logger.error("DebugContextListView chats_set cache.get xatosi: %s", exc)
+            return Response({"detail": "Cache xatosi."}, status=500)
+
+        chats = []
+        for cid in chat_ids:
+            try:
+                snap_raw = cache.get(_context_cache_key(project.pk, cid))
+                if snap_raw is None:
+                    # TTL o'tgan — o'tkazib yuboramiz
+                    continue
+                chats.append(json.loads(snap_raw))
+            except Exception as exc:
+                logger.warning("DebugContextListView snapshot o'qish xatosi chat_id=%s: %s", cid, exc)
+
+        # Eng yangi (ts bo'yicha) birinchi
+        chats.sort(key=lambda s: s.get("ts") or 0, reverse=True)
+
+        return Response({"chats": chats})
 
 
 # ---------------------------------------------------------------------------
