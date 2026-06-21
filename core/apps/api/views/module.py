@@ -33,6 +33,13 @@ class ModuleViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = ModuleSerializer
 
+    def get_permissions(self):
+        # Browsing the catalog is open to any authenticated user (they enable
+        # per-project); only mutating the catalog stays admin-only.
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
             return CreateModuleSerializer
