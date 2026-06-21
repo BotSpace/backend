@@ -3,3 +3,4 @@ from .message import *  # noqa
 from .plan import *  # noqa
 from .project import *  # noqa
 from .resource import *  # noqa
+from .module import *  # noqa

@@ -496,6 +496,51 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return Response(data={"detail": _("Updated")})
 
     @extend_schema(
+        summary="Loyiha uchun yoqilgan modullar ro'yxati",
+        responses={200: "ProjectModuleSerializer(many=True)"},
+    )
+    @action(methods=["GET", "POST"], detail=True, url_path="modules", url_name="modules")
+    def modules(self, request, pk):
+        from core.apps.api.views.module import project_module_list, project_module_enable
+
+        project = self.get_object()
+        if request.method == "GET":
+            return project_module_list(request, project)
+        return project_module_enable(request, project)
+
+    @extend_schema(
+        summary="Modulni o'chirish",
+    )
+    @action(methods=["DELETE"], detail=True, url_path="modules/(?P<slug>[^/.]+)", url_name="module-disable")
+    def module_disable(self, request, pk, slug):
+        from core.apps.api.views.module import project_module_disable
+
+        project = self.get_object()
+        return project_module_disable(request, project, slug)
+
+    @extend_schema(
+        summary="Constructor uchun modul manifestlari",
+        responses={200: {"type": "object", "properties": {"manifests": {"type": "array"}}}},
+    )
+    @action(methods=["GET"], detail=True, url_path="module-manifests", url_name="module-manifests")
+    def module_manifests(self, request, pk):
+        from core.apps.api.views.module import project_module_manifests_view
+
+        project = self.get_object()
+        return project_module_manifests_view(request, project)
+
+    @extend_schema(
+        summary="Engine uchun modules.json ma'lumotlari",
+        responses={200: {"type": "object", "properties": {"modules": {"type": "array"}}}},
+    )
+    @action(methods=["GET"], detail=True, url_path="modules-for-engine", url_name="modules-for-engine")
+    def modules_for_engine(self, request, pk):
+        from core.apps.api.views.module import project_modules_for_engine_view
+
+        project = self.get_object()
+        return project_modules_for_engine_view(request, project)
+
+    @extend_schema(
         summary="Debug bot loglarini olish (snapshot)",
         description=(
             "Loyihaning DEBUG konteyneri pod loglarining oxirgi N qatorini qaytaradi. "

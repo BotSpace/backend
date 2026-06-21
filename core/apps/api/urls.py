@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
+from core.apps.api.views.module import ModuleViewSet
+from core.apps.api.views.module_trigger import ModuleTriggerView
 from core.apps.api.views.debug import (
     DebugContextEventView,
     DebugContextLatestView,
@@ -28,6 +30,7 @@ router.register("project", ProjectView, basename="project")
 router.register("message", MessageView, basename="message")
 router.register("plans", PlanViewSet, basename="plans")
 router.register("chat", ChatViewSet, basename="chat")
+router.register("modules", ModuleViewSet, basename="modules")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -81,4 +84,7 @@ urlpatterns = [
     path("debug/error-event", DebugErrorEventView.as_view(), name="debug-error-event-noslash"),
     path("debug/errors/", DebugErrorListView.as_view(), name="debug-error-list"),
     path("debug/errors", DebugErrorListView.as_view(), name="debug-error-list-noslash"),
+    # Module push-trigger relay: modul → engine
+    path("module-trigger/<uuid:project_uuid>/", ModuleTriggerView.as_view(), name="module-trigger"),
+    path("module-trigger/<uuid:project_uuid>", ModuleTriggerView.as_view(), name="module-trigger-noslash"),
 ]

@@ -648,7 +648,20 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
     except Exception:
         schemas = {}
 
-    create_configmap(configmap_name, {"flow.json": flow_json, "schemas.json": _json.dumps(schemas)})
+    from core.apps.api.services.module_service import get_project_modules_for_engine
+
+    try:
+        modules_data = get_project_modules_for_engine(project)
+    except Exception:
+        modules_data = []
+
+    modules_json = _json.dumps({"modules": modules_data})
+
+    create_configmap(configmap_name, {
+        "flow.json": flow_json,
+        "schemas.json": _json.dumps(schemas),
+        "modules.json": modules_json,
+    })
 
     # Build environment variables
     if prefix == "release" and not has_env("BOT_TOKEN"):
@@ -659,6 +672,7 @@ def deploy_engine(project, prefix: str, flow: dict, key: str, _env: list = None,
         _env.append(f"BOT_TOKEN={env.str('TEST_BOT_TOKEN')}")
     _env.append("FLOW_FILE_PATH=/app/assets/flow.json")
     _env.append("SCHEMAS_FILE_PATH=/app/assets/schemas.json")
+    _env.append("MODULE_CONFIG_PATH=/app/assets/modules.json")
     _env.append("WEBHOOK_ENABLED=true")
     _env.append("WEBHOOK_PORT=8000")
     _env.append("REDIS_ENABLED=true")
