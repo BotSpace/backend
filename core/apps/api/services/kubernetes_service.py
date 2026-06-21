@@ -21,6 +21,7 @@ from kubernetes.client import (
     V1EnvVar,
     V1Deployment,
     V1DeploymentSpec,
+    V1DeploymentStrategy,
     V1PodTemplateSpec,
     V1PodSpec,
     V1Container,
@@ -285,10 +286,16 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     )
 
     # Deployment spec
+    # Recreate: on reload the old pod is terminated BEFORE the new one starts,
+    # so ready_replicas drops to 0 ("init") and only returns to 1 ("running")
+    # once the new engine passes the readiness probe. With the default
+    # RollingUpdate the old ready pod lingers, so a reload looked "running"
+    # instantly.
     deployment_spec = V1DeploymentSpec(
         replicas=1,
         selector=V1LabelSelector(match_labels=labels),
         template=pod_template,
+        strategy=V1DeploymentStrategy(type="Recreate"),
     )
 
     # Deployment metadata
