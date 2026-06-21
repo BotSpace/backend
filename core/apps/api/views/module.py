@@ -32,6 +32,7 @@ class ModuleViewSet(ModelViewSet):
     queryset = ModuleModel.objects.all().order_by("-id")
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = ModuleSerializer
+    lookup_field = "slug"  # detail/retrieve by slug (constructor uses slug)
 
     def get_permissions(self):
         # Browsing the catalog is open to any authenticated user (they enable
