@@ -228,9 +228,16 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     volume_mounts = kwargs.get("volume_mounts", [])
     volumes = kwargs.get("volumes", [])
 
-    # Readiness probe: engine /ready endpoint — pod faqat tayyor bo'lganda traffic oladi
+    # Port + probe paths are parameterizable (engine defaults: 8000 + /ready,/health).
+    # Modules listen on their own port and only expose /health, so deploy_module
+    # passes container_port=module.port and readiness_path="/health".
+    container_port = int(kwargs.get("container_port", 8000))
+    readiness_path = kwargs.get("readiness_path", "/ready")
+    liveness_path = kwargs.get("liveness_path", "/health")
+
+    # Readiness probe: pod faqat tayyor bo'lganda traffic oladi
     readiness_probe = V1Probe(
-        http_get=V1HTTPGetAction(path="/ready", port=8000),
+        http_get=V1HTTPGetAction(path=readiness_path, port=container_port),
         initial_delay_seconds=5,
         period_seconds=5,
         timeout_seconds=3,
@@ -238,9 +245,9 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         success_threshold=1,
     )
 
-    # Liveness probe: engine /health endpoint — pod o'lik bo'lsa restart qilinadi
+    # Liveness probe: pod o'lik bo'lsa restart qilinadi
     liveness_probe = V1Probe(
-        http_get=V1HTTPGetAction(path="/health", port=8000),
+        http_get=V1HTTPGetAction(path=liveness_path, port=container_port),
         initial_delay_seconds=15,
         period_seconds=15,
         timeout_seconds=3,
@@ -254,7 +261,7 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
         env_from=[V1EnvFromSource(secret_ref=V1SecretEnvSource(name=secret_name))],
         resources=resources,
         volume_mounts=volume_mounts if volume_mounts else None,
-        ports=[V1ContainerPort(container_port=8000, protocol="TCP")],
+        ports=[V1ContainerPort(container_port=container_port, protocol="TCP")],
         readiness_probe=readiness_probe,
         liveness_probe=liveness_probe,
     )

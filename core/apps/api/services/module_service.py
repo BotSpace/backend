@@ -51,16 +51,24 @@ def deploy_module(project, module: ModuleModel) -> ProjectModuleModel:
     )
 
     dep_name = _deployment_name(module.slug, project.id)
-    env_vars = [f"MODULE_SLUG={module.slug}", f"PROJECT_ID={project.id}"]
+    env_vars = [
+        f"MODULE_SLUG={module.slug}",
+        f"PROJECT_ID={project.id}",
+        f"PORT={module.port}",
+    ]
     if module.auth_token:
-        env_vars.append(f"AUTH_TOKEN={module.auth_token}")
+        env_vars.append(f"MODULE_AUTH_TOKEN={module.auth_token}")
 
     try:
+        # Modules listen on their own port and only expose /health (not /ready).
         create_deployment(
             image=module.image,
             name=dep_name,
             env_vars=env_vars,
             project_id=project.id,
+            container_port=module.port,
+            readiness_path="/health",
+            liveness_path="/health",
         )
 
         selector_labels = {
