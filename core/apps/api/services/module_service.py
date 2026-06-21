@@ -149,6 +149,21 @@ def fetch_manifest(module: ModuleModel) -> dict:
                     f"Allowed: {sorted(ALLOWED_FIELD_TYPES)}"
                 )
 
+    try:
+        docs_resp = requests.post(
+            endpoint,
+            json={"jsonrpc": "2.0", "method": "docs", "params": {}, "id": 2},
+            headers={"Authorization": f"Bearer {module.auth_token}"} if module.auth_token else {},
+            timeout=5,
+        )
+        docs_resp.raise_for_status()
+        docs_data = docs_resp.json()
+        docs_result = docs_data.get("result", {})
+        result["docs"] = docs_result.get("markdown", "")
+    except Exception as exc:
+        logger.warning("fetch_manifest docs call failed for %s: %s", module.slug, exc)
+        result.setdefault("docs", "")
+
     module.manifest_cache = result
     module.manifest_fetched_at = datetime.now(tz=timezone.utc)
     module.save(update_fields=["manifest_cache", "manifest_fetched_at"])

@@ -99,6 +99,48 @@ class TestFetchManifest:
 
     @patch("core.apps.api.services.module_service.ProjectModuleModel")
     @patch("core.apps.api.services.module_service.requests.post")
+    def test_docs_saved_in_manifest_cache(self, mock_post, mock_pm_model, module, project_module):
+        """docs() natijasi manifest_cache["docs"] ga saqlanadi."""
+        mock_pm_model.objects.filter.return_value.first.return_value = project_module
+
+        describe_resp = MagicMock()
+        describe_resp.json.return_value = {
+            "result": {"module": "demo", "nodes": [{"type": "demo.Echo", "fields": []}]}
+        }
+        describe_resp.raise_for_status = MagicMock()
+
+        docs_resp = MagicMock()
+        docs_resp.json.return_value = {"result": {"markdown": "# Demo\nBu demo modul."}}
+        docs_resp.raise_for_status = MagicMock()
+
+        mock_post.side_effect = [describe_resp, docs_resp]
+
+        result = fetch_manifest(module)
+
+        assert result["docs"] == "# Demo\nBu demo modul."
+        module.save.assert_called_once()
+
+    @patch("core.apps.api.services.module_service.ProjectModuleModel")
+    @patch("core.apps.api.services.module_service.requests.post")
+    def test_docs_failure_is_ignored(self, mock_post, mock_pm_model, module, project_module):
+        """docs() xato bersa, manifest_cache["docs"] = '' bo'ladi, xato otilmaydi."""
+        mock_pm_model.objects.filter.return_value.first.return_value = project_module
+
+        describe_resp = MagicMock()
+        describe_resp.json.return_value = {
+            "result": {"module": "demo", "nodes": [{"type": "demo.Echo", "fields": []}]}
+        }
+        describe_resp.raise_for_status = MagicMock()
+
+        mock_post.side_effect = [describe_resp, Exception("timeout")]
+
+        result = fetch_manifest(module)
+
+        assert result.get("docs", "") == ""
+        module.save.assert_called_once()
+
+    @patch("core.apps.api.services.module_service.ProjectModuleModel")
+    @patch("core.apps.api.services.module_service.requests.post")
     def test_all_allowed_field_types_pass(self, mock_post, mock_pm_model, module, project_module):
         mock_pm_model.objects.filter.return_value.first.return_value = project_module
 

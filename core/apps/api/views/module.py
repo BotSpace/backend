@@ -61,6 +61,18 @@ class ModuleViewSet(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
+    @extend_schema(summary="Modul detail (authenticated)")
+    def retrieve(self, request, *args, **kwargs):
+        module = self.get_object()
+        cache = module.manifest_cache or {}
+        if not cache.get("docs") and not cache.get("nodes"):
+            try:
+                fetch_manifest(module)
+                module.refresh_from_db()
+            except Exception as exc:
+                logger.warning("retrieve pre-warm failed for %s: %s", module.slug, exc)
+        return super().retrieve(request, *args, **kwargs)
+
     @extend_schema(summary="Manifest yangilash (admin)")
     @action(methods=["POST"], detail=True, url_path="refresh-manifest", url_name="refresh-manifest")
     def refresh_manifest(self, request, pk=None):
