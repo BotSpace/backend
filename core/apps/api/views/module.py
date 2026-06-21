@@ -77,15 +77,6 @@ def _resolve_project_for_user(user, pk):
     return project
 
 
-@extend_schema(tags=["project-modules"])
-class ProjectModuleActionsMixin:
-    """
-    ProjectView'ga qo'shiladigan @action metodlar.
-    Bu mixin sifatida ishlatilmaydi — metodlar to'g'ridan-to'g'ri ProjectView'ga ko'chiriladi.
-    Hujjatlash maqsadida bu faylda saqlanadi.
-    """
-
-
 def project_module_list(request, project):
     pms = (
         ProjectModuleModel.objects.filter(project=project)
