@@ -162,15 +162,17 @@ def get_project_module_manifests(project) -> list:
         .select_related("module")
     )
 
+    # describe cache = {"module": {...}, "nodes": [NodeManifest, ...]}.
+    # Constructor expects a FLAT array of node manifests, each tagged with its module.
     manifests = []
     for pm in enabled_pms:
         module = pm.module
-        if not module.manifest_cache:
-            continue
-        manifest = dict(module.manifest_cache)
-        manifest["moduleSlug"] = module.slug
-        manifest["moduleName"] = module.name
-        manifests.append(manifest)
+        cache = module.manifest_cache or {}
+        for node in cache.get("nodes", []):
+            node = dict(node)
+            node["moduleSlug"] = module.slug
+            node["moduleName"] = module.name
+            manifests.append(node)
 
     return manifests
 
@@ -187,11 +189,12 @@ def get_project_modules_for_engine(project) -> list:
         cache = module.manifest_cache or {}
         nodes_raw = cache.get("nodes", [])
         node_types = [n.get("type") for n in nodes_raw if n.get("type")]
-        triggers_raw = cache.get("triggers", [])
+        # Triggers are NODES flagged trigger:true / category=="triggers"; their
+        # event/push mode comes from `triggerMode` (default event-match).
         trigger_types = [
-            {"type": t.get("type"), "mode": t.get("mode", "event-match")}
-            for t in triggers_raw
-            if t.get("type")
+            {"type": n.get("type"), "mode": n.get("triggerMode", "event-match")}
+            for n in nodes_raw
+            if n.get("type") and (n.get("trigger") or n.get("category") == "triggers")
         ]
 
         result.append(
