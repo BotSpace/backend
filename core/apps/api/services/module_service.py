@@ -28,6 +28,7 @@ ALLOWED_FIELD_TYPES = {
     "datetime",
     "boolean",
     "code",
+    "credential",
 }
 
 
@@ -204,6 +205,21 @@ def get_project_modules_for_engine(project) -> list:
         cache = module.manifest_cache or {}
         nodes_raw = cache.get("nodes", [])
         node_types = [n.get("type") for n in nodes_raw if n.get("type")]
+        # Per-node credential field keys (manifest fields live in `content`).
+        # Engine reads this to resolve each credential_id and inject the decrypted
+        # secret into node.execute as `credentials[field_key]`.
+        credential_fields = {}
+        for n in nodes_raw:
+            ntype = n.get("type")
+            if not ntype:
+                continue
+            keys = [
+                f.get("key")
+                for f in n.get("content", [])
+                if f.get("type") == "credential" and f.get("key")
+            ]
+            if keys:
+                credential_fields[ntype] = keys
         # Triggers are NODES flagged trigger:true / category=="triggers"; their
         # event/push mode comes from `triggerMode` (default event-match).
         trigger_types = [
@@ -219,6 +235,7 @@ def get_project_modules_for_engine(project) -> list:
                 "auth_token": module.auth_token or "",
                 "nodes": node_types,
                 "triggers": trigger_types,
+                "credential_fields": credential_fields,
             }
         )
 
