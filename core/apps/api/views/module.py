@@ -103,6 +103,14 @@ class ModuleViewSet(ModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"manifest": manifest})
 
+    @extend_schema(summary="Modul live status (pod/build/endpoint)")
+    @action(methods=["GET"], detail=True, url_path="status", url_name="status")
+    def status_view(self, request, slug=None):
+        from core.apps.api.services.module_service import module_status
+
+        module = self.get_object()
+        return Response(module_status(module))
+
     @extend_schema(summary="module.yaml dan modul ro'yxatga olish (admin)")
     @action(methods=["POST"], detail=False, url_path="register-yaml", url_name="register-yaml")
     def register_yaml(self, request):

@@ -999,3 +999,35 @@ def create_module_build_job(
     batch.create_namespaced_job(namespace=namespace, body=job)
     logger.info("Module build job created: %s (clone=%s ref=%s)", job_name, clone_url, git_ref)
     return job_name
+
+
+def get_latest_module_build_status(slug: str) -> dict:
+    """Status of the most recent Kaniko build job for a module (jobs auto-expire ~15min)."""
+    try:
+        get_k8s_client()
+        batch = client.BatchV1Api()
+        namespace = get_namespace()
+        jobs = batch.list_namespaced_job(
+            namespace=namespace,
+            label_selector=f"app=botmother-module-build,module={slug}",
+        ).items
+        if not jobs:
+            return {"status": "none"}
+        latest = max(jobs, key=lambda j: j.metadata.creation_timestamp or 0)
+        st = latest.status
+        if st.succeeded and st.succeeded > 0:
+            status = "succeeded"
+        elif st.failed and st.failed > 0:
+            status = "failed"
+        elif st.active and st.active > 0:
+            status = "running"
+        else:
+            status = "pending"
+        return {
+            "status": status,
+            "job": latest.metadata.name,
+            "at": latest.metadata.creation_timestamp.isoformat() if latest.metadata.creation_timestamp else None,
+        }
+    except Exception as e:
+        logger.warning("Error getting build status for %s: %s", slug, e)
+        return {"status": "unknown"}

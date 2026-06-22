@@ -137,6 +137,53 @@ def register_module_from_yaml(yaml_text: str) -> tuple:
     return module, mode
 
 
+def module_status(module: ModuleModel) -> dict:
+    """Live status for the admin panel: is the module up, building, or broken?"""
+    src = _module_source(module)
+    cache = module.manifest_cache or {}
+    base = {
+        "slug": module.slug,
+        "mode": src.get("mode"),
+        "active": module.active,
+        "node_count": len(cache.get("nodes", []) or []),
+        "manifest_fetched_at": module.manifest_fetched_at.isoformat() if module.manifest_fetched_at else None,
+    }
+
+    if src.get("mode") == "endpoint":
+        endpoint = src.get("endpoint") or ""
+        reachable = False
+        try:
+            resp = requests.post(
+                endpoint,
+                json={"jsonrpc": "2.0", "method": "describe", "params": {}, "id": 1},
+                headers={"Authorization": f"Bearer {module.auth_token}"} if module.auth_token else {},
+                timeout=3,
+            )
+            reachable = resp.ok
+        except Exception:
+            reachable = False
+        base.update({"endpoint": endpoint, "reachable": reachable, "state": "running" if reachable else "error"})
+        return base
+
+    # github (platform-hosted): pod + last build job
+    from core.apps.api.services.kubernetes_service import get_deployment_status, get_latest_module_build_status
+
+    pod = get_deployment_status(_deployment_name(module.slug))  # running | init | stopped
+    build = get_latest_module_build_status(module.slug)
+    if build.get("status") == "running":
+        state = "building"
+    elif build.get("status") == "failed":
+        state = "build_failed"
+    elif pod == "running":
+        state = "running"
+    elif pod == "init":
+        state = "deploying"
+    else:
+        state = "stopped"
+    base.update({"pod": pod, "build": build, "state": state})
+    return base
+
+
 def deploy_module(project, module: ModuleModel) -> ProjectModuleModel:
     """Enable a module for a project.
 
