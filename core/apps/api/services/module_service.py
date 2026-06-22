@@ -40,90 +40,109 @@ class ManifestValidationError(Exception):
     pass
 
 
-def _deployment_name(module_slug: str, project_id: int) -> str:
-    return f"module-{module_slug}-{project_id}".lower().replace("_", "-")
+def _deployment_name(module_slug: str) -> str:
+    # SHARED across all projects — one pod per module (not per project).
+    return f"module-{module_slug}".lower().replace("_", "-")
 
 
-def _service_name(module_slug: str, project_id: int) -> str:
-    return _deployment_name(module_slug, project_id)
+def _service_name(module_slug: str) -> str:
+    return _deployment_name(module_slug)
+
+
+def _shared_endpoint(module: ModuleModel) -> str:
+    return f"http://{_deployment_name(module.slug)}:{module.port}/rpc"
 
 
 def deploy_module(project, module: ModuleModel) -> ProjectModuleModel:
+    """Enable a module for a project.
+
+    Modules are SHARED: a single pod `module-{slug}` serves every project. Enabling
+    a module just grants this project the right to use it (a ProjectModuleModel row
+    pointing at the shared endpoint) and ensures the shared pod exists. The pod is
+    idempotently created/updated, so concurrent enables are safe.
+    """
     pm, _ = ProjectModuleModel.objects.get_or_create(
         project=project,
         module=module,
         defaults={"status": "pending"},
     )
 
-    dep_name = _deployment_name(module.slug, project.id)
-    env_vars = [
-        f"MODULE_SLUG={module.slug}",
-        f"PROJECT_ID={project.id}",
-        f"PORT={module.port}",
-    ]
-    if module.auth_token:
-        env_vars.append(f"MODULE_AUTH_TOKEN={module.auth_token}")
-
     try:
-        # Modules listen on their own port and only expose /health (not /ready).
-        create_deployment(
-            image=module.image,
-            name=dep_name,
-            env_vars=env_vars,
-            project_id=project.id,
-            container_port=module.port,
-            readiness_path="/health",
-            liveness_path="/health",
-        )
-
-        selector_labels = {
-            "app": "botmother-engine",
-            "engine-name": dep_name,
-        }
-        create_service(
-            name=dep_name,
-            deployment_name=dep_name,
-            selector_labels=selector_labels,
-            port=module.port,
-        )
-
-        endpoint = f"http://{dep_name}:{module.port}/rpc"
-        pm.service_id = dep_name
-        pm.endpoint = endpoint
+        ensure_shared_deployment(module)
+        pm.service_id = _deployment_name(module.slug)
+        pm.endpoint = _shared_endpoint(module)
         pm.status = "running"
         pm.enabled = True
         pm.save()
-        logger.info("Module deployed: %s for project %s", module.slug, project.id)
+        logger.info("Module enabled: %s for project %s (shared pod)", module.slug, project.id)
     except Exception as exc:
         pm.status = "failed"
         pm.save()
-        logger.error("Module deploy failed: %s / project %s: %s", module.slug, project.id, exc)
+        logger.error("Module enable failed: %s / project %s: %s", module.slug, project.id, exc)
         raise
 
     return pm
 
 
+def ensure_shared_deployment(module: ModuleModel) -> str:
+    """Idempotently create/update the shared module pod + service. Returns its name."""
+    dep_name = _deployment_name(module.slug)
+    env_vars = [
+        f"MODULE_SLUG={module.slug}",
+        f"PORT={module.port}",
+    ]
+    if module.auth_token:
+        env_vars.append(f"MODULE_AUTH_TOKEN={module.auth_token}")
+
+    # No PROJECT_ID: the pod is shared; credentials are resolved by the engine and
+    # passed per node.execute call, so the module needs no per-project identity.
+    create_deployment(
+        image=module.image,
+        name=dep_name,
+        env_vars=env_vars,
+        container_port=module.port,
+        readiness_path="/health",
+        liveness_path="/health",
+    )
+    create_service(
+        name=dep_name,
+        deployment_name=dep_name,
+        selector_labels={"app": "botmother-engine", "engine-name": dep_name},
+        port=module.port,
+    )
+    return dep_name
+
+
 def undeploy_module(project, module: ModuleModel) -> bool:
-    dep_name = _deployment_name(module.slug, project.id)
-    svc_name = _service_name(module.slug, project.id)
+    """Disable a module for a project (revoke usage).
 
-    remove_deployment(dep_name)
-    delete_service(svc_name)
-
+    The shared pod is kept while ANY other project still uses it; only the last
+    project to disable tears down the shared deployment.
+    """
     ProjectModuleModel.objects.filter(project=project, module=module).update(
         status="stopped",
         enabled=False,
     )
-    logger.info("Module undeployed: %s for project %s", module.slug, project.id)
+
+    still_used = (
+        ProjectModuleModel.objects.filter(module=module, enabled=True)
+        .exclude(project=project)
+        .exists()
+    )
+    if not still_used:
+        dep_name = _deployment_name(module.slug)
+        remove_deployment(dep_name)
+        delete_service(_service_name(module.slug))
+        logger.info("Module shared pod removed (last user): %s", module.slug)
+    else:
+        logger.info("Module disabled for project %s; shared pod kept (other users)", project.id)
     return True
 
 
 def fetch_manifest(module: ModuleModel) -> dict:
-    pm_qs = ProjectModuleModel.objects.filter(module=module, enabled=True).first()
-    if pm_qs is None or not pm_qs.endpoint:
-        raise ManifestValidationError(f"No active endpoint for module {module.slug}")
-
-    endpoint = pm_qs.endpoint
+    # Shared model: the endpoint is deterministic; the pod exists once any project
+    # has enabled the module (or admin deployed it).
+    endpoint = _shared_endpoint(module)
     try:
         resp = requests.post(
             endpoint,
@@ -148,7 +167,7 @@ def fetch_manifest(module: ModuleModel) -> dict:
         for field in node.get("fields", []):
             field_type = field.get("type", "")
             if field_type and field_type not in ALLOWED_FIELD_TYPES:
-                pm_qs and ProjectModuleModel.objects.filter(module=module, enabled=True).update(status="degraded")
+                ProjectModuleModel.objects.filter(module=module, enabled=True).update(status="degraded")
                 raise ManifestValidationError(
                     f"Module {module.slug}: unknown field type '{field_type}' in node '{node_type}'. "
                     f"Allowed: {sorted(ALLOWED_FIELD_TYPES)}"
