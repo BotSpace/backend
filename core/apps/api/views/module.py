@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import logging
 
 from django.conf import settings
@@ -204,3 +206,81 @@ class ModuleRedeployView(APIView):
             refreshed = False
 
         return Response({"ok": True, "module": slug, "manifest_refreshed": refreshed})
+
+
+def _normalize_repo(url: str) -> str:
+    return (url or "").strip().rstrip("/").lower().removesuffix(".git")
+
+
+def _match_module_by_repo(html_url: str, clone_url: str, full_name: str):
+    """Find the ModuleModel whose github_url points at the pushed repo."""
+    candidates = {_normalize_repo(x) for x in (html_url, clone_url) if x}
+    fn = (full_name or "").lower()
+    for m in ModuleModel.objects.exclude(github_url=""):
+        gu = _normalize_repo(m.github_url)
+        if not gu:
+            continue
+        if gu in candidates or (fn and gu.endswith(fn)):
+            return m
+    return None
+
+
+def _github_webhook_secret() -> str:
+    from core.apps.shared.utils.settings import get_config
+
+    val = get_config("github", "module_webhook_secret")
+    if isinstance(val, (list, tuple)):
+        val = val[0] if val else ""
+    return val or getattr(settings, "GITHUB_WEBHOOK_SECRET", "")
+
+
+@extend_schema(tags=["modules"], summary="GitHub App webhook (module auto-deploy)")
+class GitHubModuleWebhookView(APIView):
+    """GitHub App push webhook → build & deploy the matching module.
+
+    Verifies X-Hub-Signature-256 (HMAC-SHA256, webhook secret). On a default-branch
+    push, matches the repo to a registered module (by github_url) and triggers a
+    build. The webhook secret lives in DB config (github/module_webhook_secret) so
+    no env/deploy change is needed.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def post(self, request):
+        secret = _github_webhook_secret()
+        if not secret:
+            logger.error("github webhook: secret not configured")
+            return Response({"detail": "webhook not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        signature = request.headers.get("X-Hub-Signature-256", "")
+        expected = "sha256=" + hmac.new(secret.encode(), request.body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            logger.warning("github webhook: invalid signature")
+            return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
+
+        event = request.headers.get("X-GitHub-Event", "")
+        if event == "ping":
+            return Response({"ok": True, "pong": True})
+        if event != "push":
+            return Response({"ok": True, "ignored_event": event})
+
+        payload = request.data or {}
+        repo = payload.get("repository", {}) or {}
+        ref = payload.get("ref", "")
+        after = payload.get("after", "")
+        default_branch = repo.get("default_branch", "main")
+
+        if ref != f"refs/heads/{default_branch}":
+            return Response({"ok": True, "ignored_ref": ref})
+
+        module = _match_module_by_repo(repo.get("html_url", ""), repo.get("clone_url", ""), repo.get("full_name", ""))
+        if module is None:
+            logger.info("github webhook: no module for repo %s", repo.get("full_name"))
+            return Response({"ok": True, "no_module_for": repo.get("full_name", "")})
+
+        # FAZA 2: trigger the Kaniko build job here. For now, acknowledge so the
+        # GitHub → backend path can be verified end-to-end first.
+        logger.info("github webhook: module %s push %s (build pending)", module.slug, (after or "")[:7])
+        return Response({"ok": True, "module": module.slug, "sha": (after or "")[:7], "build": "pending"})
