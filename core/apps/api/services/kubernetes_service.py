@@ -893,3 +893,109 @@ def deployment_logs_snapshot(
     except Exception as e:
         logger.error("Error fetching log snapshot for deployment %s: %s", deployment_name, e)
         return {"pod_name": None, "lines": [f"Error: {e}"], "truncated": False}
+
+
+def create_module_build_job(
+    *,
+    slug: str,
+    clone_url: str,
+    git_ref: str,
+    image_base: str,
+    sha: str,
+    dockerfile: str,
+    internal_token: str,
+    redeploy_url: str,
+) -> str:
+    """Create a k8s Job that builds a module image with Kaniko and then redeploys it.
+
+    initContainer 'clone'  : git clone the repo at git_ref into a shared workspace
+                             (plain HTTPS — GitHub disabled the git:// protocol).
+    initContainer 'build'  : Kaniko builds the workspace dir and pushes image_base:latest
+                             and :<sha> using the cluster registry-secret.
+    container     'deploy' : on build success, POSTs the internal redeploy hook so the
+                             shared pod restarts (pulls new :latest) + manifest refreshes.
+
+    The Job is platform-owned, so passing the internal token to its deploy container is
+    safe — it never reaches the (third-party) module repo.
+    """
+    get_k8s_client()
+    batch = client.BatchV1Api()
+    namespace = get_namespace()
+    short = (sha or "manual")[:7]
+    job_name = f"module-build-{slug}-{short}".lower().replace("_", "-")[:60]
+
+    # Clone over HTTPS, then check out the exact pushed commit when known.
+    checkout = f"git checkout {sha}" if sha else "true"
+    clone_container = client.V1Container(
+        name="clone",
+        image="alpine/git:latest",
+        command=[
+            "sh",
+            "-c",
+            f"git clone --depth 50 {clone_url} /workspace && cd /workspace && {checkout}",
+        ],
+        volume_mounts=[client.V1VolumeMount(name="workspace", mount_path="/workspace")],
+    )
+    build_container = client.V1Container(
+        name="build",
+        image="gcr.io/kaniko-project/executor:latest",
+        args=[
+            "--context=dir:///workspace",
+            f"--dockerfile=/workspace/{dockerfile}",
+            f"--destination={image_base}:latest",
+            f"--destination={image_base}:{short}",
+            "--single-snapshot",
+            "--cache=false",
+        ],
+        volume_mounts=[
+            client.V1VolumeMount(name="workspace", mount_path="/workspace"),
+            client.V1VolumeMount(name="docker-config", mount_path="/kaniko/.docker"),
+        ],
+    )
+    deploy_container = client.V1Container(
+        name="deploy",
+        image="curlimages/curl:8.10.1",
+        command=[
+            "sh",
+            "-c",
+            f"curl -fsS -X POST -H 'X-Internal-Token: {internal_token}' '{redeploy_url}'",
+        ],
+    )
+    volumes = [
+        client.V1Volume(name="workspace", empty_dir=client.V1EmptyDirVolumeSource()),
+        client.V1Volume(
+            name="docker-config",
+            secret=client.V1SecretVolumeSource(
+                secret_name="registry-secret",
+                items=[client.V1KeyToPath(key=".dockerconfigjson", path="config.json")],
+            ),
+        ),
+    ]
+    labels = {"app": "botmother-module-build", "module": slug}
+    job = client.V1Job(
+        metadata=client.V1ObjectMeta(name=job_name, labels=labels),
+        spec=client.V1JobSpec(
+            backoff_limit=1,
+            ttl_seconds_after_finished=900,
+            template=client.V1PodTemplateSpec(
+                metadata=client.V1ObjectMeta(labels=labels),
+                spec=client.V1PodSpec(
+                    init_containers=[clone_container, build_container],
+                    containers=[deploy_container],
+                    volumes=volumes,
+                    restart_policy="Never",
+                ),
+            ),
+        ),
+    )
+
+    # Idempotent: drop a prior job of the same name before creating.
+    try:
+        batch.delete_namespaced_job(name=job_name, namespace=namespace, propagation_policy="Background")
+    except ApiException as exc:
+        if exc.status != 404:
+            raise
+
+    batch.create_namespaced_job(namespace=namespace, body=job)
+    logger.info("Module build job created: %s (clone=%s ref=%s)", job_name, clone_url, git_ref)
+    return job_name

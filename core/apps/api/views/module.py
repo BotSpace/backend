@@ -22,6 +22,7 @@ from core.apps.api.serializers.module import (
 )
 from core.apps.api.services.module_service import (
     ManifestValidationError,
+    build_module_image,
     deploy_module,
     ensure_shared_deployment,
     fetch_manifest,
@@ -280,7 +281,11 @@ class GitHubModuleWebhookView(APIView):
             logger.info("github webhook: no module for repo %s", repo.get("full_name"))
             return Response({"ok": True, "no_module_for": repo.get("full_name", "")})
 
-        # FAZA 2: trigger the Kaniko build job here. For now, acknowledge so the
-        # GitHub → backend path can be verified end-to-end first.
-        logger.info("github webhook: module %s push %s (build pending)", module.slug, (after or "")[:7])
-        return Response({"ok": True, "module": module.slug, "sha": (after or "")[:7], "build": "pending"})
+        # Build the image from the pushed commit; the Job redeploys on success.
+        try:
+            job = build_module_image(module, sha=after, clone_url=repo.get("clone_url", ""))
+        except Exception as exc:
+            logger.error("github webhook: build trigger failed for %s: %s", module.slug, exc)
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.info("github webhook: module %s push %s → build job %s", module.slug, (after or "")[:7], job)
+        return Response({"ok": True, "module": module.slug, "sha": (after or "")[:7], "build_job": job})

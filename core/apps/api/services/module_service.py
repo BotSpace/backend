@@ -113,6 +113,42 @@ def ensure_shared_deployment(module: ModuleModel) -> str:
     return dep_name
 
 
+def build_module_image(module: ModuleModel, sha: str = "", clone_url: str = "") -> str:
+    """Kick off a Kaniko build Job for the module from its GitHub repo, then redeploy.
+
+    Used by the GitHub webhook (auto-deploy) and the admin manual rebuild. Returns the
+    Job name. The Job clones the repo, builds the image, pushes it, and POSTs the
+    internal redeploy hook on success.
+    """
+    from django.conf import settings
+
+    from core.apps.api.services.kubernetes_service import create_module_build_job
+
+    image = (module.image or "").strip()
+    if not image:
+        raise ManifestValidationError(f"Module {module.slug} has no image configured")
+    # Strip the :tag from the image to get the push base (tag lives in the last segment).
+    last_segment = image.rsplit("/", 1)[-1]
+    image_base = image.rsplit(":", 1)[0] if ":" in last_segment else image
+
+    if not clone_url:
+        gu = (module.github_url or "").strip().rstrip("/")
+        if not gu:
+            raise ManifestValidationError(f"Module {module.slug} has no github_url")
+        clone_url = gu if gu.endswith(".git") else gu + ".git"
+
+    return create_module_build_job(
+        slug=module.slug,
+        clone_url=clone_url,
+        git_ref=sha or "default",
+        image_base=image_base,
+        sha=sha or "",
+        dockerfile="Dockerfile",
+        internal_token=getattr(settings, "INTERNAL_API_TOKEN", "") or "",
+        redeploy_url=f"http://web:8000/api/modules/{module.slug}/redeploy/",
+    )
+
+
 def undeploy_module(project, module: ModuleModel) -> bool:
     """Disable a module for a project (revoke usage).
 
