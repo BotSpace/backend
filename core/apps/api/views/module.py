@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -33,6 +34,17 @@ class ModuleViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = ModuleSerializer
     lookup_field = "slug"  # detail/retrieve by slug (constructor uses slug)
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name", "slug", "description"]
+    ordering_fields = ["id", "name", "created_at", "manifest_fetched_at"]
+    ordering = ["-id"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        active = self.request.query_params.get("active")
+        if active in ("true", "false"):
+            qs = qs.filter(active=(active == "true"))
+        return qs
 
     def get_permissions(self):
         # Browsing the catalog is open to any authenticated user (they enable
@@ -76,7 +88,7 @@ class ModuleViewSet(ModelViewSet):
 
     @extend_schema(summary="Manifest yangilash (admin)")
     @action(methods=["POST"], detail=True, url_path="refresh-manifest", url_name="refresh-manifest")
-    def refresh_manifest(self, request, pk=None):
+    def refresh_manifest(self, request, slug=None):
         module = self.get_object()
         try:
             manifest = fetch_manifest(module)
