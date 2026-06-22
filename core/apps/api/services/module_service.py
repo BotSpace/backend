@@ -438,6 +438,17 @@ def get_project_modules_for_engine(project) -> list:
     for pm in enabled_pms:
         module = pm.module
         cache = module.manifest_cache or {}
+        # Self-heal: if a module was enabled before its manifest was fetched
+        # (pod still starting), the cache has no nodes -> the engine wouldn't
+        # recognise the module's node types and would silently skip them. Refetch
+        # once here so a (re)deploy always ships the current node list.
+        if not cache.get("nodes"):
+            try:
+                fetch_manifest(module)
+                module.refresh_from_db()
+                cache = module.manifest_cache or {}
+            except Exception as exc:
+                logger.warning("engine manifest self-heal failed for %s: %s", module.slug, exc)
         nodes_raw = cache.get("nodes", [])
         node_types = [n.get("type") for n in nodes_raw if n.get("type")]
         # Per-node credential field keys (manifest fields live in `content`).
