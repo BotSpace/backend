@@ -1,12 +1,14 @@
 import logging
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from core.apps.api.models.module import ModuleModel, ProjectModuleModel
@@ -19,6 +21,7 @@ from core.apps.api.serializers.module import (
 from core.apps.api.services.module_service import (
     ManifestValidationError,
     deploy_module,
+    ensure_shared_deployment,
     fetch_manifest,
     get_project_module_manifests,
     get_project_modules_for_engine,
@@ -163,3 +166,41 @@ def project_module_manifests_view(request, project):
 def project_modules_for_engine_view(request, project):
     data = get_project_modules_for_engine(project)
     return Response({"modules": data})
+
+
+@extend_schema(tags=["modules"], summary="CI redeploy hook (X-Internal-Token)")
+class ModuleRedeployView(APIView):
+    """Auto-deploy hook: a module's GitHub CI pushed a new image → restart the
+    shared pod (re-pulls :latest) and refresh the manifest.
+
+    Auth: shared X-Internal-Token (== settings.INTERNAL_API_TOKEN), same as the
+    debug/internal endpoints. No user session — the module CI calls this.
+    """
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def post(self, request, slug):
+        expected = getattr(settings, "INTERNAL_API_TOKEN", None)
+        if not expected or request.headers.get("X-Internal-Token", "") != expected:
+            return Response({"detail": "Ruxsat etilmagan so'rov."}, status=status.HTTP_403_FORBIDDEN)
+
+        module = get_object_or_404(ModuleModel, slug=slug)
+        try:
+            ensure_shared_deployment(module)  # Recreate the pod → pulls the new :latest image.
+        except Exception as exc:
+            logger.error("module redeploy %s failed: %s", slug, exc)
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Manifest refresh is best-effort: the pod is restarting (Recreate), so the
+        # describe RPC may fail right now. The 120s TTL refresh picks up the new
+        # manifest once the pod is ready.
+        try:
+            fetch_manifest(module)
+            refreshed = True
+        except Exception as exc:
+            logger.info("module redeploy %s: manifest refresh deferred (pod restarting): %s", slug, exc)
+            refreshed = False
+
+        return Response({"ok": True, "module": slug, "manifest_refreshed": refreshed})

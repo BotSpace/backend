@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from core.apps.api.views.resource import UsedView
 from core.apps.api.views.webhook import BotWebhookView
-from core.apps.api.views.module import ModuleViewSet
+from core.apps.api.views.module import ModuleViewSet, ModuleRedeployView
 from core.apps.api.views.module_trigger import ModuleTriggerView
 from core.apps.api.views.debug import (
     DebugContextEventView,
@@ -33,6 +33,9 @@ router.register("chat", ChatViewSet, basename="chat")
 router.register("modules", ModuleViewSet, basename="modules")
 
 urlpatterns = [
+    # Module CI auto-deploy hook (X-Internal-Token) — before the router so the
+    # specific path wins over the modules viewset.
+    path("modules/<slug>/redeploy/", ModuleRedeployView.as_view(), name="module-redeploy"),
     path("", include(router.urls)),
     path("bot-webhook/<str:method>/<str:uuid>/", BotWebhookView.as_view(), name="bot-webhook"),
     re_path(r"^used(?:/(?P<project_id>[0-9a-fA-F-]+))?/$", UsedView.as_view(), name="project-used"),
