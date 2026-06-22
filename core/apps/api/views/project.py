@@ -453,7 +453,9 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     def stop(self, request, pk):
         instance = self.get_object()
         remove_service(instance.debug.service_id)
-        instance.debug.status = ContainerStatusEnum.STOPPING.value
+        # Deployment sinxron o'chirildi — STOPPED'ga o'tishni watcher'ning DELETED
+        # eventiga qoldirmaymiz (poyga qilib STOPPING'da qotib qolardi).
+        instance.debug.status = ContainerStatusEnum.STOPPED.value
         instance.debug.save()
         return Response(data={"detail": _("Stopped")})
 
