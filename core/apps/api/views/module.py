@@ -28,6 +28,7 @@ from core.apps.api.services.module_service import (
     fetch_manifest,
     get_project_module_manifests,
     get_project_modules_for_engine,
+    register_module_from_yaml,
     undeploy_module,
 )
 
@@ -101,6 +102,45 @@ class ModuleViewSet(ModelViewSet):
         except ManifestValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"manifest": manifest})
+
+    @extend_schema(summary="module.yaml dan modul ro'yxatga olish (admin)")
+    @action(methods=["POST"], detail=False, url_path="register-yaml", url_name="register-yaml")
+    def register_yaml(self, request):
+        """Register/update a module from its module.yaml (paste or raw URL).
+
+        github mode → trigger a build; endpoint (self-hosted) mode → fetch manifest now.
+        """
+        yaml_text = request.data.get("yaml")
+        yaml_url = request.data.get("yaml_url")
+        if yaml_url and not yaml_text:
+            try:
+                import requests as _rq
+
+                resp = _rq.get(yaml_url, timeout=10)
+                resp.raise_for_status()
+                yaml_text = resp.text
+            except Exception as exc:
+                return Response({"detail": f"yaml_url o'qib bo'lmadi: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+        if not yaml_text:
+            return Response({"detail": "yaml yoki yaml_url majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            module, mode = register_module_from_yaml(yaml_text)
+        except ManifestValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        info = {}
+        try:
+            if mode == "github":
+                info["build_job"] = build_module_image(module)
+            else:
+                fetch_manifest(module)
+                info["manifest"] = "fetched"
+        except Exception as exc:
+            info["warning"] = str(exc)
+
+        data = ModuleSerializer(module).data
+        return Response({"ok": True, "mode": mode, "module": data, **info}, status=status.HTTP_201_CREATED)
 
 
 def _resolve_project_for_user(user, pk):

@@ -49,8 +49,92 @@ def _service_name(module_slug: str) -> str:
     return _deployment_name(module_slug)
 
 
+def _module_source(module: ModuleModel) -> dict:
+    """Source config parsed from module.yaml, stored in manifest_cache['_source'].
+    Returns {mode: 'github'|'endpoint', endpoint, github, dockerfile, port}.
+    Defaults to github mode for legacy modules registered before module.yaml."""
+    cache = module.manifest_cache or {}
+    src = cache.get("_source") or {}
+    if not src.get("mode"):
+        src = {"mode": "github" if module.image else "endpoint", "endpoint": "", "github": module.github_url or ""}
+    return src
+
+
+def is_self_hosted(module: ModuleModel) -> bool:
+    return _module_source(module).get("mode") == "endpoint"
+
+
 def _shared_endpoint(module: ModuleModel) -> str:
+    src = _module_source(module)
+    if src.get("mode") == "endpoint" and src.get("endpoint"):
+        return src["endpoint"]  # self-hosted: developer's own server
     return f"http://{_deployment_name(module.slug)}:{module.port}/rpc"
+
+
+REGISTRY_BASE = "registry.iprogrammer.uz/botspace"
+
+
+def register_module_from_yaml(yaml_text: str) -> tuple:
+    """Parse a module.yaml and create/update the ModuleModel from it.
+
+    module.yaml is the single source of truth — admin no longer enters fields by hand.
+    Two source modes (mutually exclusive):
+      source.github   → platform builds the image (Kaniko) and hosts the shared pod
+      source.endpoint → self-hosted; engine connects to the developer's own server
+    Returns (module, mode).
+    """
+    import yaml as _yaml
+
+    try:
+        data = _yaml.safe_load(yaml_text) or {}
+    except Exception as exc:
+        raise ManifestValidationError(f"module.yaml parse xatosi: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ManifestValidationError("module.yaml noto'g'ri (obyekt kutilgan)")
+
+    mod = data.get("module") or {}
+    slug = str(mod.get("id") or "").strip()
+    if not slug:
+        raise ManifestValidationError("module.id majburiy")
+
+    source = data.get("source") or {}
+    runtime = data.get("runtime") or {}
+    github = str(source.get("github") or "").strip()
+    endpoint = str(source.get("endpoint") or "").strip()
+    if not github and not endpoint:
+        raise ManifestValidationError("source.github yoki source.endpoint majburiy")
+    if github and endpoint:
+        raise ManifestValidationError("source: faqat github YOKI endpoint bo'lsin (ikkalasi emas)")
+
+    try:
+        port = int(runtime.get("port") or 8100)
+    except (TypeError, ValueError):
+        port = 8100
+    dockerfile = str(runtime.get("dockerfile") or "Dockerfile")
+
+    if github:
+        mode = "github"
+        image = f"{REGISTRY_BASE}/module-{slug}:latest"
+        github_url = github
+    else:
+        mode = "endpoint"
+        image = ""
+        github_url = ""
+
+    module, _ = ModuleModel.objects.get_or_create(slug=slug, defaults={"name": mod.get("name") or slug, "image": image})
+    module.name = mod.get("name") or slug
+    module.description = mod.get("description") or ""
+    module.icon = mod.get("icon") or ""
+    module.github_url = github_url
+    module.image = image
+    module.port = port
+    module.active = True
+    cache = module.manifest_cache or {}
+    cache["_source"] = {"mode": mode, "endpoint": endpoint, "github": github, "dockerfile": dockerfile, "port": port}
+    module.manifest_cache = cache
+    module.save()
+    logger.info("Module registered from yaml: %s (mode=%s)", slug, mode)
+    return module, mode
 
 
 def deploy_module(project, module: ModuleModel) -> ProjectModuleModel:
@@ -68,13 +152,18 @@ def deploy_module(project, module: ModuleModel) -> ProjectModuleModel:
     )
 
     try:
-        ensure_shared_deployment(module)
-        pm.service_id = _deployment_name(module.slug)
+        if is_self_hosted(module):
+            # Developer hosts the module on their own server — no pod to deploy.
+            pm.service_id = ""
+        else:
+            ensure_shared_deployment(module)
+            pm.service_id = _deployment_name(module.slug)
         pm.endpoint = _shared_endpoint(module)
         pm.status = "running"
         pm.enabled = True
         pm.save()
-        logger.info("Module enabled: %s for project %s (shared pod)", module.slug, project.id)
+        logger.info("Module enabled: %s for project %s (%s)", module.slug, project.id,
+                    "self-hosted" if is_self_hosted(module) else "shared pod")
     except Exception as exc:
         pm.status = "failed"
         pm.save()
@@ -143,7 +232,7 @@ def build_module_image(module: ModuleModel, sha: str = "", clone_url: str = "") 
         git_ref=sha or "default",
         image_base=image_base,
         sha=sha or "",
-        dockerfile="Dockerfile",
+        dockerfile=_module_source(module).get("dockerfile") or "Dockerfile",
         internal_token=getattr(settings, "INTERNAL_API_TOKEN", "") or "",
         redeploy_url=f"http://web:8000/api/modules/{module.slug}/redeploy/",
     )
@@ -165,7 +254,10 @@ def undeploy_module(project, module: ModuleModel) -> bool:
         .exclude(project=project)
         .exists()
     )
-    if not still_used:
+    if is_self_hosted(module):
+        # No platform pod for self-hosted modules — nothing to tear down.
+        logger.info("Module disabled for project %s (self-hosted, no pod)", project.id)
+    elif not still_used:
         dep_name = _deployment_name(module.slug)
         remove_deployment(dep_name)
         delete_service(_service_name(module.slug))
@@ -223,6 +315,12 @@ def fetch_manifest(module: ModuleModel) -> dict:
     except Exception as exc:
         logger.warning("fetch_manifest docs call failed for %s: %s", module.slug, exc)
         result.setdefault("docs", "")
+
+    # Preserve the source config (mode/endpoint/dockerfile from module.yaml) — it
+    # lives in manifest_cache['_source'] and must survive a describe() refresh.
+    prev = module.manifest_cache or {}
+    if prev.get("_source"):
+        result["_source"] = prev["_source"]
 
     module.manifest_cache = result
     module.manifest_fetched_at = datetime.now(tz=timezone.utc)
