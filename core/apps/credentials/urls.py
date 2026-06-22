@@ -4,6 +4,7 @@ from django.urls import path
 
 from core.apps.credentials.views import (
     CredentialOptionsView,
+    CredentialTypeDetailView,
     CredentialTypeListView,
     CredentialViewSet,
     OAuthCallbackView,
@@ -18,8 +19,10 @@ cred_test = CredentialViewSet.as_view({"post": "test_credential"})
 cred_reveal = CredentialViewSet.as_view({"get": "reveal"})
 
 urlpatterns = [
-    # Registry — read-only
+    # Type registry — list (all auth) + create (admin)
     path("credentials/types/", CredentialTypeListView.as_view(), name="credential-type-list"),
+    # Type registry — update/delete (admin, admin-source only)
+    path("credentials/types/<str:key>/", CredentialTypeDetailView.as_view(), name="credential-type-detail"),
     # Owner-scoped credentials
     path("credentials/", cred_list, name="credential-list"),
     path("credentials/<int:pk>/", cred_detail, name="credential-detail"),

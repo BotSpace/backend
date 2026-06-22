@@ -73,6 +73,8 @@ class CredentialRegistryTypeSerializer(serializers.Serializer):
     fields = serializers.ListField()
     provider = serializers.CharField(required=False, allow_null=True, default=None)
     scopes = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    source = serializers.CharField(required=False, default="code")
+    editable = serializers.BooleanField(required=False, default=False)
 
 
 class CredentialListSerializer(serializers.ModelSerializer):

@@ -348,6 +348,27 @@ def fetch_manifest(module: ModuleModel) -> dict:
                     f"Allowed: {sorted(ALLOWED_FIELD_TYPES)}"
                 )
 
+    # credentialTypes — module declares its own credential type schemas.
+    # Stored in manifest_cache["credential_types"] for later consumption by registry.
+    credential_types = result.get("credentialTypes", [])
+    if credential_types and not isinstance(credential_types, list):
+        logger.warning("Module %s credentialTypes must be a list, ignoring", module.slug)
+        credential_types = []
+    # Namespace-enforce keys: each key must start with "{slug}." to avoid collisions.
+    cleaned_cred_types = []
+    for ct in credential_types:
+        if not isinstance(ct, dict):
+            continue
+        key = ct.get("key", "")
+        if not key.startswith(f"{module.slug}."):
+            logger.warning(
+                "Module %s credentialType key '%s' is not namespaced (must start with '%s.'), skipping",
+                module.slug, key, module.slug,
+            )
+            continue
+        cleaned_cred_types.append(ct)
+    result["credential_types"] = cleaned_cred_types
+
     try:
         docs_resp = requests.post(
             endpoint,
