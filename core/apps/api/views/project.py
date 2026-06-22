@@ -543,6 +543,37 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return project_modules_for_engine_view(request, project)
 
     @extend_schema(
+        summary="Self-hosted modulni ro'yxatga olish",
+        description=(
+            "Foydalanuvchi O'Z serverida joylashgan modulni loyihaga ulaydi. "
+            "Platforma build/run qilmaydi — faqat endpoint'ga ulanadi va manifest oladi."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["endpoint"],
+                "properties": {
+                    "endpoint": {"type": "string", "example": "https://my-server.com/rpc"},
+                    "name": {"type": "string", "example": "Mening modulim"},
+                    "auth_token": {"type": "string", "example": "secret-token"},
+                },
+            }
+        },
+        responses={201: "ProjectModuleSerializer"},
+    )
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="modules/register-self-hosted",
+        url_name="module-register-self-hosted",
+    )
+    def module_register_self_hosted(self, request, pk):
+        from core.apps.api.views.module import project_module_register_self_hosted
+
+        project = self.get_object()
+        return project_module_register_self_hosted(request, project)
+
+    @extend_schema(
         summary="Debug bot loglarini olish (snapshot)",
         description=(
             "Loyihaning DEBUG konteyneri pod loglarining oxirgi N qatorini qaytaradi. "

@@ -219,6 +219,99 @@ def project_modules_for_engine_view(request, project):
     return Response({"modules": data})
 
 
+def project_module_register_self_hosted(request, project):
+    """Foydalanuvchi O'Z self-hosted modulini ro'yxatga oladi.
+
+    Body: { "endpoint": "https://...", "name": "...", "auth_token": "..." }
+    Javob: ProjectModuleSerializer(pm).data
+    """
+    import re
+    import uuid as _uuid
+
+    from core.apps.api.services.module_service import ManifestValidationError, deploy_module, fetch_manifest
+
+    endpoint = (request.data.get("endpoint") or "").strip()
+    name = (request.data.get("name") or "").strip()
+    auth_token = (request.data.get("auth_token") or "").strip() or None
+
+    if not endpoint:
+        return Response({"detail": "endpoint majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # URL formatini tekshir — https:// yoki http:// bilan boshlanishi shart
+    if not re.match(r"^https?://", endpoint):
+        return Response({"detail": "endpoint to'g'ri URL bo'lishi kerak (http:// yoki https://)"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Slug: name berilsa undan, aks holda endpoint host'idan hosil qilinadi
+    if name:
+        slug_base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    else:
+        from urllib.parse import urlparse
+        parsed = urlparse(endpoint)
+        slug_base = re.sub(r"[^a-z0-9]+", "-", parsed.netloc.lower()).strip("-") or "self-hosted"
+
+    # Bir xil endpoint bo'lsa mavjud modulni topamiz (yaratmaymiz)
+    existing = None
+    for m in ModuleModel.objects.filter(active=True):
+        src = (m.manifest_cache or {}).get("_source") or {}
+        if src.get("mode") == "endpoint" and src.get("endpoint") == endpoint:
+            existing = m
+            break
+
+    if existing is None:
+        # Slug uniqueness: agar slug band bo'lsa UUID suffix qo'shiladi
+        slug = slug_base[:80]
+        if ModuleModel.objects.filter(slug=slug).exists():
+            slug = f"{slug_base[:70]}-{str(_uuid.uuid4())[:8]}"
+
+        module = ModuleModel(
+            slug=slug,
+            name=name or slug,
+            image="",
+            port=8100,
+            active=True,
+        )
+        if auth_token:
+            module.auth_token = auth_token
+        module.manifest_cache = {
+            "_source": {"mode": "endpoint", "endpoint": endpoint}
+        }
+        module.save()
+        logger.info("Self-hosted module created: slug=%s endpoint=%s project=%s", slug, endpoint, project.id)
+    else:
+        module = existing
+        # name yoki auth_token yangilansa update qilish
+        changed = False
+        if name and module.name != name:
+            module.name = name
+            changed = True
+        if auth_token and module.auth_token != auth_token:
+            module.auth_token = auth_token
+            changed = True
+        if changed:
+            module.save(update_fields=["name", "auth_token", "updated_at"])
+
+    # Endpoint'dan manifest olish — javob bermasa 400 qaytariladi
+    try:
+        fetch_manifest(module)
+    except ManifestValidationError as exc:
+        # Agar modul yangi yaratilgan bo'lsa, uni o'chirib tashlaymiz (cleanup)
+        if existing is None:
+            module.delete()
+        return Response(
+            {"detail": f"Modul endpoint ulanmadi: {exc}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ProjectModuleModel ga ulash (self-hosted uchun pod yaratilmaydi)
+    try:
+        pm = deploy_module(project, module)
+    except Exception as exc:
+        logger.error("deploy_module (self-hosted) error: %s", exc)
+        return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(ProjectModuleSerializer(pm).data, status=status.HTTP_201_CREATED)
+
+
 @extend_schema(tags=["modules"], summary="CI redeploy hook (X-Internal-Token)")
 class ModuleRedeployView(APIView):
     """Auto-deploy hook: a module's GitHub CI pushed a new image → restart the
