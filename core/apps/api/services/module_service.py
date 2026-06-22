@@ -3,6 +3,10 @@ from datetime import datetime, timezone
 
 import requests
 
+# Re-fetch a module's manifest from the running pod when the cached copy is older
+# than this. Keeps node edits (sizes, fields, docs) flowing without a manual step.
+MANIFEST_TTL_SECONDS = 120
+
 from core.apps.api.models.module import ModuleModel, ProjectModuleModel
 from core.apps.api.services.kubernetes_service import (
     create_deployment,
@@ -180,9 +184,19 @@ def get_project_module_manifests(project) -> list:
 
     # describe cache = {"module": {...}, "nodes": [NodeManifest, ...]}.
     # Constructor expects a FLAT array of node manifests, each tagged with its module.
+    now = datetime.now(tz=timezone.utc)
     manifests = []
     for pm in enabled_pms:
         module = pm.module
+        # TTL refresh (best-effort): pull the latest manifest when the cache is
+        # stale so module edits propagate without a manual refresh.
+        fetched = module.manifest_fetched_at
+        if fetched is None or (now - fetched).total_seconds() > MANIFEST_TTL_SECONDS:
+            try:
+                fetch_manifest(module)
+                module.refresh_from_db()
+            except Exception as exc:
+                logger.warning("manifest TTL refresh failed for %s: %s", module.slug, exc)
         cache = module.manifest_cache or {}
         for node in cache.get("nodes", []):
             node = dict(node)
