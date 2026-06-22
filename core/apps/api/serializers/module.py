@@ -6,10 +6,45 @@ from core.apps.api.models.module import ModuleModel, ProjectModuleModel
 class ModuleSerializer(serializers.ModelSerializer):
     docs = serializers.SerializerMethodField()
     nodes = serializers.SerializerMethodField()
+    source = serializers.SerializerMethodField()
+    module_yaml = serializers.SerializerMethodField()
 
     def get_docs(self, instance):
         cache = instance.manifest_cache or {}
         return cache.get("docs", "")
+
+    def get_source(self, instance):
+        """Source config (mode/endpoint) parsed from module.yaml."""
+        cache = instance.manifest_cache or {}
+        src = cache.get("_source") or {}
+        if not src.get("mode"):
+            src = {"mode": "github" if instance.image else "endpoint", "endpoint": "", "github": instance.github_url or ""}
+        return src
+
+    def get_module_yaml(self, instance):
+        """Reconstruct module.yaml from stored fields so the admin edit form can
+        prefill it (the raw yaml isn't stored — only parsed fields + _source)."""
+        src = self.get_source(instance)
+        mode = src.get("mode")
+        lines = [
+            "apiVersion: botmother.module/v1",
+            "module:",
+            f"  id: {instance.slug}",
+            f"  name: {instance.name}",
+        ]
+        if instance.icon:
+            lines.append(f"  icon: {instance.icon}")
+        if instance.description:
+            lines.append(f"  description: {instance.description}")
+        lines.append("source:")
+        if mode == "endpoint":
+            lines.append(f"  endpoint: {src.get('endpoint', '')}")
+        else:
+            lines.append(f"  github: {instance.github_url or src.get('github', '')}")
+            lines.append("runtime:")
+            lines.append(f"  dockerfile: {src.get('dockerfile', 'Dockerfile')}")
+            lines.append(f"  port: {src.get('port', instance.port)}")
+        return "\n".join(lines)
 
     def get_nodes(self, instance):
         cache = instance.manifest_cache or {}
@@ -42,6 +77,8 @@ class ModuleSerializer(serializers.ModelSerializer):
             "updated_at",
             "docs",
             "nodes",
+            "source",
+            "module_yaml",
         ]
         read_only_fields = ["id", "manifest_cache", "manifest_fetched_at", "created_at", "updated_at"]
 
