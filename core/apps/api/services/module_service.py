@@ -314,6 +314,31 @@ def undeploy_module(project, module: ModuleModel) -> bool:
     return True
 
 
+def undeploy_module_completely(module: ModuleModel) -> None:
+    """Shared deployment + service ni to'liq o'chirish (modul DELETE uchun).
+
+    - self-hosted modullar uchun k8s resurs yo'q — skip.
+    - Deployment / service allaqachon yo'q bo'lsa graceful (xato bermaydi).
+    - Barcha bog'liq ProjectModuleModel rowlarini ham o'chiradi.
+    """
+    ProjectModuleModel.objects.filter(module=module).delete()
+
+    if is_self_hosted(module):
+        logger.info("undeploy_completely: %s self-hosted, k8s skip", module.slug)
+        return
+
+    dep_name = _deployment_name(module.slug)
+    svc_name = _service_name(module.slug)
+
+    # remove_deployment: Exception'larni yutadi (False qaytaradi), 404 graceful.
+    removed = remove_deployment(dep_name)
+    logger.info("undeploy_completely: deployment %s removed=%s", dep_name, removed)
+
+    # delete_service: Exception'larni yutadi, 404 graceful.
+    deleted = delete_service(svc_name)
+    logger.info("undeploy_completely: service %s deleted=%s", svc_name, deleted)
+
+
 def fetch_manifest(module: ModuleModel) -> dict:
     # Shared model: the endpoint is deterministic; the pod exists once any project
     # has enabled the module (or admin deployed it).

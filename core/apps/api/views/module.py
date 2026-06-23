@@ -30,6 +30,7 @@ from core.apps.api.services.module_service import (
     get_project_modules_for_engine,
     register_module_from_yaml,
     undeploy_module,
+    undeploy_module_completely,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,14 @@ class ModuleViewSet(ModelViewSet):
 
     @extend_schema(summary="Modulni o'chirish (admin)")
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        module = self.get_object()
+        try:
+            undeploy_module_completely(module)
+        except Exception as exc:
+            logger.error("undeploy_module_completely failed for %s: %s", module.slug, exc)
+            # K8s xatosi bo'lsa ham DB'dan o'chirishni davom ettiramiz
+        self.perform_destroy(module)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(summary="Modul detail (authenticated)")
     def retrieve(self, request, *args, **kwargs):
