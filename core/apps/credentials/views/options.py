@@ -20,36 +20,43 @@ class CredentialOptionsView(APIView):
     Returns {"options": [...]} on success or {"options": [], "error": "..."} on failure.
     Never returns 500 for upstream (Google/API/module) errors.
 
+    Request body:
+        credential_id  (int|null, optional for module path)
+        params         (dict, optional)
+        module_slug    (str, optional) — used when credential_id is absent for module path
+
     Resolution order:
     1. OPTION_LOADERS (built-in Google loaders) — matched by resource name.
-    2. Module fallback — credential type_key prefix determines the module slug;
+       credential_id is required for built-in loaders.
+    2. Module fallback — slug derived from credential type_key prefix OR module_slug param;
        options.load RPC is called on that module's endpoint.
-    3. 400 only when credential_id is missing.
+       credential_id is optional: if provided, decrypted data is forwarded; otherwise
+       credentials: {} is sent.
+    3. 400 only when credential_id is missing for a built-in loader.
     """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request, resource: str):
         credential_id = request.data.get("credential_id")
-        if not credential_id:
-            return Response({"detail": "credential_id is required"}, status=400)
-
-        cred = (
-            Credential.objects.filter(
-                owner=request.user,
-                id=credential_id,
-                deleted_at__isnull=True,
-            )
-            .first()
-        )
-        if cred is None:
-            return Response({"detail": "Credential not found"}, status=404)
-
+        module_slug = request.data.get("module_slug") or ""
         params = request.data.get("params") or {}
 
         loader = OPTION_LOADERS.get(resource)
+
+        # --- Built-in loader path (Google Sheets / Drive) ---
         if loader is not None:
-            # Built-in loader path (Google Sheets / Drive)
+            if not credential_id:
+                return Response({"detail": "credential_id is required"}, status=400)
+
+            cred = Credential.objects.filter(
+                owner=request.user,
+                id=credential_id,
+                deleted_at__isnull=True,
+            ).first()
+            if cred is None:
+                return Response({"detail": "Credential not found"}, status=404)
+
             try:
                 token = _resolve_token(cred)
             except Exception as exc:
@@ -62,18 +69,31 @@ class CredentialOptionsView(APIView):
 
             return Response({"options": options})
 
-        # Module fallback path
-        try:
-            decrypted = crypto.decrypt(cred.data_encrypted)
-        except Exception as exc:
-            return Response({"options": [], "error": f"Credential decrypt failed: {exc}"})
+        # --- Module fallback path (credential optional) ---
+        cred = None
+        if credential_id:
+            cred = Credential.objects.filter(
+                owner=request.user,
+                id=credential_id,
+                deleted_at__isnull=True,
+            ).first()
+            if cred is None:
+                return Response({"detail": "Credential not found"}, status=404)
+
+        decrypted: dict | None = None
+        if cred is not None:
+            try:
+                decrypted = crypto.decrypt(cred.data_encrypted)
+            except Exception as exc:
+                return Response({"options": [], "error": f"Credential decrypt failed: {exc}"})
 
         try:
             options = load_module_options(
                 resource=resource,
-                cred_type_key=cred.type_key,
-                decrypted_data=decrypted,
                 params=params,
+                cred_type_key=cred.type_key if cred else None,
+                decrypted_data=decrypted,
+                module_slug=module_slug or None,
             )
         except Exception as exc:
             return Response({"options": [], "error": str(exc)})

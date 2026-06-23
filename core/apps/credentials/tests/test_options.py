@@ -509,3 +509,96 @@ def test_slug_from_type_key():
     assert _slug_from_type_key("mymod.oauth2") == "mymod"
     assert _slug_from_type_key("no_dot") == ""
     assert _slug_from_type_key("a.b.c") == "a"
+
+
+# ---------------------------------------------------------------------------
+# Module fallback without credential (module_slug param)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_options_module_slug_no_credential_success(auth_client):
+    """module_slug provided, credential absent → RPC called with empty credentials block."""
+    client, _ = auth_client
+
+    mock_rpc_resp = MagicMock()
+    mock_rpc_resp.ok = True
+    mock_rpc_resp.json.return_value = {
+        "jsonrpc": "2.0",
+        "result": {"options": [{"value": "v1", "label": "V1"}]},
+        "id": 1,
+    }
+
+    captured = {}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        captured["json"] = json
+        return mock_rpc_resp
+
+    with patch("core.apps.credentials.services.options.requests.post", side_effect=fake_post):
+        with patch(_GET_MOD_EP, return_value=(_mock_module("mymod"), "http://module-mymod:8100/rpc")):
+            resp = client.post(
+                OPTIONS_URL.format(resource="models"),
+                {"module_slug": "mymod", "params": {"q": "test"}},
+                format="json",
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == [{"value": "v1", "label": "V1"}]
+    assert "error" not in data
+    # credentials block must be empty (no credential provided)
+    assert captured["json"]["params"]["credentials"] == {}
+
+
+@pytest.mark.django_db
+def test_options_module_no_credential_no_slug_returns_200_error(auth_client):
+    """Neither credential_id nor module_slug provided for unknown resource → graceful 200 error."""
+    client, _ = auth_client
+
+    resp = client.post(
+        OPTIONS_URL.format(resource="models"),
+        {"params": {}},
+        format="json",
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == []
+    assert "error" in data
+
+
+@pytest.mark.django_db
+def test_options_builtin_loader_still_requires_credential(auth_client):
+    """Built-in google loader: credential_id absent → 400 (unchanged behaviour)."""
+    client, _ = auth_client
+
+    resp = client.post(
+        OPTIONS_URL.format(resource="google_spreadsheets"),
+        {"params": {}, "module_slug": "google"},
+        format="json",
+    )
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_options_module_slug_overrides_type_key_slug(auth_client):
+    """Explicit module_slug takes priority over slug derived from cred type_key."""
+    client, owner = auth_client
+    # credential belongs to 'openrouter' namespace but we explicitly pass 'mymod'
+    cred = _make_module_credential(owner, type_key="openrouter.apikey")
+
+    mock_rpc_resp = MagicMock()
+    mock_rpc_resp.ok = True
+    mock_rpc_resp.json.return_value = {"jsonrpc": "2.0", "result": {"options": []}, "id": 1}
+
+    with patch("core.apps.credentials.services.options.requests.post", return_value=mock_rpc_resp) as mock_post:
+        with patch(_GET_MOD_EP, return_value=(_mock_module("mymod"), "http://mymod/rpc")) as mock_get:
+            client.post(
+                OPTIONS_URL.format(resource="models"),
+                {"credential_id": cred.id, "module_slug": "mymod", "params": {}},
+                format="json",
+            )
+
+    # Must resolve 'mymod', not 'openrouter'
+    mock_get.assert_called_once_with("mymod")

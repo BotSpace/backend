@@ -151,34 +151,51 @@ def _get_module_and_endpoint(slug: str):
     return module, _shared_endpoint(module)
 
 
-def load_module_options(resource: str, cred_type_key: str, decrypted_data: dict, params: dict) -> list[dict]:
-    """Call options.load RPC on the module that owns cred_type_key.
+def load_module_options(
+    resource: str,
+    params: dict,
+    cred_type_key: str | None = None,
+    decrypted_data: dict | None = None,
+    module_slug: str | None = None,
+) -> list[dict]:
+    """Call options.load RPC on the module identified by cred_type_key prefix or module_slug.
+
+    credential is optional: if decrypted_data is provided, it is forwarded as
+    credentials.credential; otherwise credentials: {} is sent (module must handle absent cred).
 
     Returns a list of {value, label} dicts.
     Raises RuntimeError on module-not-found or RPC errors (caller should catch and convert to error response).
     """
-    slug = _slug_from_type_key(cred_type_key)
+    # Determine module slug: prefer explicit module_slug, fall back to type_key prefix.
+    slug = module_slug or (cred_type_key and _slug_from_type_key(cred_type_key)) or ""
     if not slug:
-        raise RuntimeError(f"Cannot determine module slug from type_key={cred_type_key!r}")
+        raise RuntimeError(
+            "Cannot determine module slug: provide module_slug or a namespaced credential type_key"
+        )
 
     try:
         module, endpoint = _get_module_and_endpoint(slug)
     except RuntimeError:
-        raise RuntimeError(f"No active module found for slug={slug!r} (derived from type_key={cred_type_key!r})")
+        source = f"module_slug={slug!r}" if module_slug else f"type_key={cred_type_key!r}"
+        raise RuntimeError(f"No active module found for slug={slug!r} (derived from {source})")
 
-    # Credential payload sent to module: {type_key, mode, data}
-    type_info = None
-    try:
-        from core.apps.credentials.registry import get_type
-        type_info = get_type(cred_type_key) or {}
-    except Exception:
-        type_info = {}
+    # Build credentials block — empty when no credential provided.
+    if decrypted_data is not None and cred_type_key:
+        type_info: dict = {}
+        try:
+            from core.apps.credentials.registry import get_type  # noqa: PLC0415
+            type_info = get_type(cred_type_key) or {}
+        except Exception:
+            pass
 
-    credential_payload = {
-        "type_key": cred_type_key,
-        "mode": type_info.get("mode", ""),
-        "data": decrypted_data,
-    }
+        credential_payload = {
+            "type_key": cred_type_key,
+            "mode": type_info.get("mode", ""),
+            "data": decrypted_data,
+        }
+        credentials_block: dict = {"credential": credential_payload}
+    else:
+        credentials_block = {}
 
     rpc_payload = {
         "jsonrpc": "2.0",
@@ -186,7 +203,7 @@ def load_module_options(resource: str, cred_type_key: str, decrypted_data: dict,
         "params": {
             "resource": resource,
             "params": params,
-            "credentials": {"credential": credential_payload},
+            "credentials": credentials_block,
         },
         "id": 1,
     }
