@@ -1,10 +1,11 @@
 """Tests for dynamic options endpoint and loader registry.
 
 Covers:
-- Each of the 3 Google loaders (mocked requests)
+- Each of the 5 Google loaders (mocked requests)
 - Endpoint: 200 with valid owner credential
 - Endpoint: 404 when credential belongs to another user
-- Endpoint: 400 for unknown resource
+- Module fallback: options.load RPC proxied to module endpoint
+- Module fallback: graceful error when module not found / RPC fails
 """
 from __future__ import annotations
 
@@ -272,7 +273,8 @@ def test_options_endpoint_404_wrong_owner(db):
 
 
 @pytest.mark.django_db
-def test_options_endpoint_400_unknown_resource(auth_client):
+def test_options_endpoint_unknown_resource_no_module_returns_200_error(auth_client):
+    """Unknown resource with no matching module → 200 + options=[] + error (graceful fallback)."""
     client, owner = auth_client
     cred = _make_oauth_credential(owner)
     resp = client.post(
@@ -280,8 +282,10 @@ def test_options_endpoint_400_unknown_resource(auth_client):
         {"credential_id": cred.id, "params": {}},
         format="json",
     )
-    assert resp.status_code == 400
-    assert "nonexistent_resource" in resp.json()["detail"]
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == []
+    assert "error" in data
 
 
 @pytest.mark.django_db
@@ -320,3 +324,188 @@ def test_options_endpoint_returns_error_on_api_failure(auth_client):
     assert data["options"] == []
     assert "error" in data
     assert "401" in data["error"]
+
+
+# ---------------------------------------------------------------------------
+# Module fallback tests
+# ---------------------------------------------------------------------------
+
+def _make_module_credential(owner, type_key="openrouter.apikey", name="OpenRouter Key"):
+    """Non-oauth credential with a namespaced type_key (module-style)."""
+    data = {"api_key": "sk-or-test-123"}
+    return Credential.objects.create(
+        owner=owner,
+        type_key=type_key,
+        name=name,
+        data_encrypted=crypto.encrypt(data),
+    )
+
+
+def _mock_module(slug: str, auth_token: str = ""):
+    """Helper: create a mock module object."""
+    m = MagicMock()
+    m.slug = slug
+    m.auth_token = auth_token
+    m.manifest_cache = {}
+    return m
+
+
+_GET_MOD_EP = "core.apps.credentials.services.options._get_module_and_endpoint"
+
+
+@pytest.mark.django_db
+def test_options_module_fallback_success(auth_client):
+    """Module fallback: RPC returns options list → view returns 200 with options."""
+    client, owner = auth_client
+    cred = _make_module_credential(owner)
+
+    mock_rpc_resp = MagicMock()
+    mock_rpc_resp.ok = True
+    mock_rpc_resp.json.return_value = {
+        "jsonrpc": "2.0",
+        "result": {
+            "options": [
+                {"value": "gpt-4o", "label": "GPT-4o"},
+                {"value": "claude-3", "label": "Claude 3"},
+            ]
+        },
+        "id": 1,
+    }
+
+    with patch("core.apps.credentials.services.options.requests.post", return_value=mock_rpc_resp):
+        with patch(_GET_MOD_EP, return_value=(_mock_module("openrouter", "module-secret"), "http://module-openrouter:8100/rpc")):
+            resp = client.post(
+                OPTIONS_URL.format(resource="models"),
+                {"credential_id": cred.id, "params": {"search": "gpt"}},
+                format="json",
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == [
+        {"value": "gpt-4o", "label": "GPT-4o"},
+        {"value": "claude-3", "label": "Claude 3"},
+    ]
+    assert "error" not in data
+
+
+@pytest.mark.django_db
+def test_options_module_fallback_no_module_returns_200_error(auth_client):
+    """Module fallback: no active module → 200 with options=[] and error message."""
+    client, owner = auth_client
+    cred = _make_module_credential(owner)
+
+    with patch(_GET_MOD_EP, side_effect=RuntimeError("No active module found for slug='openrouter'")):
+        resp = client.post(
+            OPTIONS_URL.format(resource="models"),
+            {"credential_id": cred.id, "params": {}},
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == []
+    assert "error" in data
+    assert "openrouter" in data["error"]
+
+
+@pytest.mark.django_db
+def test_options_module_fallback_rpc_error_returns_200_error(auth_client):
+    """Module fallback: RPC returns JSON-RPC error → 200 with options=[] + error."""
+    client, owner = auth_client
+    cred = _make_module_credential(owner)
+
+    mock_rpc_resp = MagicMock()
+    mock_rpc_resp.ok = True
+    mock_rpc_resp.json.return_value = {
+        "jsonrpc": "2.0",
+        "error": {"code": -32601, "message": "Method not found"},
+        "id": 1,
+    }
+
+    with patch("core.apps.credentials.services.options.requests.post", return_value=mock_rpc_resp):
+        with patch(_GET_MOD_EP, return_value=(_mock_module("openrouter"), "http://module-openrouter:8100/rpc")):
+            resp = client.post(
+                OPTIONS_URL.format(resource="models"),
+                {"credential_id": cred.id, "params": {}},
+                format="json",
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == []
+    assert "error" in data
+    assert "Method not found" in data["error"]
+
+
+@pytest.mark.django_db
+def test_options_module_fallback_rpc_http_error_returns_200_error(auth_client):
+    """Module fallback: RPC HTTP error → 200 with options=[] + error."""
+    client, owner = auth_client
+    cred = _make_module_credential(owner)
+
+    mock_rpc_resp = MagicMock()
+    mock_rpc_resp.ok = False
+    mock_rpc_resp.status_code = 503
+    mock_rpc_resp.text = "Service Unavailable"
+
+    with patch("core.apps.credentials.services.options.requests.post", return_value=mock_rpc_resp):
+        with patch(_GET_MOD_EP, return_value=(_mock_module("openrouter"), "http://module-openrouter:8100/rpc")):
+            resp = client.post(
+                OPTIONS_URL.format(resource="models"),
+                {"credential_id": cred.id, "params": {}},
+                format="json",
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["options"] == []
+    assert "error" in data
+    assert "503" in data["error"]
+
+
+@pytest.mark.django_db
+def test_options_module_fallback_rpc_sends_correct_payload(auth_client):
+    """Verify the RPC payload structure sent to the module endpoint."""
+    client, owner = auth_client
+    cred = _make_module_credential(owner, type_key="mymod.oauth")
+
+    captured = {}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        captured["headers"] = headers
+        mock_resp = MagicMock()
+        mock_resp.ok = True
+        mock_resp.json.return_value = {"jsonrpc": "2.0", "result": {"options": []}, "id": 1}
+        return mock_resp
+
+    with patch("core.apps.credentials.services.options.requests.post", side_effect=fake_post):
+        with patch(_GET_MOD_EP, return_value=(_mock_module("mymod", "tok123"), "http://module-mymod:8100/rpc")):
+            client.post(
+                OPTIONS_URL.format(resource="connections"),
+                {"credential_id": cred.id, "params": {"region": "us-east"}},
+                format="json",
+            )
+
+    assert captured["url"] == "http://module-mymod:8100/rpc"
+    assert captured["headers"] == {"Authorization": "Bearer tok123"}
+    payload = captured["json"]
+    assert payload["method"] == "options.load"
+    rpc_params = payload["params"]
+    assert rpc_params["resource"] == "connections"
+    assert rpc_params["params"] == {"region": "us-east"}
+    cred_payload = rpc_params["credentials"]["credential"]
+    assert cred_payload["type_key"] == "mymod.oauth"
+    assert cred_payload["data"]["api_key"] == "sk-or-test-123"
+
+
+def test_slug_from_type_key():
+    """Unit test for slug extraction helper."""
+    from core.apps.credentials.services.options import _slug_from_type_key
+
+    assert _slug_from_type_key("openrouter.apikey") == "openrouter"
+    assert _slug_from_type_key("mymod.oauth2") == "mymod"
+    assert _slug_from_type_key("no_dot") == ""
+    assert _slug_from_type_key("a.b.c") == "a"
