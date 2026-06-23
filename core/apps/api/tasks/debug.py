@@ -9,7 +9,8 @@ from core.apps.api.services.docker_service import remove_service
 
 @shared_task
 def sync_debug():
-    last_time = timezone.now() - timedelta(minutes=10)
+    # Debug bot uchun ajratilgan vaqt 30 daqiqa (UI countdown bilan bir xil).
+    last_time = timezone.now() - timedelta(minutes=30)
     containers = DebugModel.objects.filter(
         project__is_template=False,
         status=ContainerStatusEnum.RUNNING.value,
