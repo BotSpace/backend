@@ -14,6 +14,7 @@ from core.apps.api.views.debug import (
     DebugNodeEventView,
 )
 from core.apps.api.views.internal import credential_by_id, project_by_debug_uuid, project_by_release_uuid
+from core.apps.api.views.module_file import ModuleFileDeleteView, ModuleFileUploadView
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
 from core.apps.api.views.subscription import SubscriptionViewSet
@@ -91,4 +92,8 @@ urlpatterns = [
     # Module push-trigger relay: modul → engine
     path("module-trigger/<uuid:project_uuid>/", ModuleTriggerView.as_view(), name="module-trigger"),
     path("module-trigger/<uuid:project_uuid>", ModuleTriggerView.as_view(), name="module-trigger-noslash"),
+    # Module-scoped file upload/delete (HMAC Bearer token auth)
+    path("module-file/", ModuleFileUploadView.as_view(), name="module-file-upload"),
+    path("module-file/<uuid:uuid>/", ModuleFileDeleteView.as_view(), name="module-file-delete"),
+    path("module-file/<uuid:uuid>", ModuleFileDeleteView.as_view(), name="module-file-delete-noslash"),
 ]

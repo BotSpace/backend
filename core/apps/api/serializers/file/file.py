@@ -39,3 +39,19 @@ class CreateFileSerializer(BaseFileSerializer):
             "uuid": {"read_only": True},
             "filesize": {"read_only": True},
         }
+
+
+class ModuleFileCreateSerializer(BaseFileSerializer):
+    """project va user token orqali beriladi — input sifatida qabul qilinmaydi."""
+
+    class Meta(BaseFileSerializer.Meta):
+        fields = [
+            "file",
+            "uuid",
+            "filesize",
+            "filetype",
+        ]
+        extra_kwargs = {
+            "uuid": {"read_only": True},
+            "filesize": {"read_only": True},
+        }
