@@ -158,6 +158,66 @@ class ModuleViewSet(ModelViewSet):
         data = ModuleSerializer(module).data
         return Response({"ok": True, "mode": mode, "module": data, **info}, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        summary="GitHub repo URL dan modul ro'yxatga olish (admin)",
+        description=(
+            "Faqat GitHub repo URL kiritiladi — backend repo'dan module.yaml ni avtomatik "
+            "topib o'qiydi, modulni global katalogga qo'shadi va build ishga tushiradi. "
+            "Oddiy foydalanuvchilar keyin uni project'lariga yoqadilar (enable flow). "
+            "Idempotent: register_module_from_yaml slug bo'yicha mavjudini yangilaydi."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["repo_url"],
+                "properties": {
+                    "repo_url": {
+                        "type": "string",
+                        "example": "https://github.com/owner/my-module",
+                    },
+                },
+            }
+        },
+        responses={201: ModuleSerializer},
+    )
+    @action(methods=["POST"], detail=False, url_path="register-github", url_name="register-github")
+    def register_github(self, request):
+        """GitHub repo URL dan module.yaml o'qib global modullar katalogiga qo'shadi.
+
+        register_yaml bilan bir xil orkestratsiya, farqi — yaml matn emas,
+        GitHub repo URL'idan module.yaml avtomatik yuklanadi.
+
+        github mode → build_module_image() (Kaniko job)
+        endpoint mode → fetch_manifest() (self-hosted, darhol tekshiriladi)
+        Javob: { ok, mode, module: ModuleSerializer.data, build_job?, warning? }
+        """
+        repo_url = (request.data.get("repo_url") or "").strip()
+        if not repo_url:
+            return Response({"detail": "repo_url majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            yaml_text, _canonical = _fetch_github_module_yaml(repo_url)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            module, mode = register_module_from_yaml(yaml_text)
+        except ManifestValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        info = {}
+        try:
+            if mode == "github":
+                info["build_job"] = build_module_image(module)
+            else:
+                fetch_manifest(module)
+                info["manifest"] = "fetched"
+        except Exception as exc:
+            info["warning"] = str(exc)
+
+        data = ModuleSerializer(module).data
+        return Response({"ok": True, "mode": mode, "module": data, **info}, status=status.HTTP_201_CREATED)
+
 
 def _resolve_project_for_user(user, pk):
     from core.apps.api.models import ProjectModel
@@ -360,6 +420,71 @@ class ModuleRedeployView(APIView):
 
 def _normalize_repo(url: str) -> str:
     return (url or "").strip().rstrip("/").lower().removesuffix(".git")
+
+
+def _github_raw_yaml_url(repo_url: str) -> tuple[str, str]:
+    """GitHub repo URL dan raw module.yaml URL'ini yasaydi.
+
+    Qabul qiladi:
+      https://github.com/owner/repo
+      https://github.com/owner/repo.git
+      https://github.com/owner/repo/
+
+    Qaytaradi: (raw_url, canonical_repo_url)
+    Noto'g'ri format: ValueError ko'taradi.
+    """
+    import re
+
+    url = (repo_url or "").strip().rstrip("/")
+    # .git suffixini olib tash
+    if url.endswith(".git"):
+        url = url[:-4]
+
+    # Faqat github.com qabul qilinadi
+    m = re.match(r"^https?://github\.com/([^/]+)/([^/]+)$", url, re.IGNORECASE)
+    if not m:
+        raise ValueError(
+            "Noto'g'ri GitHub repo URL. Ko'rinish: https://github.com/owner/repo"
+        )
+
+    owner, repo = m.group(1), m.group(2)
+    canonical = f"https://github.com/{owner}/{repo}"
+    raw_base = f"https://raw.githubusercontent.com/{owner}/{repo}"
+    return f"{raw_base}/HEAD/module.yaml", canonical
+
+
+def _fetch_github_module_yaml(repo_url: str) -> tuple[str, str]:
+    """Repo URL dan module.yaml matnini va canonical repo URL'ini qaytaradi.
+
+    HEAD topilmasa main, keyin master ni sinab ko'radi.
+    Topilmasa: ValueError ko'taradi.
+    """
+    import requests as _rq
+
+    raw_url, canonical = _github_raw_yaml_url(repo_url)
+    # HEAD → main → master
+    owner_repo = canonical.removeprefix("https://github.com/")
+    attempts = [
+        raw_url,  # HEAD (default branch)
+        f"https://raw.githubusercontent.com/{owner_repo}/main/module.yaml",
+        f"https://raw.githubusercontent.com/{owner_repo}/master/module.yaml",
+    ]
+    last_exc = None
+    for attempt_url in attempts:
+        try:
+            resp = _rq.get(attempt_url, timeout=10)
+            if resp.status_code == 404:
+                last_exc = None
+                continue
+            resp.raise_for_status()
+            return resp.text, canonical
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    if last_exc:
+        raise ValueError(f"module.yaml yuklanmadi: {last_exc}")
+    raise ValueError("repo ichida module.yaml topilmadi (HEAD, main, master branch'lari tekshirildi)")
 
 
 def _match_module_by_repo(html_url: str, clone_url: str, full_name: str):
