@@ -17,8 +17,10 @@ CELERY_BEAT_SCHEDULE = {
     #     "task": "payment.process_resource_usage",
     #     "schedule": crontab(minute="0", hour="*/1"),
     # },
+    # Har 5 daqiqada — qisqa TTL (soniya/daqiqa) fayllar uzoq qolib ketmasligi uchun.
+    # Aniq soniyada o'chmaydi (davriy supurish), eng ko'pi bilan ~5 daqiqa kechikadi.
     "cleanup_expired_files": {
         "task": "core.apps.api.tasks.file.cleanup_expired_files",
-        "schedule": crontab(hour="*/1", minute="7"),
+        "schedule": crontab(minute="*/5"),
     },
 }
