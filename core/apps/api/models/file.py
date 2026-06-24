@@ -1,9 +1,10 @@
+import uuid
+
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_core.models import AbstractBaseModel
 from model_bakery import baker
-import uuid
-from django.contrib.auth import get_user_model
 
 from core.apps.api.enums.file import FileTypeEnum
 from core.apps.api.models.project import ProjectModel
@@ -19,6 +20,7 @@ class FileModel(AbstractBaseModel):
     filesize = models.BigIntegerField(blank=True, null=True)
     filetype = models.CharField(choices=FileTypeEnum.choices, default=FileTypeEnum.FILE.value)
     project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE, null=False, blank=False)
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     def __str__(self):
         return str(self.pk)

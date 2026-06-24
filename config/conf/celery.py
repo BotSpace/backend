@@ -17,4 +17,8 @@ CELERY_BEAT_SCHEDULE = {
     #     "task": "payment.process_resource_usage",
     #     "schedule": crontab(minute="0", hour="*/1"),
     # },
+    "cleanup_expired_files": {
+        "task": "core.apps.api.tasks.file.cleanup_expired_files",
+        "schedule": crontab(hour="*/1", minute="7"),
+    },
 }

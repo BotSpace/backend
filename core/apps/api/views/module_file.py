@@ -79,6 +79,7 @@ class ModuleFileUploadView(APIView):
                 "file": request.build_absolute_uri(instance.file.url),
                 "filetype": instance.filetype,
                 "filesize": instance.filesize,
+                "expires_at": instance.expires_at.isoformat() if instance.expires_at else None,
             },
             status=status.HTTP_201_CREATED,
         )
