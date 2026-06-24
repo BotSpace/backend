@@ -23,4 +23,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.file.cleanup_expired_files",
         "schedule": crontab(minute="*/5"),
     },
+    # Har 10 daqiqada — CrashLoopBackOff/Error holatidagi release deployment'larni
+    # Kubernetes'dan o'chiradi, DB'da RelaseModel record FAILED statusida qoladi.
+    "cleanup_failed_releases": {
+        "task": "core.apps.api.tasks.release.cleanup_failed_releases",
+        "schedule": crontab(minute="*/10"),
+    },
 }
