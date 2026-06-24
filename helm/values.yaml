@@ -57,6 +57,7 @@ configMaps:
     STORAGE_DEFAULT: "AWS"
     STORAGE_STATIC: "STATIC"
     STORAGE_REGION: "us-east-005"
+    PROMETHEUS_URL: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
     RAM_PRICE: "1000"
     CPU_PRICE: "1000"
     NET_RX_PRICE: "1000"

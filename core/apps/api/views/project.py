@@ -574,6 +574,42 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return project_module_register_self_hosted(request, project)
 
     @extend_schema(
+        summary="Loyiha monitoring metrikalaari",
+        description=(
+            "Kubernetes Prometheus'dan CPU, memory, network metrikalarini va "
+            "Django DB + MongoDB'dan disk foydalanishini qaytaradi. "
+            "Prometheus ulanmasa cpu/memory/net null, prometheus_available=false, "
+            "lekin disk (DB) baribir qaytadi."
+        ),
+        responses={
+            200: OpenApiResponse(
+                description="Monitoring metrikalar",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "cpu_cores": {"type": "number", "nullable": True, "example": 0.00022},
+                        "memory_bytes": {"type": "integer", "nullable": True, "example": 7757824},
+                        "net_rx_bps": {"type": "number", "nullable": True, "example": 98.3},
+                        "net_tx_bps": {"type": "number", "nullable": True, "example": 39.7},
+                        "disk_bytes": {"type": "integer", "example": 12345},
+                        "disk_files_bytes": {"type": "integer", "example": 12000},
+                        "disk_cms_bytes": {"type": "integer", "example": 345},
+                        "prometheus_available": {"type": "boolean", "example": True},
+                    },
+                },
+            ),
+            404: _error_response("Loyiha topilmadi", {"detail": {"type": "string", "example": "Not found."}}),
+        },
+    )
+    @action(methods=["GET"], detail=True, url_name="monitoring", url_path="monitoring")
+    def monitoring(self, request, pk):
+        from core.apps.api.services.monitoring import get_project_monitoring
+
+        project = self.get_object()
+        data = get_project_monitoring(project.id)
+        return Response(data=data)
+
+    @extend_schema(
         summary="Debug bot loglarini olish (snapshot)",
         description=(
             "Loyihaning DEBUG konteyneri pod loglarining oxirgi N qatorini qaytaradi. "
