@@ -14,6 +14,7 @@ from core.apps.api.views.debug import (
     DebugNodeEventView,
 )
 from core.apps.api.views.internal import credential_by_id, project_by_debug_uuid, project_by_release_uuid
+from core.apps.api.views.webhook_endpoint import WebhookEndpointMintView, WebhookHookResolveView
 from core.apps.api.views.module_file import ModuleFileDeleteView, ModuleFileUploadView
 from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
@@ -68,6 +69,9 @@ urlpatterns = [
     path("internal/project-by-release-uuid/<uuid:uuid>/", project_by_release_uuid, name="project-by-release-uuid"),
     path("internal/project-by-debug-uuid/<uuid:uuid>/", project_by_debug_uuid, name="project-by-debug-uuid"),
     path("internal/credentials/<int:pk>/", credential_by_id, name="internal-credential-by-id"),
+    # Webhook trigger: mint URL (owner) + resolve token (Go webhook service)
+    path("webhook/endpoint/", WebhookEndpointMintView.as_view(), name="webhook-endpoint-mint"),
+    path("internal/webhook-hook/<uuid:token>/", WebhookHookResolveView.as_view(), name="webhook-hook-resolve"),
     # Debug node-execution events from engine.
     # Both with/without trailing slash so engines that strip the slash (≤3.5.15)
     # don't hit an APPEND_SLASH 301 → GET → 405.
