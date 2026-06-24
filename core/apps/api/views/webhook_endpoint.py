@@ -15,10 +15,12 @@ def _hook_url(token) -> str:
 
 
 class WebhookEndpointMintView(APIView):
-    """POST /api/webhook/endpoint/  body: {project, node_id}
+    """POST /api/webhook/endpoint/  body: {project, node_id, chat_id?}
 
-    Owner-only. Idempotent per (project, node_id): a node mints its URL once and
-    reuses it forever (the constructor caches it in node data). Returns {token, url}.
+    Owner-only. Idempotent per (project, node_id, chat_id): a node mints its URL
+    once and reuses it forever (the constructor caches it in node data). Optional
+    chat_id (int) binds the URL to a chat — the flow then runs as that user.
+    Returns {token, url, chat_id}.
     """
 
     permission_classes = [IsAuthenticated]
@@ -30,14 +32,23 @@ class WebhookEndpointMintView(APIView):
             return error_response({"detail": "project va node_id majburiy"}, status.HTTP_400_BAD_REQUEST)
 
         try:
+            chat_id = int(request.data.get("chat_id") or 0)
+        except (ValueError, TypeError):
+            return error_response({"detail": "chat_id butun son bo'lishi kerak"}, status.HTTP_400_BAD_REQUEST)
+
+        try:
             project = ProjectModel.objects.get(pk=project_id)
         except (ProjectModel.DoesNotExist, ValueError, TypeError):
             return error_response({"detail": "Project topilmadi"}, status.HTTP_404_NOT_FOUND)
         if project.owner_id != request.user.id:
             return error_response({"detail": "Ruxsat yo'q"}, status.HTTP_403_FORBIDDEN)
 
-        endpoint, _ = WebhookEndpointModel.objects.get_or_create(project=project, node_id=node_id)
-        return success_response({"token": str(endpoint.token), "url": _hook_url(endpoint.token)})
+        endpoint, _ = WebhookEndpointModel.objects.get_or_create(
+            project=project, node_id=node_id, chat_id=chat_id
+        )
+        return success_response(
+            {"token": str(endpoint.token), "url": _hook_url(endpoint.token), "chat_id": endpoint.chat_id}
+        )
 
 
 class WebhookHookResolveView(APIView):
@@ -63,6 +74,7 @@ class WebhookHookResolveView(APIView):
             {
                 "token": str(endpoint.token),
                 "node_id": endpoint.node_id,
+                "chat_id": endpoint.chat_id,
                 "project_id": project.id,
                 "release_webhook_uuid": str(project.release_webhook_uuid),
                 "debug_webhook_uuid": str(project.debug_webhook_uuid),
