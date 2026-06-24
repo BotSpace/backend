@@ -64,6 +64,8 @@ class ErrorEvent(BaseModel):
     chat_id: int
     node_id: Optional[str] = None
     node_type: Optional[str] = None
+    # error | warning | info — eski engine'lar yubormaydi, shuning uchun default "error".
+    level: str = "error"
     message: str
     detail: Optional[str] = None
     ts: Optional[int] = None

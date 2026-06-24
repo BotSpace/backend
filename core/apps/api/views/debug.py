@@ -299,11 +299,17 @@ class DebugErrorEventView(APIView):
 
         ts = int(data["ts"]) if data.get("ts") else None
 
+        # level: error | warning | info. Eski engine'lar yubormaydi → default "error".
+        level = (data.get("level") or "error").lower()
+        if level not in ("error", "warning", "info"):
+            level = "error"
+
         error_payload = {
             "project": project.pk,
             "chat_id": int(data.get("chat_id", 0)),
             "node_id": data.get("node_id") or None,
             "node_type": data.get("node_type") or None,
+            "level": level,
             "message": message,
             "detail": data.get("detail") or None,
             "ts": ts,
@@ -328,6 +334,7 @@ class DebugErrorEventView(APIView):
                 chat_id=int(data.get("chat_id", 0)),
                 node_id=data.get("node_id") or None,
                 node_type=data.get("node_type") or None,
+                level=level,
                 message=message,
                 detail=data.get("detail") or None,
                 ts=ts,
@@ -368,10 +375,17 @@ class DebugErrorListView(APIView):
         except (ValueError, TypeError):
             limit = _ERRORS_CAP
 
+        # Ixtiyoriy ?level=error|warning|info filtr. Eski entry'larda "level" yo'q → "error".
+        level_filter = (request.query_params.get("level") or "").lower()
+        if level_filter not in ("error", "warning", "info"):
+            level_filter = ""
+
         try:
             key = _errors_cache_key(project.pk)
             raw = cache.get(key)
             errors_list = json.loads(raw) if raw else []
+            if level_filter:
+                errors_list = [e for e in errors_list if (e.get("level") or "error") == level_filter]
             # Eng yangi birinchi (oxirgi qo'shilganlar tepada).
             errors_list = list(reversed(errors_list[-limit:]))
         except Exception as exc:
