@@ -29,4 +29,9 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.apps.api.tasks.release.cleanup_failed_releases",
         "schedule": crontab(minute="*/10"),
     },
+    # Har soatda har loyihaning disk hajmini snapshot qiladi (monitoring tarix charti).
+    "snapshot_project_disk": {
+        "task": "core.apps.api.tasks.monitoring.snapshot_project_disk",
+        "schedule": crontab(minute="0"),
+    },
 }

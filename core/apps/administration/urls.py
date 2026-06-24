@@ -18,6 +18,7 @@ from core.apps.administration.views import (
     audit_log as audit_log_views,
     bot_withdrawals as bot_withdrawals_views,
     kyc as kyc_views,
+    monitoring as monitoring_views,
     orders as orders_views,
     plans as plans_views,
     projects as projects_views,
@@ -49,6 +50,7 @@ router.register("plans", plans_views.AdminPlansView, basename="admin-plans")
 router.register("tickets", tickets_views.AdminTicketsView, basename="admin-tickets")
 router.register("audit-log", audit_log_views.AdminAuditLogView, basename="admin-audit-log")
 router.register("settings", settings_views.AdminSettingsView, basename="admin-settings")
+router.register("monitoring", monitoring_views.AdminMonitoringView, basename="admin-monitoring")
 
 
 urlpatterns = [

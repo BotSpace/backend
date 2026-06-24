@@ -610,6 +610,22 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return Response(data=data)
 
     @extend_schema(
+        summary="Loyiha monitoring tarixi (chartlar uchun)",
+        description=(
+            "CPU/RAM/network tarixini Prometheus range query'dan, disk tarixini "
+            "snapshot jadvalidan qaytaradi. ?range=1h|6h|24h|7d (default 24h)."
+        ),
+    )
+    @action(methods=["GET"], detail=True, url_name="monitoring-history", url_path="monitoring/history")
+    def monitoring_history(self, request, pk):
+        from core.apps.api.services.monitoring import get_project_history
+
+        project = self.get_object()
+        range_key = request.query_params.get("range", "24h")
+        data = get_project_history(project.id, range_key)
+        return Response(data=data)
+
+    @extend_schema(
         summary="Debug bot loglarini olish (snapshot)",
         description=(
             "Loyihaning DEBUG konteyneri pod loglarining oxirgi N qatorini qaytaradi. "
