@@ -71,6 +71,7 @@ class ModuleSerializer(serializers.ModelSerializer):
             "image",
             "port",
             "active",
+            "is_default",
             "manifest_cache",
             "manifest_fetched_at",
             "created_at",
@@ -86,7 +87,7 @@ class ModuleSerializer(serializers.ModelSerializer):
 class CreateModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModuleModel
-        fields = ["slug", "name", "description", "icon", "github_url", "image", "port", "auth_token", "active"]
+        fields = ["slug", "name", "description", "icon", "github_url", "image", "port", "auth_token", "active", "is_default"]
 
 
 class ProjectModuleSerializer(serializers.ModelSerializer):

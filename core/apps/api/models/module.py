@@ -15,6 +15,7 @@ class ModuleModel(AbstractBaseModel):
     manifest_cache = models.JSONField(null=True, blank=True)
     manifest_fetched_at = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, db_index=True)
 
     def __str__(self):
         return self.slug

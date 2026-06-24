@@ -14,13 +14,13 @@ class ProjectModuleInline(TabularInline):
 
 @admin.register(ModuleModel)
 class ModuleAdmin(ModelAdmin):
-    list_display = ["id", "slug", "name", "image", "port", "active", "manifest_fetched_at"]
-    list_filter = ["active"]
+    list_display = ["id", "slug", "name", "image", "port", "active", "is_default", "manifest_fetched_at"]
+    list_filter = ["active", "is_default"]
     search_fields = ["slug", "name"]
     readonly_fields = ["manifest_cache", "manifest_fetched_at", "created_at", "updated_at"]
     inlines = [ProjectModuleInline]
     fieldsets = [
-        (None, {"fields": ["slug", "name", "description", "icon", "active"]}),
+        (None, {"fields": ["slug", "name", "description", "icon", "active", "is_default"]}),
         ("Deploy", {"fields": ["image", "port", "github_url"]}),
         ("Auth", {"fields": ["auth_token"]}),
         ("Manifest", {"fields": ["manifest_cache", "manifest_fetched_at"]}),

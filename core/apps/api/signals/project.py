@@ -12,6 +12,7 @@ from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
+from core.apps.api.tasks.project import enable_default_modules
 from core.services.redis_service import client as redis_client
 
 
@@ -42,6 +43,13 @@ def ProjectSignal(sender, instance, created, **kwargs):
                     )
 
         transaction.on_commit(create_mongo_creds)
+
+        def schedule_default_modules():
+            if not getattr(settings, "TESTING", False):
+                enable_default_modules.delay(instance.pk)
+                logging.info("enable_default_modules task scheduled for project_id=%s", instance.pk)
+
+        transaction.on_commit(schedule_default_modules)
 
 
 @receiver(post_delete, sender=ProjectModel)
