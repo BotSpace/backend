@@ -22,6 +22,7 @@ from kubernetes.client import (
     V1Deployment,
     V1DeploymentSpec,
     V1DeploymentStrategy,
+    V1RollingUpdateDeployment,
     V1PodTemplateSpec,
     V1PodSpec,
     V1Container,
@@ -293,16 +294,21 @@ def create_deployment(image: str, name: str, env_vars: list = None, **kwargs):
     )
 
     # Deployment spec
-    # Recreate: on reload the old pod is terminated BEFORE the new one starts,
-    # so ready_replicas drops to 0 ("init") and only returns to 1 ("running")
-    # once the new engine passes the readiness probe. With the default
-    # RollingUpdate the old ready pod lingers, so a reload looked "running"
-    # instantly.
+    # RollingUpdate maxUnavailable=0, maxSurge=1: on a reload the NEW pod is brought
+    # up and must pass its readiness probe BEFORE the old pod is terminated, so there
+    # is always ≥1 ready pod — zero downtime (no "uzulish"). Bots run in WEBHOOK mode
+    # (WEBHOOK_ENABLED=true) behind a Service, so a brief two-pod overlap doesn't cause
+    # a Telegram getUpdates 409 conflict (that only happens with long-polling).
+    # Bonus: ready_replicas never drops to 0, so the status never flickers to
+    # "stopped"/"init" during a redeploy — it stays "running".
     deployment_spec = V1DeploymentSpec(
         replicas=1,
         selector=V1LabelSelector(match_labels=labels),
         template=pod_template,
-        strategy=V1DeploymentStrategy(type="Recreate"),
+        strategy=V1DeploymentStrategy(
+            type="RollingUpdate",
+            rolling_update=V1RollingUpdateDeployment(max_unavailable=0, max_surge=1),
+        ),
     )
 
     # Deployment metadata
