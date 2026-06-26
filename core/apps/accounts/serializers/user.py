@@ -38,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
         plan = subscription.plan
         input_used = subscription.tokens_used_input
         output_used = subscription.tokens_used_output
-        token_limit = plan.max_input_tokens + plan.max_output_tokens
+        token_limit = plan.max_tokens
         token_used = input_used + output_used
 
         return {

@@ -34,8 +34,7 @@ class Command(BaseCommand):
                 'name': PlanType.FREE,
                 'price': Decimal('0.00'),
                 'max_bots': 1,
-                'max_input_tokens': 800_000,
-                'max_output_tokens': 200_000,  # jami 1M token/oy
+                'max_tokens': 1_000_000,
                 'description': 'Bepul tarif — 1 ta bot, oyiga 1M AI token.',
                 'order': 1,
             },
@@ -43,8 +42,7 @@ class Command(BaseCommand):
                 'name': PlanType.PRO,
                 'price': Decimal('120000.00'),  # so'm/oy (balans so'mda)
                 'max_bots': 5,
-                'max_input_tokens': 8_000_000,
-                'max_output_tokens': 2_000_000,  # jami 10M token/oy
+                'max_tokens': 10_000_000,
                 'description': 'Pro tarifi — 5 ta bot, oyiga 10M AI token.',
                 'is_top': True,
                 'order': 2,
@@ -53,8 +51,7 @@ class Command(BaseCommand):
                 'name': PlanType.MAX,
                 'price': Decimal('240000.00'),  # so'm/oy (balans so'mda)
                 'max_bots': 0,  # cheksiz
-                'max_input_tokens': 40_000_000,
-                'max_output_tokens': 10_000_000,  # jami 50M token/oy
+                'max_tokens': 50_000_000,
                 'description': 'Max tarifi — cheksiz bot, oyiga 50M AI token.',
                 'order': 3,
             },

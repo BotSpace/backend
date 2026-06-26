@@ -27,8 +27,10 @@ class PlanModel(AbstractBaseModel):
     max_bots = models.IntegerField(
         verbose_name=_("Maksimal botlar soni"), default=1, help_text=_("0 = cheksiz")
     )
-    max_output_tokens = models.BigIntegerField(verbose_name=_("Oylik output token limiti"), default=200000)
-    max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti"), default=800000)
+    max_tokens = models.BigIntegerField(verbose_name=_("Oylik token limiti"), default=1000000)
+    # Deprecated: eski alohida input/output limitlar — faqat migration va tarixiy ma'lumot uchun saqlanadi.
+    max_output_tokens = models.BigIntegerField(verbose_name=_("Oylik output token limiti (deprecated)"), default=200000)
+    max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti (deprecated)"), default=800000)
     features = models.JSONField(verbose_name=_("Xususiyatlar"), default=dict, blank=True)
 
     def __str__(self):
@@ -75,7 +77,7 @@ class UserSubscription(AbstractBaseModel):
         return self.bots_count < self.plan.max_bots
 
     def tokens_remaining(self) -> int:
-        token_limit = self.plan.max_input_tokens + self.plan.max_output_tokens
+        token_limit = self.plan.max_tokens
         tokens_used = self.tokens_used_input + self.tokens_used_output
         return max(0, token_limit - tokens_used)
 

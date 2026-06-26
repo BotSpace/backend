@@ -35,7 +35,7 @@ class PlanAdmin(ModelAdmin):
 
     fieldsets = (
         (_("Asosiy"), {"fields": ("name", "price", "is_top", "description", "is_active", "order")}),
-        (_("Limitlar"), {"fields": ("max_bots", "max_input_tokens", "max_output_tokens")}),
+        (_("Limitlar"), {"fields": ("max_bots", "max_tokens")}),
         (_("Qo'shimcha xususiyatlar"), {"fields": ("features",)}),
     )
 
@@ -52,8 +52,7 @@ class PlanAdmin(ModelAdmin):
     @display(description=_("Limitlar"))
     def limits_display(self, obj):
         bots = "cheksiz" if obj.max_bots == 0 else obj.max_bots
-        total_tokens = obj.max_input_tokens + obj.max_output_tokens
-        return f"{bots} bot · {total_tokens:,} token/oy"
+        return f"{bots} bot · {obj.max_tokens:,} token/oy"
 
     @display(description=_("Obunalar"))
     def subscription_count(self, obj):
@@ -109,10 +108,10 @@ class UserSubscriptionAdmin(ModelAdmin):
         color = colors.get(obj.status, "black")
         return format_html('<span style="color: {}; font-weight: 600;">{}</span>', color, obj.get_status_display())
 
-    @display(description=_("Output tokenlar"))
+    @display(description=_("Token sarfi"))
     def tokens_output_display(self, obj):
-        limit = obj.plan.max_output_tokens
-        used = obj.tokens_used_output
+        limit = obj.plan.max_tokens
+        used = obj.tokens_used_input + obj.tokens_used_output
         pct = round(used / limit * 100, 1) if limit else 0
         color = "red" if pct >= 100 else ("orange" if pct >= 80 else "green")
         return format_html(

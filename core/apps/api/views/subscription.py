@@ -135,15 +135,12 @@ class SubscriptionViewSet(viewsets.ViewSet):
             return error_response({"detail": "FREE tarif topilmadi. Admin bilan bog'laning."}, 500)
 
         plan = subscription.plan
-        output_limit = plan.max_output_tokens
-        input_limit = plan.max_input_tokens
-        token_limit = input_limit + output_limit
+        token_limit = plan.max_tokens
         input_used = subscription.tokens_used_input
         output_used = subscription.tokens_used_output
         token_used = input_used + output_used
-
-        output_used_pct = round(output_used / output_limit * 100, 2) if output_limit else 0
-        input_used_pct = round(input_used / input_limit * 100, 2) if input_limit else 0
+        tokens_remaining = max(0, token_limit - token_used)
+        usage_pct = round(token_used / token_limit * 100, 2) if token_limit else 0
 
         return success_response(
             {
@@ -152,16 +149,15 @@ class SubscriptionViewSet(viewsets.ViewSet):
                 "plan_name": plan.get_name_display(),
                 "tokens_used_input": input_used,
                 "tokens_used_output": output_used,
-                "tokens_limit_input": input_limit,
-                "tokens_limit_output": output_limit,
-                "tokens_remaining": max(0, token_limit - token_used),
+                "tokens_limit": token_limit,
+                "tokens_remaining": tokens_remaining,
                 "bots_count": subscription.bots_count,
                 "max_bots": plan.max_bots,
-                "usage_percentage": round(token_used / token_limit * 100, 2) if token_limit else 0,
+                "usage_percentage": usage_pct,
                 "ai_token_usage": {
                     "limit": token_limit,
                     "used": token_used,
-                    "remaining": max(0, token_limit - token_used),
+                    "remaining": tokens_remaining,
                     "input_used": input_used,
                     "output_used": output_used,
                     "plan": {
@@ -173,19 +169,15 @@ class SubscriptionViewSet(viewsets.ViewSet):
                     "token_reset_at": subscription.token_reset_at,
                 },
                 "tokens": {
-                    "output": {
-                        "used": output_used,
-                        "limit": output_limit,
-                        "remaining": max(0, output_limit - output_used),
-                        "usage_percentage": output_used_pct,
-                        "limit_exceeded": output_used >= output_limit if output_limit else False,
+                    "total": {
+                        "used": token_used,
+                        "limit": token_limit,
+                        "remaining": tokens_remaining,
+                        "usage_percentage": usage_pct,
+                        "limit_exceeded": token_used >= token_limit if token_limit else False,
                     },
-                    "input": {
-                        "used": input_used,
-                        "limit": input_limit,
-                        "remaining": max(0, input_limit - input_used),
-                        "usage_percentage": input_used_pct,
-                    },
+                    "input_used": input_used,
+                    "output_used": output_used,
                 },
                 "bots": {
                     "count": subscription.bots_count,

@@ -117,9 +117,7 @@ class AdminUsersView(
                 "tokens_used_input": sub.tokens_used_input,
                 "tokens_used_output": sub.tokens_used_output,
                 "tokens_used_total": sub.tokens_used_input + sub.tokens_used_output,
-                "token_limit": plan.max_input_tokens + plan.max_output_tokens,
-                "max_input_tokens": plan.max_input_tokens,
-                "max_output_tokens": plan.max_output_tokens,
+                "token_limit": plan.max_tokens,
                 "max_bots": plan.max_bots,
             }
 
