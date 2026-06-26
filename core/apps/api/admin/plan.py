@@ -35,7 +35,7 @@ class PlanAdmin(ModelAdmin):
 
     fieldsets = (
         (_("Asosiy"), {"fields": ("name", "price", "is_top", "description", "is_active", "order")}),
-        (_("Limitlar"), {"fields": ("max_bots", "max_tokens")}),
+        (_("Limitlar"), {"fields": ("max_bots", "max_tokens", "cached_token_rate")}),
         (_("Qo'shimcha xususiyatlar"), {"fields": ("features",)}),
     )
 

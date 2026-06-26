@@ -212,6 +212,7 @@ class SubscriptionViewSet(viewsets.ViewSet):
         project_id = serializer.validated_data.get("project_id")
         input_tokens = serializer.validated_data["input_tokens"]
         output_tokens = serializer.validated_data["output_tokens"]
+        cache_read_tokens = serializer.validated_data.get("cache_read_tokens", 0)
 
         from django.contrib.auth import get_user_model
 
@@ -226,8 +227,14 @@ class SubscriptionViewSet(viewsets.ViewSet):
         except PlanModel.DoesNotExist:
             return error_response({"detail": "FREE tarif topilmadi. Admin bilan bog'laning."}, 500)
 
+        # Keshlangan tokenlar arzonroq — planга bog'liq koeffitsient bilan hisoblanadi.
+        # cache_read ni input_tokens dan oshib ketmasligiga ishonch hosil qilamiz.
+        cache_read = max(0, min(cache_read_tokens, input_tokens))
+        uncached = input_tokens - cache_read
+        billable_input = uncached + round(cache_read * subscription.plan.cached_token_rate)
+
         UserSubscription.objects.filter(pk=subscription.pk).update(
-            tokens_used_input=F("tokens_used_input") + input_tokens,
+            tokens_used_input=F("tokens_used_input") + billable_input,
             tokens_used_output=F("tokens_used_output") + output_tokens,
         )
 
@@ -235,14 +242,16 @@ class SubscriptionViewSet(viewsets.ViewSet):
         from core.apps.shared.observability import metrics
 
         metrics.safe_inc(metrics.AI_RUNS)
-        metrics.safe_inc(metrics.AI_TOKENS, input_tokens, kind="input")
+        metrics.safe_inc(metrics.AI_TOKENS, billable_input, kind="input")
         metrics.safe_inc(metrics.AI_TOKENS, output_tokens, kind="output")
 
         logger.info(
-            "Token usage reported: user=%d project=%d input=%d output=%d",
+            "Token usage reported: user=%d project=%s input=%d cache_read=%d billable_input=%d output=%d",
             user_id,
             project_id,
             input_tokens,
+            cache_read,
+            billable_input,
             output_tokens,
         )
 
@@ -250,7 +259,7 @@ class SubscriptionViewSet(viewsets.ViewSet):
             {
                 "user_id": user_id,
                 "project_id": project_id,
-                "input_tokens_added": input_tokens,
+                "input_tokens_added": billable_input,
                 "output_tokens_added": output_tokens,
             }
         )

@@ -31,6 +31,13 @@ class PlanModel(AbstractBaseModel):
     # Deprecated: eski alohida input/output limitlar — faqat migration va tarixiy ma'lumot uchun saqlanadi.
     max_output_tokens = models.BigIntegerField(verbose_name=_("Oylik output token limiti (deprecated)"), default=200000)
     max_input_tokens = models.BigIntegerField(verbose_name=_("Oylik input token limiti (deprecated)"), default=800000)
+    cached_token_rate = models.DecimalField(
+        verbose_name=_("Keshlangan token koeffitsienti"),
+        max_digits=4,
+        decimal_places=2,
+        default=Decimal("0.10"),
+        help_text=_("Keshlangan tokenlarning kvotaga hisoblanish ulushi (0.10 = 10%, 1.00 = to'liq, 0.00 = bepul)"),
+    )
     features = models.JSONField(verbose_name=_("Xususiyatlar"), default=dict, blank=True)
 
     def __str__(self):

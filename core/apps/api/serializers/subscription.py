@@ -92,6 +92,7 @@ class TokenUsageReportSerializer(serializers.Serializer):
     project_id = serializers.IntegerField(required=False, allow_null=True)
     input_tokens = serializers.IntegerField(required=True, min_value=0)
     output_tokens = serializers.IntegerField(required=True, min_value=0)
+    cache_read_tokens = serializers.IntegerField(required=False, default=0, min_value=0)
 
     def validate_user_id(self, value):
         from django.contrib.auth import get_user_model
