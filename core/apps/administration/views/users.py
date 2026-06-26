@@ -4,7 +4,8 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import BigIntegerField, F, Q, Value
+from django.db.models.functions import Coalesce
 from django_core.mixins import BaseViewSetMixin
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -31,7 +32,18 @@ class AdminUsersView(
     serializer_class = AdminUserSerializer
 
     def get_queryset(self):
-        qs = User.objects.all().select_related("subscription", "subscription__plan").order_by("-id")
+        qs = (
+            User.objects.all()
+            .select_related("subscription", "subscription__plan")
+            .annotate(
+                tokens_used_total=Coalesce(
+                    F("subscription__tokens_used_input") + F("subscription__tokens_used_output"),
+                    Value(0),
+                    output_field=BigIntegerField(),
+                )
+            )
+            .order_by("-id")
+        )
         p = self.request.query_params
         search = p.get("search", "").strip()
         if search:
@@ -70,7 +82,12 @@ class AdminUsersView(
             qs = qs.filter(balance__lte=int(bal_max))
         # Sort
         ordering = p.get("ordering", "").strip()
-        if ordering in ("id", "-id", "balance", "-balance", "date_joined", "-date_joined"):
+        if ordering in (
+            "id", "-id",
+            "balance", "-balance",
+            "date_joined", "-date_joined",
+            "tokens_used_total", "-tokens_used_total",
+        ):
             qs = qs.order_by(ordering)
         return qs
 

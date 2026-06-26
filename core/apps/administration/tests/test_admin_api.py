@@ -57,6 +57,68 @@ def test_admin_can_list_users(admin_client, normal_user):
     assert res.status_code == 200
 
 
+def test_user_list_includes_token_fields(admin_client, normal_user):
+    """List response must contain tokens_used_input/output/total for each user."""
+    from core.apps.api.models.plan import PlanModel, UserSubscription  # noqa: WPS433
+    from core.apps.api.enums.plan import PlanType  # noqa: WPS433
+
+    plan = PlanModel.objects.filter(name=PlanType.FREE).first()
+    if plan is None:
+        plan = PlanModel.objects.create(name=PlanType.FREE, price=0)
+    UserSubscription.objects.get_or_create(
+        user=normal_user,
+        defaults={"plan": plan, "tokens_used_input": 100, "tokens_used_output": 50},
+    )
+
+    res = admin_client.get("/api/admin/users/")
+    assert res.status_code == 200
+    items = res.json().get("data") or res.json().get("results") or res.json()
+    if isinstance(items, dict):
+        items = items.get("results", [])
+    user_item = next((u for u in items if u["id"] == normal_user.id), None)
+    assert user_item is not None
+    assert "tokens_used_input" in user_item
+    assert "tokens_used_output" in user_item
+    assert "tokens_used_total" in user_item
+    assert user_item["tokens_used_input"] == 100
+    assert user_item["tokens_used_output"] == 50
+    assert user_item["tokens_used_total"] == 150
+
+
+def test_user_list_token_fields_zero_without_subscription(admin_client, normal_user):
+    """Users without a subscription must have all token fields == 0."""
+    res = admin_client.get("/api/admin/users/")
+    assert res.status_code == 200
+    items = res.json().get("data") or res.json().get("results") or res.json()
+    if isinstance(items, dict):
+        items = items.get("results", [])
+    user_item = next((u for u in items if u["id"] == normal_user.id), None)
+    assert user_item is not None
+    assert user_item["tokens_used_total"] == 0
+
+
+def test_user_list_ordering_by_tokens(admin_client, normal_user, admin_user):
+    """?ordering=-tokens_used_total must sort highest-token user first."""
+    from core.apps.api.models.plan import PlanModel, UserSubscription  # noqa: WPS433
+    from core.apps.api.enums.plan import PlanType  # noqa: WPS433
+
+    plan = PlanModel.objects.filter(name=PlanType.FREE).first()
+    if plan is None:
+        plan = PlanModel.objects.create(name=PlanType.FREE, price=0)
+    UserSubscription.objects.get_or_create(
+        user=normal_user,
+        defaults={"plan": plan, "tokens_used_input": 1000, "tokens_used_output": 500},
+    )
+
+    res = admin_client.get("/api/admin/users/?ordering=-tokens_used_total")
+    assert res.status_code == 200
+    items = res.json().get("data") or res.json().get("results") or res.json()
+    if isinstance(items, dict):
+        items = items.get("results", [])
+    totals = [u["tokens_used_total"] for u in items]
+    assert totals == sorted(totals, reverse=True)
+
+
 # ── users: ban + balance + audit ─────────────────────────────────────────────
 
 def test_ban_user_writes_audit(admin_client, normal_user):

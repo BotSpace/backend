@@ -6,6 +6,11 @@ User = get_user_model()
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
+    tokens_used_input = serializers.SerializerMethodField()
+    tokens_used_output = serializers.SerializerMethodField()
+    # Populated via queryset annotation (see AdminUsersView.get_queryset) — sortable.
+    tokens_used_total = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = User
         fields = (
@@ -23,8 +28,19 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "is_superuser",
             "date_joined",
             "validated_at",
+            "tokens_used_input",
+            "tokens_used_output",
+            "tokens_used_total",
         )
         read_only_fields = fields
+
+    def get_tokens_used_input(self, obj) -> int:
+        sub = getattr(obj, "subscription", None)
+        return sub.tokens_used_input if sub is not None else 0
+
+    def get_tokens_used_output(self, obj) -> int:
+        sub = getattr(obj, "subscription", None)
+        return sub.tokens_used_output if sub is not None else 0
 
 
 class AdminUserBalanceSerializer(serializers.Serializer):
