@@ -9,3 +9,4 @@ from .oauth import (  # noqa
     OAuthAuthorizeApproveView,
     OAuthTokenView,
 )
+from .jwt_login import CustomTokenObtainPairView  # noqa

@@ -12,6 +12,7 @@ from .views import (
     APITokenViewSet,
     BalanceView,
     ChangePasswordView,
+    CustomTokenObtainPairView,
     MeView,
     OAuthAuthorizeApproveView,
     OAuthAuthorizeMetaView,
@@ -34,7 +35,7 @@ router.register("kyc", VerificationView, basename="kyc")
 urlpatterns = [
     path("", include(router.urls)),
     path("user/balance/", BalanceView.as_view({"get": "get_balance"}), name="get-balance"),
-    path("auth/token/", jwt_views.TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("auth/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/verify/", jwt_views.TokenVerifyView.as_view(), name="token_verify"),
     path("auth/token/refresh/", jwt_views.TokenRefreshView.as_view(), name="token_refresh"),
     path(
