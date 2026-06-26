@@ -25,3 +25,27 @@ Avtomatik deploy — `main` branchga push qilsang, GitHub Actions ishga tushadi:
 - ArgoCD Application: `k8s` reposida `helm/argocd/apps/web.yaml`
 - `helm/` papkasidagi o'zgarishlar workflow ni qayta trigger qilmaydi (`paths-ignore`)
 - Secretlar klasterdagi Kubernetes Secret larda saqlanadi, gitda emas
+
+## Internal config API (dinamik config'ni yangilash)
+
+Dinamik config'lar `OptionsModel` (settings/key/value) da, admin panel /settings da boshqariladi.
+Avtomatlashtirib yangilash uchun `X-Internal-Token` bilan himoyalangan endpoint bor (admin login shart emas):
+
+```bash
+# .env dagi qiymatlar: BOTSPACE_API_BASE, INTERNAL_API_TOKEN (prod token, botmother-secret dan)
+source .env   # yoki qiymatlarni o'qish
+
+# O'qish:
+curl -s -H "X-Internal-Token: $INTERNAL_API_TOKEN" \
+  "$BOTSPACE_API_BASE/api/v1/shared/config/internal/options/?settings_key=engine&option_key=version"
+
+# Yangilash (upsert):
+curl -s -X POST -H "X-Internal-Token: $INTERNAL_API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"settings_key":"engine","option_key":"version","value":["3.5.122-prod"]}' \
+  "$BOTSPACE_API_BASE/api/v1/shared/config/internal/options/set/"
+```
+
+- `value` list bo'ladi (yoki bare string yuborsang `[str]` ga o'raydi). `engine_version()` `value[0]` ni oladi.
+- Engine'ni bump qilish = `settings_key=engine, option_key=version, value=["<yangi-tag>"]`. Bu FAQAT yangi/qayta release'larga ta'sir qiladi (release qilingan botlar o'z versiyasiga qotirilgan → buzilgan botni QAYTA release qilish kerak).
+- Endpoint: `core/apps/shared/views/config.py` (`internal_options`, `internal_options_set`), permission `IsInternalTokenOnly`.
+- Token qiymati `.env` da (gitignored) — hech qachon git'ga commit qilma. Prod'da `botmother-secret/INTERNAL_API_TOKEN`.
