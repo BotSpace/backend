@@ -210,3 +210,51 @@ def test_order_create_creates_transaction_and_pay_url_uses_txn_pk(internal_clien
     # pay_url txn.pk bilan yaratilgan
     assert captured["txn_pk"] == txn.pk
     assert data["pay_url"] == f"https://click.uz/pay/{txn.pk}"
+
+
+@pytest.mark.django_db
+def test_paycue_order_reuse_returns_stored_pay_instruction(internal_client, project, settings):
+    """Paycue: idempotency reuse path saqlangan pay_instruction ni qaytaradi (pay_url bo'sh)."""
+    settings.INTERNAL_API_TOKEN = INTERNAL_TOKEN
+
+    stored_instruction = "💳 To'lov uchun ANIQ <b>10 000 so'm</b> o'tkazing:\n💳 Karta: <code>8600 1234 5678 9012</code>"
+
+    paycue_response = {
+        "transaction_id": "txn-abc-123",
+        "amount": 10000,
+        "card_number": "8600 1234 5678 9012",
+        "card_owner": "ALISHER TOSHMATOV",
+    }
+
+    body = {
+        "project_id": project.pk,
+        "payer_chat_id": 555,
+        "amount": "10000",
+        "provider": "paycue",
+        "idempotency_key": "paycue-idem-key-001",
+    }
+
+    with patch("core.apps.payment.services.paycue.create_transaction", return_value=paycue_response):
+        r1 = internal_client.post(ENDPOINT, body, format="json")
+
+    assert r1.status_code == 201
+    d1 = r1.json()["data"]
+    order_id = d1["order_id"]
+    assert d1["pay_url"] == ""
+    assert d1["pay_instruction"] != ""
+
+    # DB'da saqlangan pay_instruction ni tekshiramiz
+    order = PaymentOrderModel.objects.get(pk=order_id)
+    assert order.pay_instruction != ""
+    assert order.external_id == "txn-abc-123"
+
+    # Reuse: bir xil idempotency_key bilan qayta POST
+    with patch("core.apps.payment.views.order._generate_pay_url", return_value=""):
+        r2 = internal_client.post(ENDPOINT, body, format="json")
+
+    assert r2.status_code == 200
+    d2 = r2.json()["data"]
+    assert d2["order_id"] == order_id, "Reuse bir xil order'ni qaytarishi kerak"
+    assert d2["pay_url"] == "", "Paycue uchun pay_url bo'sh bo'lishi kerak"
+    assert d2["pay_instruction"] == order.pay_instruction, "Reuse saqlangan original pay_instruction ni qaytarishi kerak"
+    assert d2["pay_instruction"] != "", "pay_instruction bo'sh bo'lmasligi kerak"

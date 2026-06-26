@@ -85,13 +85,17 @@ def order_create(request):
                     txn = TransactionModel.objects.create(user=owner, amount=existing.amount)
                     existing.transaction = txn
                     existing.save(update_fields=["transaction"])
-                pay_url = _generate_pay_url(existing.transaction_id, existing.amount, provider)
+                # Paycue: pay_url yo'q, lekin saqlangan pay_instruction qaytariladi.
+                # Click: pay_url generatsiya qilinadi, pay_instruction bo'sh.
+                reuse_pay_url = _generate_pay_url(existing.transaction_id, existing.amount, existing.provider)
+                reuse_pay_instruction = existing.pay_instruction
                 return Response(
                     {
                         "status": True,
                         "data": {
                             "order_id": existing.pk,
-                            "pay_url": pay_url,
+                            "pay_url": reuse_pay_url,
+                            "pay_instruction": reuse_pay_instruction,
                             "amount": str(existing.amount),
                             "net_amount": str(existing.net_amount),
                             "commission": str(existing.commission),
@@ -150,10 +154,12 @@ def order_create(request):
             )
         # Webhook tranzaksiyani transaction_id bo'yicha topadi.
         order.external_id = pc["transaction_id"]
-        order.save(update_fields=["external_id"])
         # Karta tranzaksiya bilan keladi; bo'lmasa PAYCUE_CARD env'ga fallback.
         card_number = pc.get("card_number") or getattr(settings, "PAYCUE_CARD", "")
         pay_instruction = _paycue_instruction(pc["amount"], card_number, pc.get("card_owner", ""))
+        # pay_instruction ni DB'ga saqlаymiz: reuse path shu original kartadan foydalanadi.
+        order.pay_instruction = pay_instruction
+        order.save(update_fields=["external_id", "pay_instruction"])
     else:
         pay_url = _generate_pay_url(txn.pk, amount, provider)
 

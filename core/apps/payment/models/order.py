@@ -127,6 +127,12 @@ class PaymentOrderModel(SoftDeleteModel):
             "engine service (debug vs release webhook uuid) receives the payment callback."
         ),
     )
+    pay_instruction = models.TextField(
+        verbose_name=_("pay instruction"),
+        blank=True,
+        default="",
+        help_text=_("Paycue HTML payment instruction stored at create time; empty for non-paycue orders."),
+    )
 
     def __str__(self):
         return f"PaymentOrder #{self.pk} | {self.project_id} | {self.status}"
