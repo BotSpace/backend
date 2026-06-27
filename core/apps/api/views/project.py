@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import get_object_or_404
 
 from core.apps.cms.views._common import resolve_project
@@ -45,6 +47,8 @@ from core.apps.api.services.webhook import set_webhook
 from core.apps.api.exceptions.bot import BotTokenNotFound, ReleaseBotTokenNotFound
 from core.apps.cms_legacy.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
+
+logger = logging.getLogger(__name__)
 
 
 def _error_response(desc, props):
@@ -495,6 +499,14 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         debug.service_id = service.metadata.name
         debug.status = "initializing"
         debug.save()
+        # Har debug ishga tushishini alohida yozamiz — `debug` jadvali OneToOne
+        # bo'lib tarixni saqlamaydi, bu esa Grafana soatlik/kunlik run trendi uchun.
+        try:
+            from core.apps.api.models.monitoring import DebugRunLog
+
+            DebugRunLog.objects.create(project=instance, user=request.user)
+        except Exception:  # noqa: BLE001 — log yozilmasa ham debug ishga tushaversin
+            logger.warning("DebugRunLog yozishda xato", exc_info=True)
         return Response(data={"detail": _("Updated")})
 
     @extend_schema(

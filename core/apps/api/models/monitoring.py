@@ -27,3 +27,36 @@ class ProjectResourceSnapshot(models.Model):
 
     def __str__(self) -> str:
         return f"snapshot project={self.project_id} disk={self.disk_bytes} @ {self.created_at}"
+
+
+class DebugRunLog(models.Model):
+    """Debug bot har ishga tushganida (GET /project/{id}/debug/) bitta qator.
+
+    `debug` jadvali OneToOne — har loyihaga bitta qator, tarixni saqlamaydi. Bu
+    jadval esa har "run"ni alohida yozadi, shuning uchun Grafana soatlik/kunlik
+    debug run trendini chiza oladi (login statistikasi kabi).
+    """
+
+    project = models.ForeignKey(
+        "api.ProjectModel",
+        on_delete=models.CASCADE,
+        related_name="debug_run_logs",
+    )
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="debug_run_logs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["project", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"debug run project={self.project_id} @ {self.created_at}"
