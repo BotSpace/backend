@@ -13,6 +13,13 @@ REST_FRAMEWORK: Dict[str, Any] = {
     "DEFAULT_PAGINATION_CLASS": "django_core.paginations.CustomPagination",
     "EXCEPTION_HANDLER": "core.apps.shared.exceptions.custom_exception_handler",
     "PAGE_SIZE": 10,
+    # Bizning yagona ishonchli proxy — host nginx (api.botspace.uz oldida).
+    # u X-Forwarded-For oxiriga real client IP'sini qo'shadi. NUM_PROXIES=1
+    # bilan DRF get_ident() XFF'ning ENG O'NGdagi (nginx qo'ygan, spoof
+    # qilib bo'lmaydigan) qiymatini oladi — chap tomon client-spoofable.
+    # Busiz throttle REMOTE_ADDR (k8s SNAT'langan ichki node IP)'da edi →
+    # barcha foydalanuvchi bitta bucket'da.
+    "NUM_PROXIES": 1,
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
