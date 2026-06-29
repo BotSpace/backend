@@ -230,6 +230,26 @@ def order_status(request, order_id: int):
     if not is_internal and is_authed and order.owner_id != request.user.pk:
         return Response({"status": False, "data": {"detail": "Ruxsat yo'q"}}, status=status.HTTP_403_FORBIDDEN)
 
+    # Internal token bilan kelganda (engine / AI payment_status tool) project_id
+    # berilsa, order o'sha loyihaga tegishli ekanini MAJBURIY tekshiramiz —
+    # aks holda prompt-injection orqali AI ixtiyoriy order_id'ni so'rab boshqa
+    # loyiha/foydalanuvchi to'lovini ko'rishi mumkin (IDOR). project_id ixtiyoriy
+    # qoladi (eski engine reconnect uni yubormaydi), lekin BERILSA — enforce.
+    if is_internal:
+        req_project_id = request.GET.get("project_id") or request.GET.get("project")
+        if req_project_id:
+            try:
+                if order.project_id != int(req_project_id):
+                    return Response(
+                        {"status": False, "data": {"detail": "Ruxsat yo'q"}},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+            except (TypeError, ValueError):
+                return Response(
+                    {"status": False, "data": {"detail": "project_id noto'g'ri"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
     serializer = OrderStatusSerializer(order)
     return Response({"status": True, "data": serializer.data})
 
