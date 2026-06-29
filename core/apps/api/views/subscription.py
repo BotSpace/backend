@@ -200,8 +200,10 @@ class SubscriptionViewSet(viewsets.ViewSet):
         if not internal_token:
             return error_response({"detail": "Server konfiguratsiya xatosi."}, 500)
 
+        import hmac
+
         provided_token = request.headers.get("X-Internal-Token", "")
-        if provided_token != internal_token:
+        if not hmac.compare_digest(str(provided_token), str(internal_token)):
             return error_response({"detail": "Ruxsat etilmagan so'rov."}, 403)
 
         serializer = TokenUsageReportSerializer(data=request.data)

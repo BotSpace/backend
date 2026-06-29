@@ -119,21 +119,31 @@ def _attach_relation_labels(coll, items: list[dict]) -> None:
 # Bular filter orqali ruxsat etilmaydi (NoSQL injection / JS exec / ReDoS).
 _FORBIDDEN_MONGO_OPERATORS = {"$where", "$function", "$accumulator", "$expr", "$merge", "$out"}
 
+# Aggregate pipeline uchun: $expr bu yerda LEGAL ($match ichida), lekin write
+# (boshqa collection'ga yozish) va cross-collection o'qish (data exfiltration)
+# hamda server-side JS taqiqlanadi.
+_FORBIDDEN_AGGREGATE_OPERATORS = {
+    "$where", "$function", "$accumulator", "$out", "$merge",
+    "$lookup", "$unionWith", "$graphLookup",
+}
 
-def _find_forbidden_operator(node, depth: int = 0):
-    """Filter ichida taqiqlangan operator bo'lsa uning nomini qaytaradi, aks holda None."""
+
+def _find_forbidden_operator(node, depth: int = 0, forbidden=None):
+    """node ichida taqiqlangan operator bo'lsa uning nomini qaytaradi, aks holda None."""
+    if forbidden is None:
+        forbidden = _FORBIDDEN_MONGO_OPERATORS
     if depth > 12:
         return "$depth"
     if isinstance(node, dict):
         for key, value in node.items():
-            if isinstance(key, str) and key in _FORBIDDEN_MONGO_OPERATORS:
+            if isinstance(key, str) and key in forbidden:
                 return key
-            found = _find_forbidden_operator(value, depth + 1)
+            found = _find_forbidden_operator(value, depth + 1, forbidden)
             if found:
                 return found
     elif isinstance(node, list):
         for item in node:
-            found = _find_forbidden_operator(item, depth + 1)
+            found = _find_forbidden_operator(item, depth + 1, forbidden)
             if found:
                 return found
     return None
@@ -291,6 +301,9 @@ class DocumentViewSet(ViewSet):
         pipeline = request.data.get("pipeline") if isinstance(request.data, dict) else None
         if not isinstance(pipeline, list):
             return Response({"detail": "pipeline must be a list"}, status=400)
+        bad_op = _find_forbidden_operator(pipeline, forbidden=_FORBIDDEN_AGGREGATE_OPERATORS)
+        if bad_op:
+            return Response({"detail": f"operator not allowed: {bad_op}"}, status=400)
         limit = int(request.data.get("limit") or 500) if isinstance(request.data, dict) else 500
         rows = mongo.aggregate(coll.project_id, coll.name, pipeline, limit=limit)
         return Response({"results": rows, "count": len(rows)})

@@ -23,9 +23,13 @@ class ModuleTriggerView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, project_uuid):
+        import hmac
+
         token = request.headers.get("X-Internal-Token", "")
         expected = env.str("INTERNAL_API_TOKEN", default="")
-        if expected and token != expected:
+        # Fail-closed: token sozlanmagan bo'lsa ham RAD etamiz (aks holda bo'sh
+        # `expected` tekshiruvni o'tkazib yuborib, anonim event inject qilinardi).
+        if not expected or not hmac.compare_digest(str(token), str(expected)):
             return error_response({"detail": "Unauthorized"}, status.HTTP_401_UNAUTHORIZED)
 
         try:

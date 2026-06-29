@@ -979,6 +979,11 @@ class EnviromentView(BaseViewSetMixin, ModelViewSet):
     def perform_create(self, serializer):
         key = serializer.validated_data["key"]
         project = serializer.validated_data["project"]
+        # IDOR himoyasi: ProjectPkOrUuidField barcha project'lardan resolve qiladi,
+        # shuning uchun egalikni shu yerda tekshiramiz — boshqa user proyektiga
+        # env (masalan RELEASE_BOT_TOKEN) yozib bo'lmasin.
+        if project.owner_id != self.request.user.id:
+            raise exceptions.PermissionDenied("Bu loyiha sizga tegishli emas.")
         value = serializer.validated_data["value"]
         secret = serializer.validated_data.get("secret", False)
         obj, _ = EnviromentModel.objects.update_or_create(

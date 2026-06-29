@@ -1,4 +1,6 @@
 # type: ignore
+import hmac
+
 from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -14,7 +16,7 @@ def _internal_token_ok(request) -> bool:
     if not expected:
         return False
     provided = request.headers.get("X-Internal-Token", "")
-    return provided == expected
+    return hmac.compare_digest(str(provided), str(expected))
 
 
 @api_view(["GET"])
@@ -94,6 +96,8 @@ def project_by_release_uuid(request, uuid):
 
     This endpoint is used by the Golang webhook service to get project info.
     """
+    if not _internal_token_ok(request):
+        return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
     try:
         project = ProjectModel.objects.get(release_webhook_uuid=uuid)
         release = project.release
@@ -127,6 +131,8 @@ def project_by_debug_uuid(request, uuid):
 
     This endpoint is used by the Golang webhook service to get project info.
     """
+    if not _internal_token_ok(request):
+        return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
     try:
         project = ProjectModel.objects.get(debug_webhook_uuid=uuid)
         podIPs = get_pod_ips_by_label(f"engine-name=debug-{project.id}")
