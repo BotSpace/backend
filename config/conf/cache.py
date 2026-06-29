@@ -26,6 +26,11 @@ CACHEOPS = {
     # (default CACHE_TIMEOUT string, shuning uchun bu yerda aniq beramiz).
     "api.relasemodel": {"ops": (), "timeout": 60},
     "api.debugmodel": {"ops": (), "timeout": 60},
+    # Token sarfi REAL-TIME bo'lishi shart: report_usage F()-update bilan yozadi,
+    # admin panel va agent limit-enforcement (pre_run_remaining) shu jadvalni
+    # o'qiydi. 5 daqiqa cache'lansa admin eski son ko'rsatadi va user limitdan
+    # oshib ketadi (stale usage). Shuning uchun keshlamaymiz (ops=()).
+    "api.usersubscription": {"ops": (), "timeout": 60},
     # !NOTE: api => "you app name"
     "api.*": {
         "ops": "all",  # Barcha turdagi so'rovlarni keshga olish
