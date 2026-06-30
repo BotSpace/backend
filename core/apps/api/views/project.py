@@ -544,6 +544,20 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         return project_module_manifests_view(request, project)
 
     @extend_schema(
+        summary="Unified node manifestlari (built-in + modullar)",
+        responses={200: {"type": "object", "properties": {"manifests": {"type": "array"}}}},
+    )
+    @action(methods=["GET"], detail=True, url_path="node-manifests", url_name="node-manifests")
+    def node_manifests(self, request, pk):
+        """Built-in + modul node manifestlari — yagona manba (constructor/agent/...)."""
+        from rest_framework.response import Response
+
+        from core.apps.api.services.node_manifest_service import get_unified_node_manifests
+
+        project = self.get_object()
+        return Response({"manifests": get_unified_node_manifests(project)})
+
+    @extend_schema(
         summary="Engine uchun modules.json ma'lumotlari",
         responses={200: {"type": "object", "properties": {"modules": {"type": "array"}}}},
     )
