@@ -760,7 +760,8 @@
       "rows": []
     },
     "aiDoc": "Text xabar yuborish. keyboard.active: 'inline'/'reply'/'none'. keyboard.inline: [[{text,type:'callback'/'url'/'web_app',value}]] (web_app value=https URL). keyboard.reply: [[{id:'btn-xxx',text,type:'reply'/'request_contact'/'request_location'}]]. recipients: {sendToSender:bool, additionalIds:[chatId]}. {{key}} (yoki {{public.key}}) — saqlangan ochiq qiymat, {{first_name}} — user ismi, {{callback_data}} — bosilgan tugma callback'i, {{private.key}} — maxfiy qiymat. TUGMA ROUTING (yangi usul): har reply/inline tugma o'zidan edge chiqaradi. flow.connect da source_handle='target-handler-{nodeId}-{buttonText}' formatidan foydalaniladi. Alohida ReplyButtonTriggerNode KERAK EMAS.",
-    "agentCategory": "send"
+    "agentCategory": "send",
+    "buttonEdge": true
   },
   {
     "type": "SendPhotoNode",
@@ -2724,7 +2725,8 @@
       "rows": []
     },
     "aiDoc": "Avvalgi xabarni edit qilish. messageIdSource: 'this_message' (callback xabarini edit) yoki node ID. newText: yangi matn. keyboard: yangilangan tugmalar.",
-    "agentCategory": "edit"
+    "agentCategory": "edit",
+    "buttonEdge": true
   },
   {
     "type": "EditOrSendMessageNode",
@@ -2912,7 +2914,8 @@
       "rows": []
     },
     "aiDoc": "Mavjud bo'lsa edit qiladi, aks holda yangisini yuboradi. messageText ichida ro'yxatni BITTA xabarda chiqarish uchun {{#each KEY}}...{{/each}} (+ {{@number}}/{{@index}}/{{this}}) va bo'sh holat uchun {{^KEY}}...{{/KEY}} ishlaydi; KEY = LoadCollectionListNode contextKey (Pattern 4a). Nested each YO'Q.",
-    "agentCategory": "send"
+    "agentCategory": "send",
+    "buttonEdge": true
   },
   {
     "type": "ForwardMessageNode",
@@ -3410,7 +3413,8 @@
       "type": "user_id"
     },
     "aiDoc": "Ma'lumotni state'ga saqlash. type: text/caption/callback/contact_phone_number/photo_file_id/video_file_id/audio_file_id/document_file_id/file_id/user_id/first_name/last_name/username/language_code/location_latitude/location_longitude/Custom. Custom bo'lsa customType maydonida expression yoziladi (masalan '{{inserted_id}}').",
-    "agentCategory": "data"
+    "agentCategory": "data",
+    "savesState": true
   },
   {
     "type": "CollectionNode",
