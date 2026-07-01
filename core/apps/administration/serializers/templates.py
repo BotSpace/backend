@@ -9,6 +9,10 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
     """Read-only list/retrieve serializer for templates."""
 
     author_phone = serializers.CharField(source="author.phone", read_only=True)
+    has_project = serializers.SerializerMethodField()
+
+    def get_has_project(self, obj):
+        return obj.project_id is not None
 
     class Meta:
         model = TemplateModel
@@ -28,6 +32,8 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
             "author_id",
             "author_phone",
             "required_envs",
+            "spec",
+            "has_project",
             "created_at",
             "updated_at",
         )
@@ -37,8 +43,7 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
 class AdminTemplateWriteSerializer(serializers.ModelSerializer):
     """Writable serializer used for PATCH /admin/templates/{id}/.
 
-    Audit-only fields (id, slug, author, views, created_at, updated_at) stay
-    read-only. Everything an admin should be able to edit is writable.
+    Admin spec.credentials/modules/envs/collections ni tahrirlay oladi.
     """
 
     author_phone = serializers.CharField(source="author.phone", read_only=True)
@@ -61,6 +66,7 @@ class AdminTemplateWriteSerializer(serializers.ModelSerializer):
             "author_id",
             "author_phone",
             "required_envs",
+            "spec",
             "created_at",
             "updated_at",
         )

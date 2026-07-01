@@ -24,7 +24,8 @@ class TemplateModel(AbstractBaseModel):
     slug = models.SlugField(unique=True, null=True, blank=True)
     image = models.ImageField(_("image"), upload_to="template/")
     video = models.FileField(upload_to="template-video/", null=True, blank=True)
-    project = models.ForeignKey("api.ProjectModel", on_delete=models.CASCADE, null=True, blank=False)
+    project = models.ForeignKey("api.ProjectModel", on_delete=models.SET_NULL, null=True, blank=True)
+    spec = models.JSONField(default=dict, blank=True, verbose_name=_("spec"))
     short_description = models.TextField(_("short description"))
     description = models.TextField(_("description"))
     original_price = models.DecimalField(verbose_name=_("price"), max_digits=20, decimal_places=2)
@@ -58,6 +59,19 @@ class TemplateModel(AbstractBaseModel):
             using=using,
             update_fields=update_fields,
         )
+
+    @property
+    def spec_envs(self) -> list:
+        """spec.envs — yangi kod uchun."""
+        return (self.spec or {}).get("envs", []) or []
+
+    @property
+    def effective_required_envs(self) -> list:
+        """spec.envs yoki legacy required_envs (backward-compat)."""
+        spec_envs = self.spec_envs
+        if spec_envs:
+            return spec_envs
+        return self.required_envs or []
 
     @property
     def price(self):

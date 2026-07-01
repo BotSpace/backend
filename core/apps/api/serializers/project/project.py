@@ -156,25 +156,61 @@ class CreateProjectFromTemplate(serializers.Serializer):
         child=serializers.CharField(allow_blank=False),
         required=False,
         default=dict,
-        help_text="Template'ning required_envs kalitlari uchun qiymatlar: {KEY: value}",
+        help_text="Template'ning envs kalitlari uchun qiymatlar: {KEY: value}",
+    )
+    credentials = serializers.DictField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        default=dict,
+        help_text="Logical credential key → real credential_id mapping: {key: id}",
     )
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         template = attrs.get("template")
+        spec = template.spec or {}
+
+        # Env validatsiya
         envs = attrs.get("envs", {})
-        required_envs = getattr(template, "required_envs", []) or []
-        missing = []
-        for item in required_envs:
-            key = item.get("key", "")
-            if not key:
-                continue
-            if not envs.get(key, "").strip():
-                missing.append(key)
-        if missing:
+        required_envs = spec.get("envs") or template.required_envs or []
+        missing_envs = [
+            item["key"] for item in required_envs
+            if isinstance(item, dict) and item.get("key") and item.get("required", True)
+            and not envs.get(item["key"], "").strip()
+        ]
+        if missing_envs:
             raise serializers.ValidationError(
-                {"envs": [f"{key} majburiy" for key in missing]}
+                {"envs": [f"{key} majburiy" for key in missing_envs]}
             )
+
+        # Credential validatsiya — spec'da required=True bo'lganlar SHART
+        credentials = attrs.get("credentials", {})
+        spec_creds = spec.get("credentials", [])
+        missing_creds = [
+            c["key"] for c in spec_creds
+            if isinstance(c, dict) and c.get("required", True) and not credentials.get(c["key"])
+        ]
+        if missing_creds:
+            raise serializers.ValidationError(
+                {"credentials": [f"{key} credential majburiy" for key in missing_creds]}
+            )
+
+        # Ownership: user faqat O'ZINING credential'ini map qila oladi (IDOR himoyasi)
+        if credentials:
+            from core.apps.credentials.models.credential import Credential
+
+            user = self.context["request"].user
+            owned = set(
+                Credential.objects.filter(
+                    id__in=list(credentials.values()), owner=user, deleted_at__isnull=True
+                ).values_list("id", flat=True)
+            )
+            bad = [key for key, cid in credentials.items() if cid not in owned]
+            if bad:
+                raise serializers.ValidationError(
+                    {"credentials": [f"{key}: credential topilmadi yoki sizga tegishli emas" for key in bad]}
+                )
+
         return attrs
 
     class Meta:
@@ -186,6 +222,7 @@ class CreateProjectFromTemplate(serializers.Serializer):
                     "name": "Mening shablon loyiham",
                     "token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
                     "envs": {"ADMIN_CHAT_ID": "123456789"},
+                    "credentials": {"openai": 42},
                 },
                 description="Sotib olingan shablondan loyiha yaratish",
             )

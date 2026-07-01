@@ -47,6 +47,7 @@ from core.apps.api.services.webhook import set_webhook
 from core.apps.api.exceptions.bot import BotTokenNotFound, ReleaseBotTokenNotFound
 from core.apps.cms_legacy.models.cms import CollectionModel
 from core.apps.template.models.order import TemplateOrderModel
+from core.apps.template.models import TemplateModel
 
 logger = logging.getLogger(__name__)
 
@@ -273,24 +274,36 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     )
     @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
     def create_from_template(self, request):
+        from core.apps.template.services.template_spec import apply_spec_to_project, replace_placeholders_in_flow
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         template = data.get("template")
-        if not template.project.flow:
+        spec = template.spec or {}
+
+        # Spec'da flow bo'lmasa legacy project.flow'dan fallback
+        flow = spec.get("flow")
+        if not flow and template.project_id:
+            flow = getattr(template.project, "flow", None)
+        if not flow:
             raise exceptions.ValidationError(
                 detail={"template": "Kechirasiz templateda muammo bor iltimos admin bilan bo'g'laning"}
             )
+
         order = TemplateOrderModel.objects.filter(template=template, user=request.user).first()
         if order is None or not order.payment_status:
             raise exceptions.ValidationError(detail=_("template not purchased"))
 
-        # Limit tekshiruvi: yangi loyiha hali running emas, shuning uchun exclude kerak emas.
         check_running_bot_limit(request.user)
+
+        # Credential placeholder'larni real id'ga almashtir
+        credential_map = data.get("credentials") or {}
+        flow = replace_placeholders_in_flow(flow, credential_map)
 
         instance = ProjectModel.objects.create(
             name=data.get("name"),
-            flow=template.project.flow,
+            flow=flow,
             owner=request.user,
         )
         EnviromentModel.objects.create(
@@ -299,14 +312,33 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         envs = data.get("envs") or {}
         for key, value in envs.items():
             EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
+
         RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
-        # Legacy CMS schema copy (kept for backward compat).
-        copy_collections(template.project, instance)
-        # New CMS: register collections in cmsv2 + copy MongoDB catalog data so the
-        # new bot actually has usable collections (visible in dashboard/MCP).
-        copy_cms_collections(template.project, instance, flow=instance.flow)
+
+        # Spec'dan collections va modules install qilish
+        if spec:
+            apply_spec_to_project(spec, instance, credential_map)
+        elif template.project_id:
+            # Legacy fallback: project bog'liq bo'lsa eski usul
+            copy_collections(template.project, instance)
+            copy_cms_collections(template.project, instance, flow=instance.flow)
+
         set_webhook(instance, "release")
         return Response(data=ListProjectSerializer(instance=instance).data)
+
+    @action(methods=["GET"], detail=False, url_name="template-requirements", url_path="template-requirements")
+    def template_requirements(self, request):
+        """Template yaratishdan avval kerakli credentials/modules/envs ni qaytaradi."""
+        template_id = request.query_params.get("template")
+        if not template_id or not str(template_id).isdigit():
+            raise exceptions.ValidationError(detail={"template": "template query param majburiy (int)"})
+        template = get_object_or_404(TemplateModel, id=int(template_id))
+        spec = template.spec or {}
+        return Response({
+            "credentials": spec.get("credentials", []),
+            "modules": spec.get("modules", []),
+            "envs": spec.get("envs") or template.required_envs or [],
+        })
 
     @extend_schema(
         summary="Dashboard statistikasi",

@@ -137,6 +137,30 @@ class AdminTemplatesView(
         )
         return Response(self.get_serializer(target).data)
 
+    @action(detail=True, methods=["patch"])
+    def resync(self, request, pk=None):
+        """Project'dan spec'ni qayta snapshot qiladi (project hali bog'liq bo'lsa)."""
+        from core.apps.template.services.template_spec import build_spec_from_project
+
+        target = self.get_object()
+        if not target.project_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"project": "Template hozir hech bir project bilan bog'liq emas."})
+        before_keys = list((target.spec or {}).keys())
+        new_spec = build_spec_from_project(target.project)
+        target.spec = new_spec
+        target.save(update_fields=["spec", "updated_at"])
+        log_admin_action(
+            actor=request.user,
+            action="template.resync",
+            target=target,
+            before={"spec_keys": before_keys},
+            after={"spec_keys": list(new_spec.keys())},
+            note="",
+            request=request,
+        )
+        return Response(self.get_serializer(target).data)
+
 
 class AdminTemplateSubmissionsView(
     BaseViewSetMixin,
@@ -211,6 +235,14 @@ class AdminTemplateSubmissionsView(
             # admin-panel approve only flipped the status and never created the
             # template. Idempotent: skip if a template is already linked.
             if new_status == TemplateSubmissionStatusEnum.APPROVED.value and not target.template:
+                from core.apps.template.services.template_spec import build_spec_from_project
+
+                spec = {}
+                if target.project:
+                    try:
+                        spec = build_spec_from_project(target.project)
+                    except Exception:
+                        pass
                 template = TemplateModel.objects.create(
                     author=target.user,
                     name=target.name,
@@ -225,6 +257,7 @@ class AdminTemplateSubmissionsView(
                     demo_url=target.demo_url,
                     is_verify=True,
                     required_envs=target.required_envs or [],
+                    spec=spec,
                 )
                 template.categories.set(target.categories.all())
                 template.features.set(target.features.all())
