@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 
 from core.apps.api.models import ProjectModel, PlanModel
 
-from core.apps.api.models.project import DebugModel, EnviromentModel
+from core.apps.api.models.project import DebugModel, EnviromentModel, RelaseModel
 from core.apps.api.services.project import create_default_collections
 from core.apps.api.serializers.project.project import flow_to_gz, gz_to_flow
 
@@ -137,6 +137,23 @@ def test_project_destroy(project_client):
     client, urls, _, __ = project_client
     response = client.delete(urls["retrieve"])
     assert response.status_code == 204
+
+
+@pytest.mark.django_db
+@patch("core.apps.api.views.project.remove_service")
+def test_project_destroy_cascades_release_and_debug(mock_remove, project_client):
+    client, urls, instance, __ = project_client
+    RelaseModel.objects.create(project=instance, version=1, service_id="svc-rel")
+    DebugModel.objects.filter(project=instance).delete()
+    DebugModel.objects.create(project=instance, service_id="svc-dbg")
+
+    response = client.delete(urls["retrieve"])
+
+    assert response.status_code == 204
+    assert not RelaseModel.objects.filter(project=instance).exists()
+    assert not DebugModel.objects.filter(project=instance).exists()
+    mock_remove.assert_any_call("svc-rel")
+    mock_remove.assert_any_call("svc-dbg")
 
 
 @pytest.mark.django_db

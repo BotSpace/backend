@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from core.apps.administration.permissions import IsAdminUser
 from core.apps.administration.serializers.templates import (
     AdminSubmissionReviewSerializer,
+    AdminTemplateCreateSerializer,
     AdminTemplateSerializer,
     AdminTemplateSubmissionSerializer,
     AdminTemplateWriteSerializer,
@@ -21,10 +22,12 @@ from core.apps.administration.services import log_admin_action
 from core.apps.template.enums.template import TemplateSubmissionStatusEnum
 from core.apps.template.models import TemplateModel
 from core.apps.template.models.submission import TemplateSubmissionRequestModel
+from core.apps.template.services.versioning import record_template_version
 
 
 class AdminTemplatesView(
     BaseViewSetMixin,
+    mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
@@ -32,13 +35,63 @@ class AdminTemplatesView(
 ):
     permission_classes = [IsAdminUser]
     serializer_class = AdminTemplateSerializer
-    # Allow PATCH only; block full PUT replacements.
-    http_method_names = ["get", "patch", "head", "options"]
+    # Allow create (POST) + PATCH; block full PUT replacements.
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_serializer_class(self):
+        if self.action == "create":
+            return AdminTemplateCreateSerializer
         if self.action in ("partial_update", "update"):
             return AdminTemplateWriteSerializer
         return AdminTemplateSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Loyihadan yangi template yaratadi: flow+spec snapshot + v1."""
+        from core.apps.template.services.template_spec import build_spec_from_project
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.validated_data["project"]
+        categories = serializer.validated_data.pop("categories", [])
+        features = serializer.validated_data.pop("features", [])
+        with transaction.atomic():
+            template = TemplateModel.objects.create(
+                author=project.owner,
+                project=project,
+                name=serializer.validated_data["name"],
+                short_description=serializer.validated_data.get("short_description", ""),
+                description=serializer.validated_data.get("description", ""),
+                original_price=serializer.validated_data["original_price"],
+                discount=serializer.validated_data.get("discount", Decimal("0.00")),
+                discount_type=serializer.validated_data.get("discount_type", "percent"),
+                demo_url=serializer.validated_data.get("demo_url"),
+                image=serializer.validated_data.get("image") or "",
+                is_verify=serializer.validated_data.get("is_verify", False),
+            )
+            if categories:
+                template.categories.set(categories)
+            if features:
+                template.features.set(features)
+            spec = build_spec_from_project(project)
+            record_template_version(template, spec, "Loyihadan yaratildi", request.user)
+        log_admin_action(
+            actor=request.user,
+            action="template.create",
+            target=template,
+            before={},
+            after={"id": template.id, "version": template.version},
+            note="",
+            request=request,
+        )
+        return Response(AdminTemplateSerializer(template).data, status=201)
+
+    def perform_update(self, serializer):
+        """Spec o'zgarsa yangi versiya yoziladi; faqat asosiy info o'zgarsa — yo'q."""
+        old_spec = serializer.instance.spec
+        new_spec = serializer.validated_data.get("spec", None)
+        template = serializer.save()
+        if new_spec is not None and new_spec != old_spec:
+            record_template_version(template, new_spec, "Spec tahrirlandi", self.request.user)
 
     def get_queryset(self):
         qs = TemplateModel.objects.select_related("author").prefetch_related("categories").order_by("-id")
@@ -103,6 +156,8 @@ class AdminTemplatesView(
             "discount_type": t.discount_type,
             "is_verify": t.is_verify,
             "views": t.views,
+            "version": t.version,
+            "spec": t.spec,
             "likes": t.likes.count() if hasattr(t, "likes") else 0,
             "author": {
                 "id": t.author_id,
@@ -148,15 +203,69 @@ class AdminTemplatesView(
             raise ValidationError({"project": "Template hozir hech bir project bilan bog'liq emas."})
         before_keys = list((target.spec or {}).keys())
         new_spec = build_spec_from_project(target.project)
-        target.spec = new_spec
-        target.save(update_fields=["spec", "updated_at"])
+        record_template_version(target, new_spec, "Loyihadan yangilandi", request.user)
         log_admin_action(
             actor=request.user,
             action="template.resync",
             target=target,
             before={"spec_keys": before_keys},
-            after={"spec_keys": list(new_spec.keys())},
+            after={"spec_keys": list(new_spec.keys()), "version": target.version},
             note="",
+            request=request,
+        )
+        return Response(self.get_serializer(target).data)
+
+    @action(detail=True, methods=["get"], url_path="versions")
+    def versions(self, request, pk=None):
+        """Versiya tarixi (spec'siz — yengil ro'yxat)."""
+        target = self.get_object()
+        data = [
+            {
+                "version": v.version,
+                "note": v.note,
+                "created_by_phone": getattr(v.created_by, "phone", None),
+                "created_at": v.created_at,
+                "is_current": v.version == target.version,
+            }
+            for v in target.versions.all()
+        ]
+        return Response(data)
+
+    @action(detail=True, methods=["get"], url_path="versions/(?P<version>[0-9]+)")
+    def version_detail(self, request, pk=None, version=None):
+        """Bitta versiyaning to'liq spec'i (preview uchun)."""
+        from rest_framework.exceptions import NotFound
+
+        target = self.get_object()
+        v = target.versions.filter(version=int(version)).first()
+        if v is None:
+            raise NotFound("Versiya topilmadi")
+        return Response(
+            {"version": v.version, "note": v.note, "spec": v.spec, "created_at": v.created_at}
+        )
+
+    @action(detail=True, methods=["post"], url_path="rollback")
+    def rollback(self, request, pk=None):
+        """Tanlangan versiyaga qaytaradi (append-only: yangi versiya yoziladi)."""
+        from rest_framework.exceptions import NotFound, ValidationError
+
+        target = self.get_object()
+        version = request.data.get("version")
+        if version is None or not str(version).isdigit():
+            raise ValidationError({"version": "version (int) majburiy."})
+        v = target.versions.filter(version=int(version)).first()
+        if v is None:
+            raise NotFound("Versiya topilmadi")
+        note = (request.data.get("note") or "").strip() or f"v{v.version} ga qaytarildi"
+        before_version = target.version
+        record_template_version(target, v.spec, note, request.user)
+        log_admin_action(
+            actor=request.user,
+            action="template.rollback",
+            target=target,
+            before={"version": before_version},
+            after={"version": target.version, "rolled_back_to": v.version},
+            note=note[:255],
             request=request,
         )
         return Response(self.get_serializer(target).data)

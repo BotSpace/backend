@@ -1,7 +1,8 @@
 # type: ignore
 from rest_framework import serializers
 
-from core.apps.template.models import TemplateModel
+from core.apps.api.models import ProjectModel
+from core.apps.template.models import TemplateCategoryModel, TemplateFeatureModel, TemplateModel
 from core.apps.template.models.submission import TemplateSubmissionRequestModel
 
 
@@ -29,6 +30,7 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
             "discount_type",
             "is_verify",
             "views",
+            "version",
             "author_id",
             "author_phone",
             "required_envs",
@@ -38,6 +40,41 @@ class AdminTemplateSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+
+class AdminTemplateCreateSerializer(serializers.ModelSerializer):
+    """Create a template FROM an existing project.
+
+    Flow + spec are snapshotted server-side via build_spec_from_project;
+    the client only supplies the project + presentation metadata.
+    """
+
+    project = serializers.PrimaryKeyRelatedField(queryset=ProjectModel.objects.all())
+    categories = serializers.PrimaryKeyRelatedField(
+        queryset=TemplateCategoryModel.objects.all(), many=True, required=False
+    )
+    features = serializers.PrimaryKeyRelatedField(
+        queryset=TemplateFeatureModel.objects.all(), many=True, required=False
+    )
+    image = serializers.ImageField(required=False)
+
+    class Meta:
+        model = TemplateModel
+        fields = (
+            "id",
+            "project",
+            "name",
+            "short_description",
+            "description",
+            "original_price",
+            "discount",
+            "discount_type",
+            "demo_url",
+            "categories",
+            "features",
+            "image",
+            "is_verify",
+        )
 
 
 class AdminTemplateWriteSerializer(serializers.ModelSerializer):
@@ -63,6 +100,7 @@ class AdminTemplateWriteSerializer(serializers.ModelSerializer):
             "discount_type",
             "is_verify",
             "views",
+            "version",
             "author_id",
             "author_phone",
             "required_envs",
@@ -76,6 +114,7 @@ class AdminTemplateWriteSerializer(serializers.ModelSerializer):
             "author_id",
             "author_phone",
             "views",
+            "version",
             "created_at",
             "updated_at",
         )

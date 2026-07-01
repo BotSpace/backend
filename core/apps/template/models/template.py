@@ -33,6 +33,7 @@ class TemplateModel(AbstractBaseModel):
     features = models.ManyToManyField("TemplateFeatureModel", blank=True)
     categories = models.ManyToManyField("TemplateCategoryModel", blank=True)
     views = models.BigIntegerField(default=0)
+    version = models.PositiveIntegerField(default=1, verbose_name=_("version"))
     is_verify = models.BooleanField(verbose_name=_("is verify"), default=False)
     demo_url = models.URLField(null=True, blank=True)
     required_envs = models.JSONField(

@@ -209,6 +209,28 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
+    def perform_destroy(self, instance):
+        # Project soft-delete → CASCADE yurmaydi, shuning uchun release/debug'ni
+        # qo'lda tozalaymiz: avval ishlab turgan konteynerlarni to'xtatib, keyin yozuvlarni o'chiramiz.
+        for release in instance.relases.all():
+            if release.service_id:
+                try:
+                    remove_service(release.service_id)
+                except Exception:
+                    logger.exception("release konteynerni o'chirishda xato: %s", release.service_id)
+            release.delete()
+
+        debug = getattr(instance, "debug", None)
+        if debug is not None:
+            if debug.service_id:
+                try:
+                    remove_service(debug.service_id)
+                except Exception:
+                    logger.exception("debug konteynerni o'chirishda xato: %s", debug.service_id)
+            debug.delete()
+
+        super().perform_destroy(instance)
+
     def get_queryset(self):
         from django.db.models import Prefetch
 

@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from unittest.mock import patch
 
 from rest_framework.test import APIClient
 
@@ -505,3 +506,77 @@ def test_settings_set_forbidden_for_non_admin(user_client, db):
         format="json",
     )
     assert res.status_code == 403
+
+
+# ── template create from project + versioning + rollback ──────────────────────
+
+_FAKE_SPEC = {"flow": {"nodes": [], "edges": []}, "collections": [], "credentials": [], "modules": [], "envs": []}
+_SPEC_PATCH = "core.apps.template.services.template_spec.build_spec_from_project"
+
+
+def _create_tpl(admin_client, project, name):
+    with patch(_SPEC_PATCH, return_value=_FAKE_SPEC):
+        return admin_client.post(
+            "/api/admin/templates/",
+            {"project": project.id, "name": name, "short_description": "s",
+             "description": "d", "original_price": "0.00"},
+            format="json",
+        )
+
+
+def test_admin_create_template_from_project(admin_client, project):
+    """POST /api/admin/templates/ builds spec from project and writes v1."""
+    res = _create_tpl(admin_client, project, "Verz tpl")
+    assert res.status_code == 201, res.content
+    tpl = TemplateModel.objects.get(id=res.json()["data"]["id"])
+    assert tpl.version == 1
+    assert tpl.author_id == project.owner_id
+    assert tpl.spec == _FAKE_SPEC
+    assert tpl.versions.count() == 1
+    assert tpl.versions.first().version == 1
+
+
+def test_admin_spec_edit_bumps_version(admin_client, admin_user):
+    """PATCH with a changed spec bumps version; name-only edit does not."""
+    tpl = TemplateModel.objects.create(
+        name="T", short_description="s", description="d",
+        original_price=Decimal("0.00"), author=admin_user, spec=dict(_FAKE_SPEC),
+    )
+    # name-only → no bump
+    admin_client.patch(f"/api/admin/templates/{tpl.id}/", {"name": "T2"}, format="json")
+    tpl.refresh_from_db()
+    assert tpl.version == 1
+    assert tpl.versions.count() == 0
+    # spec change → bump to 2
+    new_spec = {**_FAKE_SPEC, "envs": [{"key": "X", "required": True}]}
+    res = admin_client.patch(f"/api/admin/templates/{tpl.id}/", {"spec": new_spec}, format="json")
+    assert res.status_code == 200
+    tpl.refresh_from_db()
+    assert tpl.version == 2
+    assert tpl.versions.count() == 1
+    assert tpl.versions.get(version=2).spec == new_spec
+
+
+def test_admin_rollback_appends_new_version(admin_client, project):
+    """Rollback to v1 creates v3 whose spec equals v1's spec."""
+    tpl_id = _create_tpl(admin_client, project, "R").json()["data"]["id"]
+    # edit spec → v2
+    v2_spec = {**_FAKE_SPEC, "modules": [{"slug": "google_sheets", "required": True}]}
+    admin_client.patch(f"/api/admin/templates/{tpl_id}/", {"spec": v2_spec}, format="json")
+    # rollback to v1 → v3 with v1 spec
+    res = admin_client.post(f"/api/admin/templates/{tpl_id}/rollback/", {"version": 1}, format="json")
+    assert res.status_code == 200, res.content
+    tpl = TemplateModel.objects.get(id=tpl_id)
+    assert tpl.version == 3
+    assert tpl.spec == _FAKE_SPEC
+    assert tpl.versions.count() == 3
+
+
+def test_admin_versions_list_marks_current(admin_client, project):
+    tpl_id = _create_tpl(admin_client, project, "L").json()["data"]["id"]
+    res = admin_client.get(f"/api/admin/templates/{tpl_id}/versions/")
+    assert res.status_code == 200
+    rows = res.json()["data"]
+    assert len(rows) == 1
+    assert rows[0]["version"] == 1
+    assert rows[0]["is_current"] is True
