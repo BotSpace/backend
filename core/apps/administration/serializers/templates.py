@@ -57,6 +57,10 @@ class AdminTemplateCreateSerializer(serializers.ModelSerializer):
         queryset=TemplateFeatureModel.objects.all(), many=True, required=False
     )
     image = serializers.ImageField(required=False)
+    # Admin may tweak the auto-built credentials/modules/envs before creating.
+    # Shape: {"credentials": [...], "modules": [...], "envs": [...]}. Flow +
+    # collections always come from the project snapshot, never the client.
+    spec_overrides = serializers.JSONField(required=False, write_only=True)
 
     class Meta:
         model = TemplateModel
@@ -74,6 +78,7 @@ class AdminTemplateCreateSerializer(serializers.ModelSerializer):
             "features",
             "image",
             "is_verify",
+            "spec_overrides",
         )
 
 

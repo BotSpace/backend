@@ -54,6 +54,7 @@ class AdminTemplatesView(
         project = serializer.validated_data["project"]
         categories = serializer.validated_data.pop("categories", [])
         features = serializer.validated_data.pop("features", [])
+        overrides = serializer.validated_data.pop("spec_overrides", None) or {}
         with transaction.atomic():
             template = TemplateModel.objects.create(
                 author=project.owner,
@@ -73,6 +74,11 @@ class AdminTemplatesView(
             if features:
                 template.features.set(features)
             spec = build_spec_from_project(project)
+            # Flow/collections stay authoritative from the project; only the
+            # editable lists may be overridden by the admin.
+            for key in ("credentials", "modules", "envs"):
+                if key in overrides:
+                    spec[key] = overrides[key]
             record_template_version(template, spec, "Loyihadan yaratildi", request.user)
         log_admin_action(
             actor=request.user,
@@ -84,6 +90,26 @@ class AdminTemplatesView(
             request=request,
         )
         return Response(AdminTemplateSerializer(template).data, status=201)
+
+    @action(detail=False, methods=["post"], url_path="preview-spec")
+    def preview_spec(self, request):
+        """Loyihadan tahrirlanadigan spec qismini (credential/modul/env) qaytaradi —
+        create formada ko'rsatish uchun, hech narsa yaratmasdan."""
+        from rest_framework.exceptions import ValidationError
+
+        from core.apps.api.models import ProjectModel
+        from core.apps.template.services.template_spec import build_spec_from_project
+
+        project_id = request.data.get("project")
+        project = ProjectModel.objects.filter(pk=project_id).first() if project_id else None
+        if project is None:
+            raise ValidationError({"project": "Loyiha topilmadi."})
+        spec = build_spec_from_project(project)
+        return Response({
+            "credentials": spec.get("credentials", []),
+            "modules": spec.get("modules", []),
+            "envs": spec.get("envs", []),
+        })
 
     def perform_update(self, serializer):
         """Spec o'zgarsa yangi versiya yoziladi; faqat asosiy info o'zgarsa — yo'q."""

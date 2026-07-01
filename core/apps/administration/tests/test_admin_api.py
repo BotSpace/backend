@@ -580,3 +580,39 @@ def test_admin_versions_list_marks_current(admin_client, project):
     assert len(rows) == 1
     assert rows[0]["version"] == 1
     assert rows[0]["is_current"] is True
+
+
+def test_admin_preview_spec_returns_editable_parts(admin_client, project):
+    """preview-spec returns only credentials/modules/envs, nothing created."""
+    spec = {**_FAKE_SPEC, "credentials": [{"key": "openai", "type": "openai_api", "required": True}]}
+    with patch(_SPEC_PATCH, return_value=spec):
+        res = admin_client.post(
+            "/api/admin/templates/preview-spec/", {"project": project.id}, format="json"
+        )
+    assert res.status_code == 200, res.content
+    data = res.json()["data"]
+    assert data["credentials"] == spec["credentials"]
+    assert set(data.keys()) == {"credentials", "modules", "envs"}
+    assert TemplateModel.objects.count() == 0
+
+
+def test_admin_create_applies_spec_overrides(admin_client, project):
+    """spec_overrides replaces the auto-built editable lists on create."""
+    overrides = {
+        "credentials": [{"key": "x", "type": "openai_api", "required": False}],
+        "modules": [],
+        "envs": [{"key": "ADMIN_CHAT_ID", "required": True}],
+    }
+    with patch(_SPEC_PATCH, return_value=dict(_FAKE_SPEC)):
+        res = admin_client.post(
+            "/api/admin/templates/",
+            {"project": project.id, "name": "Ov", "short_description": "s",
+             "description": "d", "original_price": "0.00", "spec_overrides": overrides},
+            format="json",
+        )
+    assert res.status_code == 201, res.content
+    tpl = TemplateModel.objects.get(id=res.json()["data"]["id"])
+    assert tpl.spec["credentials"] == overrides["credentials"]
+    assert tpl.spec["envs"] == overrides["envs"]
+    # flow stays from the project snapshot
+    assert tpl.spec["flow"] == _FAKE_SPEC["flow"]
