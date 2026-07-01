@@ -43,18 +43,31 @@ class ManagedBotWebhookView(APIView):
             logger.error("Bot %s uchun token olinmadi", bot_id)
             return Response(status=200)
 
-        owner = None
-        if creator_id:
-            from django.contrib.auth import get_user_model
+        from django.contrib.auth import get_user_model
+        from django.core.cache import cache
 
+        User = get_user_model()
+        owner = None
+        username = (bot.get("username") or "").lower()
+
+        # 1) Wizard claim (username bo'yicha) — botni YARATGAN SESSIYA egasiga bog'la.
+        #    Telegram-yaratuvchi boshqa akkaunt bo'lishi mumkin, shuning uchun claim ustuvor.
+        if username:
+            claimed_id = cache.get(f"managed_bot_claim:{username}")
+            if claimed_id:
+                owner = User.objects.filter(id=claimed_id).first()
+                cache.delete(f"managed_bot_claim:{username}")
+
+        # 2) Fallback: yaratuvchi Telegram akkaunti -> BotUser -> phone -> User
+        if owner is None and creator_id:
             from core.apps.authbot.models.user import BotUser
 
-            User = get_user_model()
             bot_user = BotUser.objects.filter(user_id=creator_id).first()
             if bot_user:
                 owner = User.objects.filter(phone=bot_user.phone).first()
-            if not owner:
-                logger.warning("Creator tg_id=%s uchun accounts.User topilmadi", creator_id)
+
+        if owner is None:
+            logger.warning("managed_bot: owner topilmadi bot=@%s creator=%s", username, creator_id)
 
         token_encrypted = crypto.encrypt({"token": token})
         ManagedBotModel.objects.update_or_create(
@@ -107,3 +120,22 @@ class ManagedBotConfigView(APIView):
                 "deep_link_template": f"https://t.me/newbot/{manager_username}/{{username}}?name={{name}}",
             }
         )
+
+
+class ManagedBotClaimView(APIView):
+    """POST /api/managed-bot/claim/ {username} — wizard bot yaratishdan OLDIN claim qo'yadi.
+
+    Shu tufayli webhook kelganda bot Telegram-yaratuvchiga emas, wizard'da login
+    qilgan foydalanuvchiga bog'lanadi (username bo'yicha, 15 daqiqa TTL).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.core.cache import cache
+
+        username = (request.data.get("username") or "").strip().lower()
+        if not username:
+            return Response({"detail": "username majburiy"}, status=400)
+        cache.set(f"managed_bot_claim:{username}", request.user.id, 900)
+        return Response({"ok": True})
