@@ -72,6 +72,39 @@ def _deployment_error(exc: ApiException) -> DeploymentUnavailable:
     return DeploymentUnavailable(detail=detail)
 
 
+def _resolve_bot_username(token: str):
+    """getMe orqali username oladi, xato bo'lsa None (hech qachon requestni yiqitmaydi)."""
+    if not token:
+        return None
+    from telebot import TeleBot
+
+    try:
+        return TeleBot(token).get_me().username
+    except Exception:
+        logger.warning("bot username getMe orqali olinmadi", exc_info=True)
+        return None
+
+
+def _resolve_test_bot_username():
+    """Debug rejimidagi platforma TEST bot username'ini cache'dan (1 soat) yoki getMe orqali oladi."""
+    from django.core.cache import cache
+
+    cache_key = "test_bot_username"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+    from config.env import env
+
+    try:
+        token = env.str("TEST_BOT_TOKEN")
+    except Exception:
+        return None
+    username = _resolve_bot_username(token)
+    if username:
+        cache.set(cache_key, username, 3600)
+    return username
+
+
 @extend_schema(tags=["project"])
 class ProjectView(BaseViewSetMixin, ModelViewSet):
     serializer_class = ListProjectSerializer
@@ -265,7 +298,13 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         description=(
             "Sotib olingan shablondan yangi loyiha yaratadi.\n\n"
             "Shablon avval sotib olingan bo'lishi shart.\n\n"
-            "Darhol birinchi release (v1) ham yaratiladi. Limitlar foydalanuvchi obunasi orqali boshqariladi."
+            "`mode=release` (default): token yoki managed_bot_id majburiy, darhol birinchi "
+            "release (v1) yaratiladi.\n\n"
+            "`mode=debug`: tokensiz — release yaratilmaydi, RELEASE_BOT_TOKEN/telegram "
+            "credential o'rnatilmaydi. Buning o'rniga loyihaning DEBUG konteyneri ishga "
+            "tushadi va platforma TEST bot tokeni bilan javob beradi.\n\n"
+            "Har ikkala rejimda ham javobga bot_mode/bot_username/bot_link qo'shiladi — "
+            "dashboard shu link orqali t.me/<username> ko'rsatishi mumkin."
         ),
         request=CreateProjectFromTemplate,
         responses={
@@ -284,14 +323,24 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         },
         examples=[
             OpenApiExample(
-                "Shablondan loyiha yaratish",
+                "Shablondan loyiha yaratish (release)",
                 value={
                     "template": 1,
                     "name": "Mening shablon botim",
+                    "mode": "release",
                     "token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
                 },
                 request_only=True,
-            )
+            ),
+            OpenApiExample(
+                "Shablondan loyiha yaratish (debug, tokensiz)",
+                value={
+                    "template": 1,
+                    "name": "Mening shablon botim",
+                    "mode": "debug",
+                },
+                request_only=True,
+            ),
         ],
     )
     @action(methods=["POST"], detail=False, url_name="create-from-template", url_path="create-from-template")
@@ -303,6 +352,7 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         data = serializer.validated_data
         template = data.get("template")
         spec = template.spec or {}
+        mode = data.get("mode") or "release"
 
         # Spec'da flow bo'lmasa legacy project.flow'dan fallback
         flow = spec.get("flow")
@@ -331,42 +381,93 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         # Standart legacy kolleksiyalar (users/chat) — dashboard/response serializer shularga tayanadi
         create_default_collections(instance)
 
-        # managed_bot_id berilgan bo'lsa — tokenni undan ol
-        managed_bot_id = data.get("managed_bot_id")
-        token = (data.get("token") or "").strip()
-        managed_bot = None
-        if managed_bot_id:
-            from core.apps.api.models.managed_bot import ManagedBotModel
+        bot_username = None
+
+        if mode == "debug":
+            # Tokensiz DEBUG rejimi: release/telegram credential yaratilmaydi, DEBUG
+            # konteyner platforma TEST_BOT_TOKEN fallback bilan ishga tushadi
+            # (kubernetes_service.deploy_service, prefix != "release" va BOT_TOKEN yo'q holat).
+            envs = data.get("envs") or {}
+            for key, value in envs.items():
+                EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
+
+            # Spec'dan collections va modules install qilish
+            if spec:
+                apply_spec_to_project(spec, instance, credential_map)
+            elif template.project_id:
+                copy_collections(template.project, instance)
+                copy_cms_collections(template.project, instance, flow=instance.flow)
+
+            # Limit yuqorida allaqachon tekshirilgan (yangi loyiha hali running emas edi).
+            debug, _created = DebugModel.objects.get_or_create(project=instance)
             try:
-                managed_bot = ManagedBotModel.objects.get(id=managed_bot_id, owner=request.user)
-            except ManagedBotModel.DoesNotExist:
-                raise exceptions.ValidationError({"managed_bot_id": "Managed bot topilmadi"})
-            token = managed_bot.get_token()
+                service = deploy_service(
+                    instance,
+                    "debug",
+                    instance.flow,
+                    instance.id,
+                    list(project_enviroment(instance.id)),
+                    webhook_uuid=str(instance.debug_webhook_uuid),
+                )
+            except ApiException as exc:
+                debug.status = ContainerStatusEnum.FAILED.value
+                debug.save(update_fields=["status", "updated_at"])
+                raise _deployment_error(exc) from exc
+            debug.service_id = service.metadata.name
+            debug.status = "initializing"
+            debug.save()
+            try:
+                from core.apps.api.models.monitoring import DebugRunLog
 
-        EnviromentModel.objects.create(
-            key="RELEASE_BOT_TOKEN", value=token, project=instance, user=request.user
-        )
+                DebugRunLog.objects.create(project=instance, user=request.user)
+            except Exception:  # noqa: BLE001 — log yozilmasa ham debug ishga tushaversin
+                logger.warning("DebugRunLog yozishda xato", exc_info=True)
 
-        if managed_bot is not None:
-            managed_bot.used = True
-            managed_bot.save(update_fields=["used"])
+            bot_username = _resolve_test_bot_username()
+        else:
+            # managed_bot_id berilgan bo'lsa — tokenni undan ol
+            managed_bot_id = data.get("managed_bot_id")
+            token = (data.get("token") or "").strip()
+            managed_bot = None
+            if managed_bot_id:
+                from core.apps.api.models.managed_bot import ManagedBotModel
+                try:
+                    managed_bot = ManagedBotModel.objects.get(id=managed_bot_id, owner=request.user)
+                except ManagedBotModel.DoesNotExist:
+                    raise exceptions.ValidationError({"managed_bot_id": "Managed bot topilmadi"})
+                token = managed_bot.get_token()
 
-        envs = data.get("envs") or {}
-        for key, value in envs.items():
-            EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
+            EnviromentModel.objects.create(
+                key="RELEASE_BOT_TOKEN", value=token, project=instance, user=request.user
+            )
 
-        RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+            if managed_bot is not None:
+                managed_bot.used = True
+                managed_bot.save(update_fields=["used"])
 
-        # Spec'dan collections va modules install qilish
-        if spec:
-            apply_spec_to_project(spec, instance, credential_map)
-        elif template.project_id:
-            # Legacy fallback: project bog'liq bo'lsa eski usul
-            copy_collections(template.project, instance)
-            copy_cms_collections(template.project, instance, flow=instance.flow)
+            envs = data.get("envs") or {}
+            for key, value in envs.items():
+                EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)
 
-        set_webhook(instance, "release")
-        return Response(data=ListProjectSerializer(instance=instance).data)
+            RelaseModel.objects.create(project=instance, flow=instance.flow, version=1)
+
+            # Spec'dan collections va modules install qilish
+            if spec:
+                apply_spec_to_project(spec, instance, credential_map)
+            elif template.project_id:
+                # Legacy fallback: project bog'liq bo'lsa eski usul
+                copy_collections(template.project, instance)
+                copy_cms_collections(template.project, instance, flow=instance.flow)
+
+            set_webhook(instance, "release")
+
+            bot_username = managed_bot.username if managed_bot is not None else _resolve_bot_username(token)
+
+        response_data = ListProjectSerializer(instance=instance).data
+        response_data["bot_mode"] = mode
+        response_data["bot_username"] = bot_username
+        response_data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
+        return Response(data=response_data)
 
     @action(methods=["GET"], detail=False, url_name="template-requirements", url_path="template-requirements")
     def template_requirements(self, request):

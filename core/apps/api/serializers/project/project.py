@@ -151,6 +151,13 @@ class CreateProjectSerializer(BaseProjectSerializer):
 class CreateProjectFromTemplate(serializers.Serializer):
     template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all(), help_text="Shablon ID")
     name = serializers.CharField(max_length=255, help_text="Loyiha nomi")
+    mode = serializers.ChoiceField(
+        choices=["release", "debug"],
+        default="release",
+        required=False,
+        help_text="release: token/managed_bot_id majburiy, darhol release yaratiladi. "
+        "debug: tokensiz, DEBUG konteyner (platforma TEST bot tokeni bilan) ishga tushadi.",
+    )
     token = serializers.CharField(max_length=255, required=False, allow_blank=True, default="", help_text="Release bot tokeni")
     managed_bot_id = serializers.IntegerField(required=False, min_value=1, help_text="Managed bot ID (token o'rniga)")
     envs = serializers.DictField(
@@ -168,9 +175,10 @@ class CreateProjectFromTemplate(serializers.Serializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        mode = attrs.get("mode") or "release"
         token = (attrs.get("token") or "").strip()
         managed_bot_id = attrs.get("managed_bot_id")
-        if not token and not managed_bot_id:
+        if mode == "release" and not token and not managed_bot_id:
             raise serializers.ValidationError(
                 {"token": "token yoki managed_bot_id dan biri majburiy"}
             )
