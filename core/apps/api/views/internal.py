@@ -19,6 +19,38 @@ def _internal_token_ok(request) -> bool:
     return hmac.compare_digest(str(provided), str(expected))
 
 
+def _credential_response(cred):
+    """Decrypt + oauth-refresh a credential and build the engine response dict.
+
+    Returns (payload_dict, None) on success, or (error_detail, http_status) on failure.
+    """
+    from core.apps.credentials.registry import get_type
+    from core.apps.credentials.services import crypto
+
+    try:
+        decrypted = crypto.decrypt(cred.data_encrypted)
+    except Exception:
+        return {"detail": "Decryption error"}, status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    type_info = get_type(cred.type_key) or {}
+    mode = type_info.get("mode")
+
+    if mode == "oauth2":
+        try:
+            from core.apps.credentials.services.oauth import get_valid_access_token
+            decrypted["access_token"] = get_valid_access_token(cred)
+        except Exception as exc:
+            return {"detail": f"Token refresh failed: {exc}"}, status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return {
+        "id": cred.id,
+        "name": cred.name,
+        "type_key": cred.type_key,
+        "mode": mode,
+        "data": decrypted,
+    }, None
+
+
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -39,8 +71,6 @@ def credential_by_id(request, pk):
         return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
 
     from core.apps.credentials.models import Credential
-    from core.apps.credentials.registry import get_type
-    from core.apps.credentials.services import crypto
 
     try:
         cred = Credential.objects.select_related("owner").get(pk=pk, deleted_at__isnull=True)
@@ -57,36 +87,52 @@ def credential_by_id(request, pk):
         if project.owner_id != cred.owner_id:
             return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
+    payload, err_status = _credential_response(cred)
+    return Response(payload, status=err_status or status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def credential_by_name(request):
+    """Resolve a credential by its (owner-unique) name — the portable 'key'.
+
+    Headers:
+      X-Internal-Token: <settings.INTERNAL_API_TOKEN>
+      X-Project-Id:     <project id> — REQUIRED; the owner is derived from it,
+                        since credential names are unique only per owner.
+    Query:
+      name=<credential name>
+
+    Returns the same shape as credential_by_id.
+    """
+    if not _internal_token_ok(request):
+        return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    name = (request.query_params.get("name") or "").strip()
+    if not name:
+        return Response({"detail": "name required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    project_id = request.headers.get("X-Project-Id")
+    if not project_id:
+        return Response({"detail": "X-Project-Id required"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        decrypted = crypto.decrypt(cred.data_encrypted)
-    except Exception:
-        return Response({"detail": "Decryption error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        project = ProjectModel.objects.get(pk=project_id)
+    except ProjectModel.DoesNotExist:
+        return Response({"detail": "Project not found"}, status=status.HTTP_403_FORBIDDEN)
 
-    type_info = get_type(cred.type_key) or {}
-    mode = type_info.get("mode")
+    from core.apps.credentials.models import Credential
 
-    # For oauth2 credentials: refresh token if expired, inject fresh access_token
-    if mode == "oauth2":
-        try:
-            from core.apps.credentials.services.oauth import get_valid_access_token
-            fresh_token = get_valid_access_token(cred)
-            decrypted["access_token"] = fresh_token
-        except Exception as exc:
-            return Response(
-                {"detail": f"Token refresh failed: {exc}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    return Response(
-        {
-            "id": cred.id,
-            "name": cred.name,
-            "type_key": cred.type_key,
-            "mode": mode,
-            "data": decrypted,
-        },
-        status=status.HTTP_200_OK,
+    cred = (
+        Credential.objects.select_related("owner")
+        .filter(owner_id=project.owner_id, name=name, deleted_at__isnull=True)
+        .first()
     )
+    if cred is None:
+        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    payload, err_status = _credential_response(cred)
+    return Response(payload, status=err_status or status.HTTP_200_OK)
 
 
 @api_view(["GET"])
