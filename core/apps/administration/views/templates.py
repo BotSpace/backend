@@ -74,9 +74,9 @@ class AdminTemplatesView(
             if features:
                 template.features.set(features)
             spec = build_spec_from_project(project)
-            # Flow/collections stay authoritative from the project; only the
-            # editable lists may be overridden by the admin.
-            for key in ("credentials", "modules", "envs"):
+            # Flow stays authoritative from the project; the editable lists —
+            # including collections' default (seed) data — may be overridden.
+            for key in ("credentials", "modules", "envs", "collections"):
                 if key in overrides:
                     spec[key] = overrides[key]
             record_template_version(template, spec, "Loyihadan yaratildi", request.user)
@@ -109,6 +109,7 @@ class AdminTemplatesView(
             "credentials": spec.get("credentials", []),
             "modules": spec.get("modules", []),
             "envs": spec.get("envs", []),
+            "collections": spec.get("collections", []),
         })
 
     def perform_update(self, serializer):
