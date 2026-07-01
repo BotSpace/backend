@@ -308,9 +308,27 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         )
         # Standart legacy kolleksiyalar (users/chat) — dashboard/response serializer shularga tayanadi
         create_default_collections(instance)
+
+        # managed_bot_id berilgan bo'lsa — tokenni undan ol
+        managed_bot_id = data.get("managed_bot_id")
+        token = (data.get("token") or "").strip()
+        managed_bot = None
+        if managed_bot_id:
+            from core.apps.api.models.managed_bot import ManagedBotModel
+            try:
+                managed_bot = ManagedBotModel.objects.get(id=managed_bot_id, owner=request.user)
+            except ManagedBotModel.DoesNotExist:
+                raise exceptions.ValidationError({"managed_bot_id": "Managed bot topilmadi"})
+            token = managed_bot.get_token()
+
         EnviromentModel.objects.create(
-            key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
+            key="RELEASE_BOT_TOKEN", value=token, project=instance, user=request.user
         )
+
+        if managed_bot is not None:
+            managed_bot.used = True
+            managed_bot.save(update_fields=["used"])
+
         envs = data.get("envs") or {}
         for key, value in envs.items():
             EnviromentModel.objects.create(key=key, value=value, project=instance, user=request.user)

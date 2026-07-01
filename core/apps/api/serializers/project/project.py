@@ -151,7 +151,8 @@ class CreateProjectSerializer(BaseProjectSerializer):
 class CreateProjectFromTemplate(serializers.Serializer):
     template = serializers.PrimaryKeyRelatedField(queryset=TemplateModel.objects.all(), help_text="Shablon ID")
     name = serializers.CharField(max_length=255, help_text="Loyiha nomi")
-    token = serializers.CharField(max_length=255, help_text="Release bot tokeni")
+    token = serializers.CharField(max_length=255, required=False, allow_blank=True, default="", help_text="Release bot tokeni")
+    managed_bot_id = serializers.IntegerField(required=False, min_value=1, help_text="Managed bot ID (token o'rniga)")
     envs = serializers.DictField(
         child=serializers.CharField(allow_blank=False),
         required=False,
@@ -167,6 +168,13 @@ class CreateProjectFromTemplate(serializers.Serializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        token = (attrs.get("token") or "").strip()
+        managed_bot_id = attrs.get("managed_bot_id")
+        if not token and not managed_bot_id:
+            raise serializers.ValidationError(
+                {"token": "token yoki managed_bot_id dan biri majburiy"}
+            )
+
         template = attrs.get("template")
         spec = template.spec or {}
 

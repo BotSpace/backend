@@ -20,6 +20,7 @@ from core.apps.api.views.plan import PlanViewSet
 from core.apps.api.views.chat import ChatViewSet
 from core.apps.api.views.subscription import SubscriptionViewSet
 from core.apps.api.views.overview import OverviewView
+from core.apps.api.views.managed_bot import ManagedBotWebhookView, ManagedBotListView, ManagedBotConfigView
 
 from .views import EnviromentView, FileView, MessageView, ProjectView, ReleaseView, ResourceView
 
@@ -35,6 +36,9 @@ router.register("chat", ChatViewSet, basename="chat")
 router.register("modules", ModuleViewSet, basename="modules")
 
 urlpatterns = [
+    path("managed-bot/webhook/<str:secret>/", ManagedBotWebhookView.as_view(), name="managed-bot-webhook"),
+    path("managed-bot/config/", ManagedBotConfigView.as_view(), name="managed-bot-config"),
+    path("managed-bot/", ManagedBotListView.as_view(), name="managed-bot-list"),
     # Module CI auto-deploy hook (X-Internal-Token) — before the router so the
     # specific path wins over the modules viewset.
     path("modules/<slug>/redeploy/", ModuleRedeployView.as_view(), name="module-redeploy"),
