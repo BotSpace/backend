@@ -118,6 +118,7 @@
       "global": true
     },
     "aiDoc": "Telegram /command trigger. global:true har yerda ishlaydi. withArgs:true bo'lsa argument qabul qiladi. state: {key, type:'text'} — komanda argumentini saqlaydi.",
+    "summary": "/command (masalan /start) kelganda flow'ni boshlaydi",
     "agentCategory": "trigger"
   },
   {
@@ -160,6 +161,7 @@
       "targetChatIds": []
     },
     "aiDoc": "Cron schedule bo'yicha trigger",
+    "summary": "Cron jadval bo'yicha flow'ni avtomatik ishga tushiradi",
     "agentCategory": "trigger"
   },
   {
@@ -572,6 +574,7 @@
       "context": {}
     },
     "aiDoc": "Xabar turini kutib trigger. type: text/photo/video/audio/voice/video_note/document/contact/location/sticker/animation. filter: any/equals/contains/starts_with/regex. context.value: filter qiymati. global:false bo'lsa faqat pauzada ishlaydi (foydalanuvchi javobini kutish). state: {key, type} — kelgan ma'lumotni AVTOMATIK saqlaydi (public_<key>), alohida StateNode KERAK EMAS. Misol: state:{key:'user_name', type:'text'} → {{user_name}} (yoki {{public.user_name}}) orqali foydalaniladi.",
+    "summary": "Foydalanuvchi xabari (matn/rasm/kontakt...) kelganda flow'ni boshlaydi yoki javobni kutadi",
     "agentCategory": "trigger"
   },
   {
@@ -760,6 +763,7 @@
       "rows": []
     },
     "aiDoc": "Text xabar yuborish. keyboard.active: 'inline'/'reply'/'none'. keyboard.inline: [[{text,type:'callback'/'url'/'web_app',value}]] (web_app value=https URL). keyboard.reply: [[{id:'btn-xxx',text,type:'reply'/'request_contact'/'request_location'}]]. recipients: {sendToSender:bool, additionalIds:[chatId]}. {{key}} (yoki {{public.key}}) — saqlangan ochiq qiymat, {{first_name}} — user ismi, {{callback_data}} — bosilgan tugma callback'i, {{private.key}} — maxfiy qiymat. TUGMA ROUTING (yangi usul): har reply/inline tugma o'zidan edge chiqaradi. flow.connect da source_handle='target-handler-{nodeId}-{buttonText}' formatidan foydalaniladi. Alohida ReplyButtonTriggerNode KERAK EMAS.",
+    "summary": "Foydalanuvchiga matn xabar yuboradi (klaviatura/tugmalar bilan)",
     "agentCategory": "send",
     "buttonEdge": true
   },
@@ -924,6 +928,7 @@
       "rows": []
     },
     "aiDoc": "Rasm yuborish",
+    "summary": "Rasm yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1087,6 +1092,7 @@
       "rows": []
     },
     "aiDoc": "Video yuborish",
+    "summary": "Video yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1252,6 +1258,7 @@
       "rows": []
     },
     "aiDoc": "Audio yuborish",
+    "summary": "Audio fayl yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1415,6 +1422,7 @@
       "rows": []
     },
     "aiDoc": "Fayl yuborish",
+    "summary": "Hujjat/fayl yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1453,6 +1461,7 @@
     ],
     "defaults": {},
     "aiDoc": "GIF/animation yuborish",
+    "summary": "GIF/animatsiya yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1508,6 +1517,7 @@
       }
     },
     "aiDoc": "Voice xabar yuborish",
+    "summary": "Ovozli (voice) xabar yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1563,6 +1573,7 @@
       }
     },
     "aiDoc": "Video note (round) yuborish",
+    "summary": "Dumaloq video-note yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1732,6 +1743,7 @@
       "rows": []
     },
     "aiDoc": "Geolokatsiya yuborish",
+    "summary": "Geolokatsiya yuboradi",
     "agentCategory": "send"
   },
   {
@@ -1913,6 +1925,7 @@
       "rows": []
     },
     "aiDoc": "Kontakt yuborish",
+    "summary": "Kontakt yuboradi",
     "agentCategory": "send"
   },
   {
@@ -2160,6 +2173,7 @@
       "rows": []
     },
     "aiDoc": "Poll yuborish",
+    "summary": "So'rovnoma (poll) yuboradi",
     "agentCategory": "send"
   },
   {
@@ -2231,6 +2245,7 @@
       "stickerSourceType": "file_id"
     },
     "aiDoc": "Sticker yuborish",
+    "summary": "Stiker yuboradi",
     "agentCategory": "send"
   },
   {
@@ -2456,6 +2471,7 @@
       "rows": []
     },
     "aiDoc": "Media group (album) yuborish",
+    "summary": "Bir nechta media'ni albom qilib yuboradi",
     "agentCategory": "send"
   },
   {
@@ -2523,6 +2539,7 @@
       "emoji": "🎲"
     },
     "aiDoc": "Dice/emoji yuborish",
+    "summary": "Dice/emoji o'yin yuboradi",
     "agentCategory": "send"
   },
   {
@@ -2725,6 +2742,7 @@
       "rows": []
     },
     "aiDoc": "Avvalgi xabarni edit qilish. messageIdSource: 'this_message' (callback xabarini edit) yoki node ID. newText: yangi matn. keyboard: yangilangan tugmalar.",
+    "summary": "Avval yuborilgan xabar matni/tugmalarini tahrirlaydi",
     "agentCategory": "edit",
     "buttonEdge": true
   },
@@ -2914,6 +2932,7 @@
       "rows": []
     },
     "aiDoc": "Mavjud bo'lsa edit qiladi, aks holda yangisini yuboradi. messageText ichida ro'yxatni BITTA xabarda chiqarish uchun {{#each KEY}}...{{/each}} (+ {{@number}}/{{@index}}/{{this}}) va bo'sh holat uchun {{^KEY}}...{{/KEY}} ishlaydi; KEY = LoadCollectionListNode contextKey (Pattern 4a). Nested each YO'Q.",
+    "summary": "Xabar mavjud bo'lsa tahrirlaydi, aks holda yangisini yuboradi (ro'yxatni bitta xabarda chiqarishga qulay)",
     "agentCategory": "send",
     "buttonEdge": true
   },
@@ -2959,6 +2978,7 @@
       ]
     },
     "aiDoc": "Xabarni forward qilish",
+    "summary": "Xabarni boshqa chatga forward qiladi",
     "agentCategory": "edit"
   },
   {
@@ -2997,6 +3017,7 @@
     ],
     "defaults": {},
     "aiDoc": "Admin chatga xabar yuborish",
+    "summary": "Admin chatiga xabar yuboradi",
     "agentCategory": "integration"
   },
   {
@@ -3048,6 +3069,7 @@
       }
     },
     "aiDoc": "Xabarni nusxalash",
+    "summary": "Xabarni nusxalab yuboradi",
     "agentCategory": "edit"
   },
   {
@@ -3099,6 +3121,7 @@
       }
     },
     "aiDoc": "Xabarni pin qilish",
+    "summary": "Xabarni pin qiladi",
     "agentCategory": "edit"
   },
   {
@@ -3150,6 +3173,7 @@
       "unpinAll": false
     },
     "aiDoc": "Pinni olib tashlash",
+    "summary": "Xabar pinini olib tashlaydi",
     "agentCategory": "edit"
   },
   {
@@ -3202,6 +3226,7 @@
       "deleteFromContext": false
     },
     "aiDoc": "Xabarni o'chirish",
+    "summary": "Xabarni o'chiradi",
     "agentCategory": "edit"
   },
   {
@@ -3278,6 +3303,7 @@
       "action": "typing"
     },
     "aiDoc": "Typing indicator (typing/upload_photo/...)",
+    "summary": "'Yozmoqda...' kabi harakat indikatorini ko'rsatadi",
     "agentCategory": "interaction"
   },
   {
@@ -3327,6 +3353,7 @@
       "key": "yuklangan_fayl"
     },
     "aiDoc": "Joriy message context'idagi foydalanuvchi yuborgan faylni platformaga yuklab saqlaydi. key orqali public_<key>, public_<key>_file_url, _file_size, _file_type yoziladi. Odatda file media MessageTriggerNode'dan keyin qo'yiladi.",
+    "summary": "Foydalanuvchi yuborgan faylni platformaga yuklab state'ga saqlaydi",
     "agentCategory": "integration"
   },
   {
@@ -3374,6 +3401,7 @@
       "outputs": []
     },
     "aiDoc": "JavaScript kod ishga tushirish (Goja VM). Kod data.jsCode da saqlanadi (engine va UI shu kalitni o'qiydi). MongoDB/HTTP async API mavjud. data.outputs=[{name}] e'lon qilinsa, exit('name') bilan `output-{name}` source handle orqali tarmoqlanadi. data.terminal=true — node leaf (o'zi javob yuborib oqimni tugatadi), keyingi edge yo'qligi normal (validator 'dead-end' ogohlantirishini o'chiradi). State/context'dan O'QISH uchun obyekt-access AFZAL: vars.<key> (ochiq, public_ ga map; state.<key> — legacy alias, hali ishlaydi) va private.<key> (maxfiy), context.<key> (xom kalit) — masalan vars.user_phone, context.first_name. jsCode'ni TOZA, ko'p qatorli yoz (engine verbatim saqlaydi) — docs_guide(topic='custom_code').",
+    "summary": "Maxsus JavaScript kod ishga tushiradi (DB/HTTP bilan)",
     "agentCategory": "integration"
   },
   {
@@ -3413,6 +3441,7 @@
       "type": "user_id"
     },
     "aiDoc": "Ma'lumotni state'ga saqlash. type: text/caption/callback/contact_phone_number/photo_file_id/video_file_id/audio_file_id/document_file_id/file_id/user_id/first_name/last_name/username/language_code/location_latitude/location_longitude/Custom. Custom bo'lsa customType maydonida expression yoziladi (masalan '{{inserted_id}}').",
+    "summary": "Ma'lumotni (matn, kontakt, file_id...) state o'zgaruvchisiga saqlaydi",
     "agentCategory": "data",
     "savesState": true
   },
@@ -3455,6 +3484,7 @@
       "fieldMappings": {}
     },
     "aiDoc": "MongoDB collection'ga document qo'shish. fieldMappings: {db_field: var_key} (var_key — saqlangan ochiq o'zgaruvchi nomi, prefiksiz). Saqlangandan keyin context'da '{{inserted_id}}' mavjud bo'ladi.",
+    "summary": "CMS kolleksiyaga yangi yozuv qo'shadi",
     "agentCategory": "data"
   },
   {
@@ -3510,6 +3540,7 @@
       "filters": []
     },
     "aiDoc": "Bitta document yuklash. collection.name, contextKey, filters: [{field, operator:'equals', valueSource:'state'/'static', stateKey, value}]. Topilsa context'da collection_{contextKey}_{field} mavjud.",
+    "summary": "CMS kolleksiyadan bitta yozuvni filter bo'yicha o'qiydi",
     "sourceHandles": [
       "found",
       "not_found"
@@ -3558,6 +3589,7 @@
       "outputs": []
     },
     "aiDoc": "Boshqa flow ni ichki sifatida chaqirish",
+    "summary": "Boshqa flow'ni ichki qism sifatida chaqiradi",
     "agentCategory": "subflow"
   },
   {
@@ -3599,6 +3631,7 @@
       "exitName": "success"
     },
     "aiDoc": "Subflow tugagach parent flow'ga qaytadigan chiqish nuqtasi",
+    "summary": "Subflow tugagach ota-flow'ga qaytish nuqtasi",
     "sourceHandles": [],
     "agentCategory": "subflow"
   },
@@ -3658,6 +3691,7 @@
       "conditions": []
     },
     "aiDoc": "Shart tekshirish. Oddiy: conditions[] + operator(AND/OR) → sourceHandle 'true'/'false'. Multi-branch: branches[{type,conditions,operator}] → sourceHandle 'branch_0','branch_1',...",
+    "summary": "Shartga qarab flow'ni true/false (yoki ko'p) tarmoqqa bo'ladi",
     "sourceHandles": [
       "true",
       "false"
@@ -3720,6 +3754,7 @@
       "conditions": []
     },
     "aiDoc": "Else-if branch (IfConditionNode'dan keyin)",
+    "summary": "IfCondition'dan keyingi else-if tarmog'i",
     "agentCategory": "flow_control"
   },
   {
@@ -3765,6 +3800,7 @@
     ],
     "defaults": {},
     "aiDoc": "Else branch",
+    "summary": "Shart bajarilmagandagi else tarmog'i",
     "agentCategory": "flow_control"
   },
   {
@@ -3810,6 +3846,7 @@
       "seconds": 1
     },
     "aiDoc": "Sekundlarda kechiktirish",
+    "summary": "Belgilangan soniyalar kechiktiradi",
     "agentCategory": "flow_control"
   },
   {
@@ -3951,6 +3988,7 @@
       "rows": []
     },
     "aiDoc": "Tasodifiy branch tanlash",
+    "summary": "Tasodifiy tarmoqni tanlaydi",
     "agentCategory": "flow_control"
   },
   {
@@ -4046,6 +4084,7 @@
       "value": ""
     },
     "aiDoc": "O'zgaruvchi operatsiyasi (set/increment/decrement/append/remove)",
+    "summary": "O'zgaruvchi ustida amal (set/increment/append/remove)",
     "agentCategory": "data"
   },
   {
@@ -4155,6 +4194,7 @@
       "inputType": "username"
     },
     "aiDoc": "Foydalanuvchi kanal/guruh a'zosi ekanligini tekshirish",
+    "summary": "Foydalanuvchi kanal/guruh a'zosi ekanini tekshiradi",
     "sourceHandles": [
       "is-member",
       "not-member"
@@ -4252,6 +4292,7 @@
       "items": []
     },
     "aiDoc": "Foydalanuvchi ma'lumotlarini ketma-ket forma maydonlari orqali yig'ish",
+    "summary": "Ketma-ket forma maydonlari orqali ma'lumot yig'adi",
     "agentCategory": "flow_control"
   },
   {
@@ -4311,6 +4352,7 @@
       "itemVariable": "item"
     },
     "aiDoc": "Massiv ustidan iteration. FAQAT IKKI handle: `loop-body` (har element uchun) va `no-items` (massiv bo'sh). `loop-done`/`loop-continue` HANDLE YO'Q — oxiriga ForLoopContinueNode ulanadi. Context: 'loop_item','loop_current_index'.",
+    "summary": "Massiv elementlari ustida takrorlaydi (loop)",
     "sourceHandles": [
       "loop-body",
       "no-items"
@@ -4350,6 +4392,7 @@
     ],
     "defaults": {},
     "aiDoc": "ForLoop ichidan continue (boshqa iteratsiyaga o'tish)",
+    "summary": "ForLoop ichida keyingi iteratsiyaga o'tadi",
     "agentCategory": "flow_control"
   },
   {
@@ -4476,6 +4519,7 @@
       "http_success"
     ],
     "aiDoc": "HTTP request (GET/POST/PUT/DELETE). SSRF protection enabled.",
+    "summary": "Tashqi HTTP so'rov yuboradi (GET/POST/...)",
     "agentCategory": "integration"
   },
   {
@@ -4617,6 +4661,7 @@
       "rows": []
     },
     "aiDoc": "Callback query'ga javob (loading'ni o'chirish)",
+    "summary": "Inline tugma callback'iga javob beradi (loading'ni yopadi)",
     "agentCategory": "interaction"
   },
   {
@@ -4734,6 +4779,7 @@
       }
     },
     "aiDoc": "Inline button callback trigger. filter: any/equals/contains/starts_with/regex. context.value: mos keladigan callback_data. global:true bo'lsa har yerda ishlaydi. state: {key, type} — callback data'ni saqlaydi (type: 'callback'/'data'/'collection_id').",
+    "summary": "Inline tugma bosilganda (callback) flow'ni boshlaydi yoki kutadi",
     "agentCategory": "trigger"
   },
   {
@@ -4846,6 +4892,7 @@
       "catchNoButton": false
     },
     "aiDoc": "Reply keyboard button bosilganda trigger. selectedButton: {id, text, type:'reply'}",
+    "summary": "Reply-klaviatura tugmasi bosilganda ishga tushadi",
     "agentCategory": "trigger"
   },
   {
@@ -5019,6 +5066,7 @@
       "jsonSchema": ""
     },
     "aiDoc": "LLM agent node. Bitta provider sub-node (acc:ai_model portiga) va ixtiyoriy tool sub-node'lar (acc:ai_tool portiga) ulanadi. systemPrompt + userInputSource → LLM tool-calling loop → natija outputKey context o'zgaruvchisiga yoziladi (standart: agent_output). Keyingi nodelar {{agent_output}} orqali foydalanadi. Bog'lash: flow.connect(source=<provider_id>, source_handle='source-default', target=<agent_id>, target_handle='acc:ai_model'). Tavsiya: OpenAI yoki Ollama provider'i bilan boshlang. SUHBAT XOTIRASI: chatbot / suhbatdosh / savdo-agent uchun autoHistory=true qo'y — engine har chat uchun dialogni avtomatik eslaydi. Aks holda bot amneziyali bo'ladi (har xabarda oldingi gapni unutadi). TOOL ISHLAT: agent shunchaki matn yozmasin — real ma'lumot/harakat kerak bo'lsa acc:ai_tool'ga tool ula. Tool'siz agent uydirma javob berishi mumkin. TOOL TANLASH YO'RIQNOMASI: • dinamik DB ma'lumoti (katalog, buyurtma, foydalanuvchi) o'qish/yozish → AICollectionToolNode (read uchun operations=['read']); • tashqi REST API chaqirish → AIHTTPToolNode (natija status-aware: model 4xx/5xx xatoni ko'radi); • murakkab mantiq/hisob-kitob yoki bir nechta amal birga → AICustomCodeToolNode (kuchli — Mongo yoz, Telegram yubor, http; ehtiyot bo'l); • hujjat/bilim bazasi bo'yicha semantic (RAG) qidiruv → AIKnowledgeToolNode, LEKIN faqat tashqi Qdrant URL + embedding kaliti aniq mavjud bo'lsa (built-in vector DB YO'Q; aks holda tool jimgina tushib qoladi — o'rniga collection/http ishlat). Masalan 'narxni ayt' → AICollectionToolNode (real katalog), 'buyurtma yarat' → collection create yoki custom_code; • joriy sana/vaqt yoki sana hisobi (bron/jadval/eslatma) → AIDateTimeToolNode (credential YO'Q); • Google Sheet o'qish/yozish (lookup, log, buyurtma jurnali) → AIGoogleSheetsToolNode (type_key='google_sheets' OAuth credential, dashboard'da Connect with Google); • AI dinamik to'lov havolasi yaratsin (sotuv-agent narx aytib hisob chiqarsin) → AIPaymentLinkToolNode (paymentType click|paycue — qurishdan oldin SO'RA, payme YO'Q; maxAmount build-time injection-guard); • AI to'lov BUYURTMASI holatini tekshirsin (paid/pending/failed; 'to'ladim' deganda tasdiq) → AIPaymentStatusToolNode (order_id runtime arg, konfiguratsiya/credential YO'Q); STRUCTURED JSON: agent JSON qaytarishi kerak bo'lsa systemPrompt'da 'JSON qaytar' DEMA (ishonchsiz) — `structuredOutput:true` + `jsonSchema` (schema string) qo'y. Engine model'ni provider darajasida shu schema'ga majburlaydi va parse qilingan obyektni outputKey'ga yozadi ({{agent_output.field}}). Faqat schema'siz erkin matn kerak bo'lsa returnMode='json' (best-effort parse). XATO SEMANTIKASI (engine): SUCCESS bo'lsa errorOutputKey TOZALANADI (oldingi xato qoldig'i qolmaydi); provider XATO bersa outputKey bo'sh, errorOutputKey saqlanadi va flow KEYINGI node'ga DAVOM etadi (graceful) — shuning uchun errorOutputKey ustidan IfConditionNode bilan branch qilib xato holatini alohida ko'rsatish mumkin.",
+    "summary": "LLM agent: provider va tool'lar bilan suhbatlashib javob beradi",
     "sourceHandles": [
       "source-default"
     ],
@@ -5099,6 +5147,7 @@
       "extraParams": {}
     },
     "aiDoc": "OpenAI provider sub-node. AIAgentNode'ning acc:ai_model portiga ulanadi. provider='openai', default model='gpt-4o-mini'. KALIT: manual apiKey EMAS — credential_id (type_key 'openai') bering (credentials.list(type_key='openai')). Engine runtime'da credential'dan api_key/base_url'ga aylantiradi (baseURL SET QILMA). Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_model'.",
+    "summary": "AI agent uchun OpenAI provider (credential orqali)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5179,6 +5228,7 @@
       "extraParams": {}
     },
     "aiDoc": "Ollama provider sub-node. AIAgentNode'ning acc:ai_model portiga ulanadi. AFZAL (DEFAULT) AI provider — bot LLM ishlatsa shuni tanla. provider='ollama'. Endpoint (base_url) CREDENTIAL'dan keladi — baseURL SET QILMA (bo'sh qoldir; engine credential'dan oladi, bo'sh bo'lsa provider-default). AFZAL model='gemma4:31b-cloud' (cloud model) — model'ni ANIQ shunga sozla, bo'sh qoldirma (bo'sh qolsa engine eski fallback 'gpt-oss:120b'ni oladi). KALIT: credential_id (type_key 'ollama') bering (credentials.list(type_key='ollama')) — manual apiKey EMAS. Credential yo'q bo'lsa: foydalanuvchidan kalit so'rab credentials.create qiling YOKI muqobil providerni (openai / ai_studio) taklif qiling. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_model'.",
+    "summary": "AI agent uchun Ollama provider (default/afzal, credential orqali)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5268,6 +5318,7 @@
       "extraParams": {}
     },
     "aiDoc": "Google Gemini provider sub-node. AIAgentNode'ning acc:ai_model portiga ulanadi. provider='gemini', default model='gemini-1.5-flash'. KALIT: credential_id (type_key 'ai_studio' — Google AI Studio) bering (credentials.list(type_key='ai_studio')) — manual apiKey EMAS. base_url credential'dan keladi — baseURL SET QILMA. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_model'.",
+    "summary": "AI agent uchun Google Gemini provider (credential orqali)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5347,6 +5398,7 @@
       "extraParams": {}
     },
     "aiDoc": "Anthropic (Claude) provider sub-node. AIAgentNode'ning acc:ai_model portiga ulanadi. provider='anthropic', default model='claude-3-5-haiku-latest'. ESLATMA: registry'da 'anthropic' credential type'i YO'Q — bu provider hanuz manual apiKey ishlatadi (ask_user bilan haqiqiy kalit ol). credential_id qo'llab-quvvatlanmaydi. baseURL SET QILMA (default ishlatiladi). Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_model'.",
+    "summary": "AI agent uchun Anthropic (Claude) provider",
     "sourceHandles": [
       "source-default"
     ],
@@ -5475,6 +5527,7 @@
       }
     },
     "aiDoc": "HTTP request tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='http_request'. LLM urlTemplate/bodyTemplate'ni tool args bilan chaqiradi. QACHON: tashqi REST API'ga so'rov yuborish kerak bo'lganda. NATIJA STATUS-AWARE: model javobda HTTP status'ni ko'radi — non-2xx bo'lsa natijada status va ok=false bo'ladi (masalan {\"status\":404,\"ok\":false,...}), shuning uchun model 4xx/5xx xatoni muvaffaqiyatdan farqlay oladi. SSRF: ichki/private manzillar (localhost, 10/172/192.168, .internal) standart bloklanadi; ataylab ichki API kerak bo'lsa allowInternal=true yoki allowedHosts ro'yxatini ber. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun HTTP-so'rov tool'i (tashqi API chaqiradi)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5564,6 +5617,7 @@
       "description": ""
     },
     "aiDoc": "Collection tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='collection'. TEMPLATE (gibrid) model — har node BITTA `operation` (create|read|update|delete). read+create kerak bo'lsa BIR agentga ikki alohida collection tool ulang (har biri bitta operation). Sen (builder) so'rov SKELETINI sozlaysan, har field uchun FIXED yoki AI-SLOT tanlaysan; runtime AI faqat ai-slot'larni to'ldiradi. operation='read'/'update'/'delete' → filterMatch ('and'|'or') + filterConditions:[{field, op, source:'fixed'|'ai', value?|aiDescription?}]; op ∈ eq|ne|gt|gte|lt|lte|in|nin|contains|exists. operation='create' → documentFields:[{field, source, value?|aiDescription?}]. operation='update' → YANA changeFields (SET qilinadigan maydonlar; filterConditions QAYSI hujjat ekanini tanlaydi). source='fixed' → SEN `value` belgilaysan (constant yoki {{chat_id}}/{{state_<key>}}/{{user_id}}/{{username}} placeholder — engine runtime'da resolve qiladi, BUTUN-placeholder XOM tipni saqlaydi: value=\"{{chat_id}}\" int qoladi). FIXED slot'ni runtime AI O'ZGARTIROLMAYDI — shuning uchun user_id=\"{{chat_id}}\" qilib tool'ni JORIY foydalanuvchiga xavfsiz biriktir. source='ai' → `value` bo'sh, `aiDescription` yoz; runtime AI shu tavsifga qarab qiymatni to'ldiradi. MISOL read: operation='read', filterMatch='and', filterConditions=[{field:'user_id', op:'eq', source:'fixed', value:'{{chat_id}}'},{field:'status', op:'eq', source:'ai', aiDescription:'qaysi holatdagi qarzlar (masalan active)'}]. MISOL create: operation='create', documentFields=[{field:'user_id', source:'fixed', value:'{{chat_id}}'},{field:'amount', source:'ai', aiDescription:'qarz summasi'},{field:'text', source:'ai', aiDescription:'qarz izohi'}]. LEGACY (hanuz qabul qilinadi, engine fallback qiladi): `operation` bermasang eski model — `operations` allow-list + `searchFields` ([{field, description?}]); u holda runtime AI butun filtrni o'zi quradi. Yangi node'larda TEMPLATE afzal. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun CMS kolleksiya tool'i (create/read/update/delete)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5639,6 +5693,7 @@
       }
     },
     "aiDoc": "Custom JavaScript tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='custom_code'. Goja sandbox'da ishlaydi, args + flow context mavjud. QACHON: murakkab mantiq/hisob yoki bir nechta amalni birga bajarish kerak bo'lganda (oddiy DB o'qish → collection, oddiy API → http afzal). DIQQAT: to'liq engine imkoniyatiga ega — Mongo yoz (insert/update/delete), Telegram yubor, http chaqir. Faqat kerakli amal uchun ehtiyot bilan kod yoz, ataylab bo'lmagan buzg'unchi DB amallaridan saqlan, cheksiz loop yozma (30s timeout bor). Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun maxsus JavaScript tool'i",
     "sourceHandles": [
       "source-default"
     ],
@@ -5710,6 +5765,7 @@
       "description": ""
     },
     "aiDoc": "RAG knowledge retrieval tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='knowledge'. Bot collection'ini vector DB'ga (lazy) embed qiladi va agent semantic qidiruv orqali tegishli hujjatlarni olishi mumkin — agent uni oddiy matnli `query` bilan chaqiradi. QACHON: faqat hujjat/bilim bazasi bo'yicha semantic (RAG) qidiruv kerak bo'lsa. OG'IR INFRA — bu tool'ni FAQAT tashqi Qdrant URL va embedding provider/kaliti aniq mavjud bo'lganda qo'sh. Built-in vector DB YO'Q: vectorDbUrl bo'sh bo'lsa engine tool'ni qura olmaydi va JIMGINA tashlab ketadi (agent tool'siz qoladi). Shubha bo'lsa AIKnowledgeToolNode QO'SHMA — o'rniga AICollectionToolNode (read) yoki AIHTTPToolNode ishlat. vectorDbUrl: MAJBURIY — tashqi Qdrant URL (masalan https://qdrant.example:6333). embeddingProvider: openai|ollama|gemini (majburiy, ishlaydigan kalit bilan). embeddingModel + embeddingApiKey: majburiy (bo'sh model/kalit → tool ishlamaydi). topK: qaytariladigan hujjatlar soni (standart 5). Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun RAG bilim-baza tool'i (semantik qidiruv)",
     "sourceHandles": [
       "source-default"
     ],
@@ -5831,6 +5887,7 @@
       }
     },
     "aiDoc": "Maxsus inline button tomonidan trigger",
+    "summary": "Maxsus inline tugma orqali flow'ni boshlaydi",
     "agentCategory": "trigger"
   },
   {
@@ -5912,6 +5969,7 @@
       "response_variable": ""
     },
     "aiDoc": "Har bir node uchun unique tashqi webhook URL trigger. Context: webhook.body, webhook.query, webhook.headers, webhook.method, webhook.raw. chat_id berilsa flow aynan shu chat state'i bilan ishlaydi. wait_response=true bo'lsa response_variable HTTP javob sifatida qaytariladi.",
+    "summary": "Tashqi webhook URL'iga so'rov kelganda flow'ni boshlaydi",
     "agentCategory": "trigger"
   },
   {
@@ -5989,6 +6047,7 @@
       }
     },
     "aiDoc": "Venue (joy) yuborish",
+    "summary": "Venue (manzil/joy) yuboradi",
     "agentCategory": "send"
   },
   {
@@ -6021,6 +6080,7 @@
     "content": [],
     "defaults": {},
     "aiDoc": "Barcha pinlarni olib tashlash",
+    "summary": "Barcha pin qilingan xabarlarni olib tashlaydi",
     "agentCategory": "edit"
   },
   {
@@ -6064,6 +6124,7 @@
       "scheduledAt": ""
     },
     "aiDoc": "Kelajakdagi vaqtda flow ni davom ettirish",
+    "summary": "Flow'ni kelajakdagi belgilangan vaqtda davom ettiradi",
     "agentCategory": "flow_control"
   },
   {
@@ -6107,6 +6168,7 @@
       "resultKey": "collection_results"
     },
     "aiDoc": "Documents ro'yxatini context'ga yuklaydi (massiv contextKey kalitiga). ⚠️ BRANCH HANDLE YO'Q (found/not_found YO'Q — bu source-handler'li ODDIY node). Bo'sh ro'yxatni keyingi xabar MATNIDA {{^KEY}}Bo'sh{{/KEY}} bilan tekshir, EDGE bilan emas. (found/not_found FAQAT LoadCollectionItemNode'da — adashtirma: Item=branch, List=template render.) Ro'yxatni BITTA xabar matnida ko'rsatish uchun keyingi EditOrSend matnida {{#each KEY}}{{@number}}. {{field}}\\n{{/each}}{{^KEY}}Bo'sh.{{/KEY}} ishlat — KEY = contextKey (CustomCode/ForLoop EMAS — flow_builder Pattern 4a).",
+    "summary": "CMS kolleksiyadan yozuvlar ro'yxatini (massiv) yuklaydi",
     "agentCategory": "data"
   },
   {
@@ -6165,6 +6227,7 @@
       "update": "{\"$set\": {}}"
     },
     "aiDoc": "Document update",
+    "summary": "CMS kolleksiyadagi yozuvni yangilaydi",
     "agentCategory": "data"
   },
   {
@@ -6215,6 +6278,7 @@
       "filter": "{}"
     },
     "aiDoc": "Document delete",
+    "summary": "CMS kolleksiyadan yozuvni o'chiradi",
     "agentCategory": "data"
   },
   {
@@ -6267,6 +6331,7 @@
       "saveAs": "downloaded_file"
     },
     "aiDoc": "Telegram file/photo'ni yuklab olib state'ga saqlash",
+    "summary": "Telegram fayl/rasmni yuklab state'ga saqlaydi",
     "agentCategory": "integration"
   },
   {
@@ -6307,6 +6372,7 @@
       "cronExpression": "0 9 * * *"
     },
     "aiDoc": "Inline cron — periodic task in middle of flow",
+    "summary": "Flow o'rtasida davriy (cron) vazifa bajaradi",
     "agentCategory": "integration"
   },
   {
@@ -6351,6 +6417,7 @@
       "results": "[]"
     },
     "aiDoc": "Inline query'ga natijalar qaytarish",
+    "summary": "Inline query'ga natijalar qaytaradi",
     "agentCategory": "interaction"
   },
   {
@@ -6514,6 +6581,7 @@
       ]
     },
     "aiDoc": "Telegram-NATIVE to'lov invoice yuborish (Telegram Stars yoki BotFather provider tokeni). title/description/payload majburiy ({{var}} qo'llanadi). providerToken bo'sh = Telegram Stars; currency default 'XTR'. prices: [{label, amount}] (amount eng kichik birlik, XTR=stars soni). Ixtiyoriy: photoUrl, needName/needPhone/needEmail/needShippingAddress. TO'LIQ OQIM (3 node majburiy, faqat invoice yetmaydi): SendInvoiceNode → PreCheckoutTriggerNode (autoAnswer=true, payload bilan mos) → SuccessfulPaymentTriggerNode (to'lov o'tganda tovar/xizmat shu yerda beriladi). Uchovi `payload` orqali bog'lanadi. ⚠️ Bu PaymentNode EMAS: PaymentNode = Botspace lokal kartalar (Click/Paycue, paid/failed tarmoqlari, callback bilan); SendInvoice = Telegram-native (Stars/provider, PreCheckout+SuccessfulPayment trigger bilan). Ikkisini ARALASHTIRMA va birga ishlatma.",
+    "summary": "Telegram-native to'lov invoice yuboradi (Stars/provider token)",
     "agentCategory": "send"
   },
   {
@@ -6613,6 +6681,7 @@
       "pre_checkout_currency"
     ],
     "aiDoc": "Telegram-native to'lov tasdiqlash (pre_checkout_query) trigger — FAQAT SendInvoiceNode bilan ishlatiladi (Telegram Stars/provider). Zanjir: SendInvoice → PreCheckout(autoAnswer) → SuccessfulPayment. filter: any/equals/starts_with/contains (invoice payload bo'yicha — SendInvoice'dagi `payload` bilan mos kelishi kerak), value: filter qiymati. autoAnswer (default true) — engine avtomatik ok=true javob beradi (10s ichida javob bo'lmasa to'lov yiqiladi). Doim global. Context: pre_checkout_payload, pre_checkout_total_amount, pre_checkout_currency. ⚠️ PaymentNode (Click/Paycue) bilan ARALASHTIRMA — u alohida tizim (paid/failed tarmoqlari), bu trigger'larga muhtoj EMAS.",
+    "summary": "Telegram-native to'lovni tasdiqlash (pre-checkout) trigger'i",
     "agentCategory": "trigger"
   },
   {
@@ -6698,6 +6767,7 @@
       "payment_telegram_charge_id"
     ],
     "aiDoc": "Telegram-native muvaffaqiyatli to'lov trigger — FAQAT SendInvoiceNode bilan (Telegram Stars/provider). To'lov haqiqatan o'tganda ishga tushadi; bu yerda tovar/xizmat beriladi (xabar, kanalga qo'shish, buyurtma tasdiqlash). filter/value — payload bo'yicha (any/equals/starts_with/contains), SendInvoice'dagi `payload` bilan mos. Doim global. Context: payment_payload, payment_total_amount, payment_currency, payment_telegram_charge_id. Zanjir: SendInvoice → PreCheckout(autoAnswer) → SuccessfulPayment(SHU yerda). ⚠️ PaymentNode (Click/Paycue) bilan ARALASHTIRMA — u paid/failed tarmoqlari orqali natija beradi, bu trigger'ni TALAB QILMAYDI.",
+    "summary": "Telegram-native to'lov muvaffaqiyatli o'tganda ishga tushadi",
     "agentCategory": "trigger"
   },
   {
@@ -6803,6 +6873,7 @@
       "provider"
     ],
     "aiDoc": "FAQAT TASHQI to'lov status trigger'i (Botspace Payment Link / flow tashqarisida yaratilgan order). AI payment_link tool order yaratganda tool natijasida order_id qaytadi; backend to'lov callback yuborganda shu trigger ishga tushadi. Doim GLOBAL/ROOT trigger va faqat kutib turgan PaymentNode flow'i YO'Q paytda ishlaydi. ⚠️ PaymentNode bilan BIRGA ISHLATMA: PaymentNode to'lovga `paid`/`failed` tarmoqlari orqali reaksiya qiladi, engine uning callback'ini o'zi yutadi va bu trigger ishga TUSHMAYDI. status: paid/failed/any, orderId/provider ixtiyoriy filter. Context: payment_order_id, payment_status, payment_amount, payment_net, payment_commission, payment_comment, payment_provider; aliaslar: order_id, status, amount, provider.",
+    "summary": "Tashqi to'lov (Payment Link) statusi kelganda ishga tushadi",
     "agentCategory": "trigger"
   },
   {
@@ -6850,6 +6921,7 @@
       "first_name"
     ],
     "aiDoc": "Guruh/kanalga qo'shilish so'rovi trigger. Maydonsiz, doim global. Context: join_request_chat_id, join_request_user_id, first_name. Tasdiqlash/rad etish: ApproveChatJoinRequestNode/DeclineChatJoinRequestNode (chatId/userId bo'sh qoldirilsa context'dan oladi).",
+    "summary": "Guruh/kanalga qo'shilish so'rovi kelganda ishga tushadi",
     "agentCategory": "trigger"
   },
   {
@@ -6937,6 +7009,7 @@
       "buttonText": "💳 To'lash"
     },
     "aiDoc": "Botspace orqali to'lov. ⚠️ QURISHDAN OLDIN foydalanuvchidan to'lov tizimini SO'RA (ask_user select: 'click' yoki 'paycue') va javobni paymentType'ga ber. paymentType FAQAT 'click' (Click pay-link tugmasi) yoki 'paycue' (Humo-karta — mijozga aniq summani kartaga o'tkazish ko'rsatmasi yuboriladi, tugma bo'lmaydi, avtomatik tasdiqlanadi) — boshqasini o'ylab topma. Egasi to'lov tizimi bilan o'zi integratsiya QILMAYDI. To'lov tasdiqlansa 'paid', aks holda 'failed'. amount: son yoki {{var}}. To'lovdan keyin context: payment_order_id, payment_amount, payment_net, payment_status, payment_comment, payment_provider. Eslatma: bu Telegram Stars EMAS — lokal kartalar (Click). Telegram Stars uchun alohida invoice (SendInvoiceNode) mexanizmi ishlatiladi.",
+    "summary": "Botspace orqali to'lov qabul qiladi (Click/Paycue)",
     "sourceHandles": [
       "paid",
       "failed"
@@ -6990,6 +7063,7 @@
     ],
     "defaults": {},
     "aiDoc": "Guruh/kanalga qo'shilish so'rovini TASDIQLASH. Oddiy action, bitta chiqish. chatId/userId bo'sh bo'lsa ChatJoinRequestTriggerNode context'idan olinadi (join_request_chat_id/join_request_user_id). Odatda: ChatJoinRequestTriggerNode → (IfCondition) → ApproveChatJoinRequestNode.",
+    "summary": "Guruh/kanalga qo'shilish so'rovini tasdiqlaydi",
     "agentCategory": "integration"
   },
   {
@@ -7039,6 +7113,7 @@
     ],
     "defaults": {},
     "aiDoc": "Guruh/kanalga qo'shilish so'rovini RAD ETISH. Oddiy action, bitta chiqish. chatId/userId bo'sh bo'lsa ChatJoinRequestTriggerNode context'idan olinadi (join_request_chat_id/join_request_user_id). Odatda: ChatJoinRequestTriggerNode → (IfCondition) → DeclineChatJoinRequestNode.",
+    "summary": "Guruh/kanalga qo'shilish so'rovini rad etadi",
     "agentCategory": "integration"
   },
   {
@@ -7122,6 +7197,7 @@
       "resultVar": "invite_link"
     },
     "aiDoc": "Kanal/guruh (xususiy kanal ham) uchun join (invite) HAVOLA yaratadi — Telegram createChatInviteLink. Bot o'sha kanalda admin va 'invite via link' huquqiga ega bo'lishi shart. Yaratilgan havola context'ga `resultVar` (default `invite_link`) bilan yoziladi — keyin SendTextMessageNode'da {{invite_link}} sifatida yuboriladi. Oddiy action, bitta chiqish. Tipik foydalanish: to'lov o'tgach shaxsiy bir martalik (memberLimit=1) havola berish: PaymentNode → CreateInviteLinkNode → SendTextMessageNode({{invite_link}}).",
+    "summary": "Kanal/guruh uchun taklif (invite) havolasi yaratadi",
     "agentCategory": "integration"
   },
   {
@@ -7277,6 +7353,7 @@
       "sheets_success"
     ],
     "aiDoc": "Google Sheets (v4) — oauth2 credential orqali. credential_id type_key 'google_sheets' bo'lgan credential'ga ishora qiladi (secret flow'da emas, engine runtime'da access_token'ga aylantiradi). operation: append/read/update/clear. spreadsheet_id majburiy. range to'liq 'Sheet1!A1:C10' yoki sheet alohida berilsa faqat 'A1:C10' (engine sheet+range birlashtiradi) — sheet yoki range'dan kamida biri bo'lishi shart. values JSON 2D massiv (append/update). JAVOB SHAKLI (read): context[responseVariable] (default 'sheets_response') = XOM Google API javobi {majorDimension, range, values} — values 2D massiv, 1-QATOR SARLAVHA, qolganlari ma'lumot; bu OBYEKT, {{#each}} bilan ISHLAMAYDI. Engine yana context[rowsVariable] (default '<responseVariable>_rows' = 'sheets_response_rows') ga TOZA array-of-objects yozadi (sarlavha qatori kalit): [{ustun_nomi: qiymat}, ...]. Ro'yxatni xabarda chiqarish uchun ALBATTA rowsVariable'ni ishlat: `{{#each sheets_response_rows}}{{ustun_nomi}}{{/each}}` — XOM responseVariable'ni {{#each}} bilan ISHLATMA. Yana context[responseVariable+'_status'], context['sheets_success'] ham yoziladi. READ FILTER (in-memory, STATIK — AI-slot YO'Q): faqat ayrim qatorlar kerak bo'lsa filterConditions bilan rowsni field/op/value bo'yicha filterla, filterMatch ('and'|'or', default 'and') ularni birlashtiradi. op ∈ eq|ne|gt|gte|lt|lte|in|nin|contains|exists; field — ustun nomi (1-qator sarlavhasi); value'da {{chat_id}}/{{<key>}} (saqlangan ochiq qiymat; legacy {{state_<key>}} ham) ishlaydi (masalan price>100000 yoki category=={{category}}). Filterlangan natija ham rowsVariable'ga yoziladi. CREDENTIAL: qurishdan OLDIN credentials.list(type_key='google_sheets'); yo'q bo'lsa credentials.connect_oauth(type_key='google_sheets') bilan ULASH linkini ber (OAuth — API orqali yaratib BO'LMAYDI); ulangach qayta list qilib credential_id ol.",
+    "summary": "Google Sheets bilan ishlaydi (append/read/update/clear)",
     "agentCategory": "integration"
   },
   {
@@ -7426,6 +7503,7 @@
       "drive_success"
     ],
     "aiDoc": "Google Drive (v3) — oauth2 credential orqali. credential_id type_key 'google_drive' bo'lgan credential'ga ishora qiladi. operation: list/create_folder/upload/delete. list uchun query (Drive q filtri); create_folder/upload uchun file_name; folder_id ota-papka; upload uchun content (matn) + mime_type (default 'text/plain'); delete uchun file_id. Natija context[responseVariable] (default 'drive_response'), _status, context['drive_success'] ga yoziladi. CREDENTIAL: qurishdan OLDIN credentials.list(type_key='google_drive'); yo'q bo'lsa credentials.connect_oauth(type_key='google_drive') bilan ULASH linkini ber (OAuth — API orqali yaratib BO'LMAYDI); ulangach qayta list qilib credential_id ol.",
+    "summary": "Google Drive bilan ishlaydi (list/create_folder/upload/delete)",
     "agentCategory": "integration"
   },
   {
@@ -7480,6 +7558,7 @@
       "format": ""
     },
     "aiDoc": "Date/time tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='datetime'. Credential YO'Q. Agentga haqiqiy soat + sana hisobini beradi — u 'bugun'/'hozir'ni taxmin qilmaydi, sanalarni o'z 'boshida' hisoblamaydi. LLM runtime args: op (now|add|diff), amount, unit (minutes|hours|days|weeks|months|years), from, to (ISO). QACHON: bron/jadval/eslatma botlari joriy sana yoki '3 kundan keyin' / 'X gacha necha kun' kerak bo'lganda. Ixtiyoriy data: tz (IANA, default UTC), format. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun sana/vaqt tool'i (haqiqiy soat va sana)",
     "sourceHandles": [
       "source-default"
     ],
@@ -7564,6 +7643,7 @@
       "operation": "read"
     },
     "aiDoc": "Google Sheets tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='google_sheets'. Credential bilan sheet'ni KO'RISH (read, list_tabs) va BOSHQARISH (append, update, clear) — lookup jadval, log, buyurtma jurnali. LLM runtime'da operation'ni O'ZI tanlaydi (node'da static EMAS). Operatsiyalar: read (range'dan qatorlar o'qish), append (qator(lar) qo'shish, values 2D), update (range'ga values yozish, values 2D), clear (range'ni tozalash), list_tabs (sahifa/tab nomlari ro'yxati). Runtime args: operation, spreadsheet_id, sheet, range, values. CREDENTIAL MAJBURIY: credential_id — type_key 'google_sheets' OAuth. Qurishdan OLDIN credentials.list(type_key='google_sheets'); yo'q bo'lsa credentials.connect_oauth(type_key='google_sheets') bilan ULASH linkini ber (API orqali YARATIB BO'LMAYDI); ulangach qayta list qilib credential_id ol. Ixtiyoriy default'lar: spreadsheetId, sheet, operation. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun Google Sheets tool'i (o'qish/boshqarish)",
     "sourceHandles": [
       "source-default"
     ],
@@ -7637,6 +7717,7 @@
       "maxAmount": 100000000
     },
     "aiDoc": "Dinamik to'lov-havola tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='payment_link'. Agent uchib to'lov havolasi yaratadi (sotuv-agent narx aytib so'ng hisob chiqaradi). LLM runtime args: amount (MAJBURIY), description. paymentType qurish vaqtida belgilanadi, LLM tanlamaydi. ⚠️ FIRE-AND-FORGET: bu tool faqat to'lov HAVOLASINI qaytaradi — to'lov TASDIG'I (callback/paid event) YO'Q. Agent havola berdi, tugadi; bot to'langan-to'lanmaganini BILMAYDI va unga reaksiya QILA OLMAYDI. QACHON ISHLAT: faqat 'shunchaki to'lov havolasini ko'rsat' holati uchun. Agar to'lov muvaffaqiyatiga REAKSIYA kerak bo'lsa (to'lasa tovar/xizmat ber, kanalga qo'sh, buyurtmani tasdiqla) — bu tool EMAS, balki: (a) PaymentNode (Click/Paycue, paid/failed tarmoqlari — bot to'lovni KUTADI va branch qiladi), YOKI (b) Telegram-native invoice: SendInvoiceNode → PreCheckoutTriggerNode (autoAnswer) → SuccessfulPaymentTriggerNode (to'lov o'tganda global trigger ishga tushadi). QURISH QOIDASI (PaymentNode kabi): qo'shishdan oldin foydalanuvchidan provayderni SO'RA — 'click' yoki 'paycue' FAQAT, 'payme' O'YLAB TOPMA. ⚠️ INJECTION-GUARD: paymentType VA maxAmount (default 100000000) qurish vaqtida qotiriladi, LLM o'zgartira OLMAYDI — engine runtime `amount`ni maxAmount'ga clamp qiladi (injektsiya qilingan user ulkan summa yozolmaydi). Havola to'langan-to'lanmaganini KEYIN tekshirish kerak bo'lsa shu agentga AIPaymentStatusToolNode (tool='payment_status') ham ula. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun dinamik to'lov-havola yaratish tool'i",
     "sourceHandles": [
       "source-default"
     ],
@@ -7686,6 +7767,7 @@
       "tool": "payment_status"
     },
     "aiDoc": "To'lov-status tool sub-node. AIAgentNode'ning acc:ai_tool portiga ulanadi. tool='payment_status'. Agent to'lov BUYURTMASINING holatini tekshiradi (paid/pending/failed) — masalan payment_link'dan keyin user 'to'ladim' desa, tovar berishdan oldin agent TEKSHIRADI. LLM runtime arg: order_id (MAJBURIY — oldingi payment_link / PaymentNode qaytargan order id). Engine qidiruvni JORIY loyihaga cheklaydi (boshqa loyiha buyurtmalarini o'qiy olmaydi). Qurish konfiguratsiyasi YO'Q, credential YO'Q. payment_link bilan JUFT: payment_link faqat havola YARATADI (tasdiq yo'q), payment_status esa to'langanini O'QIYDI — sotuv-agentga ikkalasini ham ula. Qattiq 'to'lasa-tovar' branch kerak bo'lsa baribir PaymentNode (paid/failed) afzal — agent tool maslahatchi, eshik EMAS. Edge: source=<this_id>, sourceHandle='source-default', target=<agent_id>, targetHandle='acc:ai_tool'.",
+    "summary": "AI agent uchun to'lov buyurtmasi statusini tekshirish tool'i",
     "sourceHandles": [
       "source-default"
     ],
@@ -7769,6 +7851,7 @@
       "default": false
     },
     "aiDoc": "Bitta value'ni cases[].match bilan solishtiradi. Mos case output-<case.id> yoki id bo'sh bo'lsa output-case_<index> handle'iga chiqadi; default=true bo'lsa mos kelmaganda output-default.",
+    "summary": "Bitta qiymatni case'lar bilan solishtirib mos tarmoqqa yo'naltiradi",
     "sourceHandles": [
       "output-default"
     ],
@@ -7815,6 +7898,7 @@
       "language": ""
     },
     "aiDoc": "Foydalanuvchi tilini o'rnatadi va languages/language_options/current_lang contextlarini ochadi. language bo'sh bo'lsa faqat til ro'yxati yuklanadi.",
+    "summary": "Foydalanuvchi tilini o'rnatadi (i18n)",
     "agentCategory": "data"
   }
 ]
