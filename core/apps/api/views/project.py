@@ -306,6 +306,8 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
             flow=flow,
             owner=request.user,
         )
+        # Standart legacy kolleksiyalar (users/chat) — dashboard/response serializer shularga tayanadi
+        create_default_collections(instance)
         EnviromentModel.objects.create(
             key="RELEASE_BOT_TOKEN", value=data.get("token"), project=instance, user=request.user
         )
