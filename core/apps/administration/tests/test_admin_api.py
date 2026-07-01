@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from decimal import Decimal
 from unittest.mock import patch
@@ -522,6 +524,26 @@ def _create_tpl(admin_client, project, name):
              "description": "d", "original_price": "0.00"},
             format="json",
         )
+
+
+def test_admin_create_template_multipart(admin_client, project):
+    """Rasm bilan (multipart) create: categories takroriy key, spec_overrides JSON-string."""
+    from core.apps.template.models import TemplateCategoryModel
+
+    cat = TemplateCategoryModel.objects.create(name="Cat")
+    overrides = json.dumps({**_FAKE_SPEC, "envs": [{"key": "X", "required": True}]})
+    with patch(_SPEC_PATCH, return_value=dict(_FAKE_SPEC)):
+        res = admin_client.post(
+            "/api/admin/templates/",
+            {"project": project.id, "name": "MP", "short_description": "s",
+             "description": "d", "original_price": "0.00",
+             "categories": [cat.id], "spec_overrides": overrides},
+            format="multipart",
+        )
+    assert res.status_code == 201, res.content
+    tpl = TemplateModel.objects.get(id=res.json()["data"]["id"])
+    assert tpl.spec["envs"] == [{"key": "X", "required": True}]
+    assert list(tpl.categories.values_list("id", flat=True)) == [cat.id]
 
 
 def test_admin_create_template_from_project(admin_client, project):

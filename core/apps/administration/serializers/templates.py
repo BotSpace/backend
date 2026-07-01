@@ -1,4 +1,6 @@
 # type: ignore
+import json
+
 from rest_framework import serializers
 
 from core.apps.api.models import ProjectModel
@@ -63,6 +65,17 @@ class AdminTemplateCreateSerializer(serializers.ModelSerializer):
     # Flow always comes from the project snapshot, never the client; collections
     # keep their project schema but their seed data may be overridden.
     spec_overrides = serializers.JSONField(required=False, write_only=True)
+
+    def validate_spec_overrides(self, value):
+        # multipart (rasm bilan) yuborilganda JSON-string bo'lib keladi — parse qilamiz.
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except ValueError:
+                raise serializers.ValidationError("spec_overrides JSON emas")
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("spec_overrides obyekt bo'lishi kerak")
+        return value
 
     class Meta:
         model = TemplateModel
