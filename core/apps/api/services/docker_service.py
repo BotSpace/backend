@@ -103,6 +103,18 @@ def deploy_service(project, prefix, flow, key, _env: list = [], webhook_uuid: st
     """
     # Add default env vars
     _env.extend(get_default_env())
+    # Inject logical credential map so custom code get_credential("<logical_key>")
+    # resolves to the credential actually wired into this bot's nodes — makes
+    # credential references portable across templates (name/id stay as fallback).
+    if isinstance(flow, dict):
+        try:
+            from core.apps.template.services.template_spec import build_flow_credential_map
+
+            cred_map = build_flow_credential_map(flow)
+            if cred_map:
+                flow = {**flow, "credential_map": cred_map}
+        except Exception:
+            logger.exception("deploy_service: credential_map injection failed")
     return deploy_engine(project, prefix, flow, key, _env, webhook_uuid=webhook_uuid)
 
 

@@ -98,6 +98,18 @@ def _replace_credential_ids_in_flow(flow, key_map: dict[int, str]):
     return flow
 
 
+def build_flow_credential_map(flow) -> dict[str, int]:
+    """{logical_key: credential_id} — engine custom code'da get_credential(key) uchun.
+
+    Flow node'laridagi real credential_id'lardan chiqariladi. Logical key
+    algoritmi _build_credential_key_map bilan bir xil (type_key yoki
+    type_key_<name>), shuning uchun template va oddiy botlarda mos keladi.
+    """
+    cred_ids = _find_credential_ids_in_flow(flow)
+    id_to_key = _build_credential_key_map(cred_ids)  # {id: key}
+    return {key: cid for cid, key in id_to_key.items()}
+
+
 def _build_credentials_spec(key_map: dict[int, str], credential_ids: set[int]) -> list[dict]:
     """Credential type'larini credential registry'dan olib, spec.credentials ro'yxatini yaratadi."""
     if not key_map:
