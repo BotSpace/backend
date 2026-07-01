@@ -186,6 +186,8 @@ class AdminTemplatesView(
             "views": t.views,
             "version": t.version,
             "spec": t.spec,
+            # ResyncButton shu bayroqqa qaraydi — detail'da yo'qligi tugmani yashirardi.
+            "has_project": t.project_id is not None,
             "likes": t.likes.count() if hasattr(t, "likes") else 0,
             "author": {
                 "id": t.author_id,
