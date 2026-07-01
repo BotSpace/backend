@@ -3398,7 +3398,8 @@
       "jsCode": "// Your code here",
       "label": "custom_code_node",
       "language": "javascript",
-      "outputs": []
+      "outputs": [],
+      "terminal": false
     },
     "aiDoc": "JavaScript kod ishga tushirish (Goja VM). Kod data.jsCode da saqlanadi (engine va UI shu kalitni o'qiydi). MongoDB/HTTP async API mavjud. data.outputs=[{name}] e'lon qilinsa, exit('name') bilan `output-{name}` source handle orqali tarmoqlanadi. data.terminal=true — node leaf (o'zi javob yuborib oqimni tugatadi), keyingi edge yo'qligi normal (validator 'dead-end' ogohlantirishini o'chiradi). State/context'dan O'QISH uchun obyekt-access AFZAL: vars.<key> (ochiq, public_ ga map; state.<key> — legacy alias, hali ishlaydi) va private.<key> (maxfiy), context.<key> (xom kalit) — masalan vars.user_phone, context.first_name. jsCode'ni TOZA, ko'p qatorli yoz (engine verbatim saqlaydi) — docs_guide(topic='custom_code').",
     "summary": "Maxsus JavaScript kod ishga tushiradi (DB/HTTP bilan)",
