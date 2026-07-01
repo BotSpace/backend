@@ -39,6 +39,14 @@ def set_webhook(instance: ProjectModel, mode: WEBHOOK_MODE):
         raise ValueError("Invalid webhook mode")
     if not token:
         raise BotTokenNotFound()
-    response = httpx.post("https://api.telegram.org/bot%s/setWebhook?url=%s" % (token, url))
+    # Telegram sekin javob bersa butun so'rovni 500 qilma — timeout + xatoni yut
+    try:
+        response = httpx.post(
+            "https://api.telegram.org/bot%s/setWebhook?url=%s" % (token, url),
+            timeout=10,
+        )
+    except httpx.HTTPError as exc:
+        logging.warning("set_webhook yiqildi (keyinroq qayta o'rnatiladi): %s", exc)
+        return False
     logging.info("set webhook response=%s", response.content)
     return response.status_code == 200

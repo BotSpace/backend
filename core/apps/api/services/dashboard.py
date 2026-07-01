@@ -57,6 +57,9 @@ class DashboardService:
         Returns:
             int: Total users count
         """
+        # Legacy kolleksiya bo'lmasa (yangi/yetim loyiha) — 0 qaytar, 500 berma
+        if self._collection_model is None:
+            return 0
         key = self._cache_key("users_count")
         cached = cache.get(key)
         if cached is not None:
