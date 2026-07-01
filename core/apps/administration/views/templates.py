@@ -31,12 +31,13 @@ class AdminTemplatesView(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAdminUser]
     serializer_class = AdminTemplateSerializer
-    # Allow create (POST) + PATCH; block full PUT replacements.
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    # Allow create (POST) + PATCH + DELETE; block full PUT replacements.
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -296,6 +297,50 @@ class AdminTemplatesView(
             request=request,
         )
         return Response(self.get_serializer(target).data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Shablonni butunlay o'chiradi (hard delete).
+
+        Agar shablonni to'lov qilib tasdiqlangan buyurtma(lar) sotib olgan
+        bo'lsa, ?force=true bermasdan turib o'chirish taqiqlanadi. Versiyalar
+        CASCADE bilan avtomatik o'chadi; buyurtma/submission qatorlari
+        template=NULL holida saqlanib qoladi (FK SET_NULL).
+        """
+        from rest_framework.exceptions import ValidationError
+
+        from core.apps.template.enums.order import TemplateOrderStatusEnum
+        from core.apps.template.models import TemplateOrderModel  # noqa: WPS433
+
+        target = self.get_object()
+        paid_orders = TemplateOrderModel.objects.filter(
+            template=target, payment_status=True, status=TemplateOrderStatusEnum.CONFIRM.value
+        )
+        paid_count = paid_orders.count()
+        force = request.query_params.get("force") == "true"
+        if paid_count and not force:
+            raise ValidationError({
+                "detail": (
+                    f"Bu shablonni {paid_count} ta foydalanuvchi sotib olgan. "
+                    "O'chirish uchun ?force=true bilan qayta yuboring."
+                )
+            })
+        before = {
+            "id": target.id,
+            "name": target.name,
+            "slug": target.slug,
+            "version": target.version,
+        }
+        log_admin_action(
+            actor=request.user,
+            action="template.delete",
+            target=target,
+            before=before,
+            after={},
+            note=f"force={force}, paid_orders={paid_count}",
+            request=request,
+        )
+        target.delete()
+        return Response(status=204)
 
 
 class AdminTemplateSubmissionsView(

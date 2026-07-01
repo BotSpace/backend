@@ -618,6 +618,63 @@ def test_admin_preview_spec_returns_editable_parts(admin_client, project):
     assert TemplateModel.objects.count() == 0
 
 
+# ── templates: hard delete ─────────────────────────────────────────────────
+
+def test_admin_delete_template(admin_client, admin_user):
+    """DELETE without paid orders removes the template and its versions."""
+    tpl = TemplateModel.objects.create(
+        name="To delete", short_description="s", description="d",
+        original_price=Decimal("0.00"), author=admin_user, spec=dict(_FAKE_SPEC),
+    )
+    from core.apps.template.services.versioning import record_template_version  # noqa: WPS433
+
+    record_template_version(tpl, dict(_FAKE_SPEC), "init", admin_user)
+    tpl_id = tpl.id
+    assert tpl.versions.count() >= 1
+
+    res = admin_client.delete(f"/api/admin/templates/{tpl_id}/")
+    assert res.status_code == 204
+    assert not TemplateModel.objects.filter(id=tpl_id).exists()
+    from core.apps.template.models.version import TemplateVersionModel  # noqa: WPS433
+
+    assert not TemplateVersionModel.objects.filter(template_id=tpl_id).exists()
+    assert AdminAuditLogModel.objects.filter(action="template.delete", target_id=str(tpl_id)).exists()
+
+
+def test_admin_delete_template_with_paid_order_blocked_then_forced(admin_client, admin_user, normal_user):
+    """A template with a paid confirmed order can't be deleted without ?force=true."""
+    from core.apps.template.enums.order import TemplateOrderStatusEnum  # noqa: WPS433
+    from core.apps.template.models.order import TemplateOrderModel  # noqa: WPS433
+
+    tpl = TemplateModel.objects.create(
+        name="Sold tpl", short_description="s", description="d",
+        original_price=Decimal("10.00"), author=admin_user,
+    )
+    TemplateOrderModel.objects.create(
+        user=normal_user, template=tpl, amount=Decimal("10.00"),
+        status=TemplateOrderStatusEnum.CONFIRM.value, payment_status=True,
+    )
+
+    res = admin_client.delete(f"/api/admin/templates/{tpl.id}/")
+    assert res.status_code == 400
+    assert TemplateModel.objects.filter(id=tpl.id).exists()
+
+    res = admin_client.delete(f"/api/admin/templates/{tpl.id}/?force=true")
+    assert res.status_code == 204
+    assert not TemplateModel.objects.filter(id=tpl.id).exists()
+
+
+def test_non_admin_cannot_delete_template(user_client, admin_user):
+    """Non-admin must receive 403 on template DELETE."""
+    tpl = TemplateModel.objects.create(
+        name="Tpl", short_description="s", description="d",
+        original_price=Decimal("0.00"), author=admin_user,
+    )
+    res = user_client.delete(f"/api/admin/templates/{tpl.id}/")
+    assert res.status_code == 403
+    assert TemplateModel.objects.filter(id=tpl.id).exists()
+
+
 def test_admin_create_applies_spec_overrides(admin_client, project):
     """spec_overrides replaces the auto-built editable lists on create."""
     overrides = {
