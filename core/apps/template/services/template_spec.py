@@ -218,7 +218,7 @@ def build_spec_from_project(project) -> dict:
 
     # Env key'larni flow'dan aniqla
     env_keys = _extract_env_keys_from_flow(flow)
-    envs = [{"key": k, "required": True, "description": ""} for k in env_keys]
+    envs = [{"key": k, "label": "", "required": True, "description": ""} for k in env_keys]
 
     return {
         "flow": flow_snapshot,
