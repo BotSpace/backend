@@ -207,7 +207,13 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         data = dict(serializer.data)
         data["bot_mode"] = mode
         data["bot_username"] = bot_username
-        data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
+        # Debug rejimda umumiy test bot ishlatiladi — bot loyihaga faqat
+        # ?start=<debug_webhook_uuid> deep-link orqali bog'lanadi (constructor'dagi
+        # "Open bot" linki bilan bir xil format).
+        if mode == "debug" and bot_username:
+            data["bot_link"] = f"https://t.me/{bot_username}?start={project.debug_webhook_uuid}"
+        else:
+            data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
         return Response(data, status=status.HTTP_201_CREATED, headers=headers)
 
     def _start_debug_container(self, project, request):
@@ -560,7 +566,12 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         response_data = ListProjectSerializer(instance=instance).data
         response_data["bot_mode"] = mode
         response_data["bot_username"] = bot_username
-        response_data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
+        # Debug rejimda umumiy test bot — deep-link ?start=<debug_webhook_uuid>
+        # shart, aks holda bot loyihani tanimaydi.
+        if mode == "debug" and bot_username:
+            response_data["bot_link"] = f"https://t.me/{bot_username}?start={instance.debug_webhook_uuid}"
+        else:
+            response_data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
         return Response(data=response_data)
 
     @action(methods=["GET"], detail=False, url_name="template-requirements", url_path="template-requirements")
