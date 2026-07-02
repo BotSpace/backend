@@ -96,3 +96,21 @@ def test_field_inference_handles_non_dict():
 
     assert _new_fields_from_sample(None, _FakeColl()) == []
     assert _new_fields_from_sample("nope", _FakeColl()) == []
+
+
+def test_catalog_via_collection_data_button():
+    # Inline keyboard tugmalari kolleksiyadan render bo'lsa — bu ham O'QISH.
+    flow = {"nodes": [{
+        "id": "n5", "type": "EditOrSendMessageNode",
+        "data": {"rows": [{"columns": [{"collectionData": {"collection": "services", "field": "title"}}]}]},
+    }]}
+    assert collection_is_catalog(flow, "services") is True
+
+
+def test_not_catalog_when_collection_data_read_but_updated():
+    flow = {"nodes": [
+        {"id": "n5", "type": "EditOrSendMessageNode",
+         "data": {"rows": [{"columns": [{"collectionData": {"collection": "items"}}]}]}},
+        {"id": "n6", "type": "UpdateCollectionNode", "data": {"collection_name": "items"}},
+    ]}
+    assert collection_is_catalog(flow, "items") is False

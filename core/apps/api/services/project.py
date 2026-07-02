@@ -157,7 +157,7 @@ SYSTEM_COLLECTION_NAMES = {"users", "chat"}
 # Flow node types that READ a collection (catalog candidates).
 _LOAD_NODE_TYPES = {"LoadCollectionListNode", "LoadCollectionItemNode"}
 # Flow node types that WRITE a collection (disqualifies it from being a catalog).
-_WRITE_NODE_TYPES = {"CollectionNode"}
+_WRITE_NODE_TYPES = {"CollectionNode", "UpdateCollectionNode", "DeleteCollectionNode"}
 
 
 def _flow_nodes(flow) -> list:
@@ -191,9 +191,27 @@ def _node_collection_name(data: dict) -> str | None:
     return None
 
 
+def _iter_collection_data_names(obj):
+    """Node data ichida ixtiyoriy chuqurlikdagi `collectionData.collection`
+    havolalarini topadi — inline keyboard tugmalari kolleksiyadan render
+    bo'lganda o'qish hisoblanadi (Load* node bo'lmasa ham)."""
+    if isinstance(obj, dict):
+        cd = obj.get("collectionData")
+        if isinstance(cd, dict):
+            c = cd.get("collection")
+            if isinstance(c, str) and c:
+                yield c
+        for v in obj.values():
+            yield from _iter_collection_data_names(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _iter_collection_data_names(v)
+
+
 def collection_is_catalog(flow, name: str) -> bool:
     """A collection is a CATALOG (static data to copy) when the flow READS it
-    (via a Load* node) and never WRITES it (via a Collection save node).
+    (via a Load* node OR an inline-keyboard `collectionData` listing) and never
+    WRITES it (via a Collection save/update/delete node).
 
     Pure function over the flow JSON — no Mongo access — so it is unit-testable.
     `users`/`chat` are never catalogs.
@@ -205,13 +223,16 @@ def collection_is_catalog(flow, name: str) -> bool:
     write = False
     for node in _flow_nodes(flow):
         ntype = node.get("type")
-        cname = _node_collection_name(node.get("data", {}))
-        if cname != name:
-            continue
-        if ntype in _LOAD_NODE_TYPES:
+        data = node.get("data", {})
+        cname = _node_collection_name(data)
+        if cname == name:
+            if ntype in _LOAD_NODE_TYPES:
+                read = True
+            elif ntype in _WRITE_NODE_TYPES:
+                write = True
+        # collectionData tugma-ro'yxatlari — top-level collection nomidan qat'i nazar
+        if not read and name in _iter_collection_data_names(data):
             read = True
-        elif ntype in _WRITE_NODE_TYPES:
-            write = True
 
     return read and not write
 
