@@ -148,7 +148,13 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         summary="Loyiha yaratish",
         description=(
             "Yangi loyiha yaratadi. Loyiha yaratish uchun alohida loyiha tarifi talab qilinmaydi; "
-            "limitlar foydalanuvchi obunasi orqali boshqariladi."
+            "limitlar foydalanuvchi obunasi orqali boshqariladi.\n\n"
+            "Ixtiyoriy `managed_bot_id` — Telegram-managed bot (token o'rniga); berilsa uning "
+            "tokeni RELEASE_BOT_TOKEN sifatida yoziladi.\n\n"
+            "Ixtiyoriy `mode=debug` — tokensiz: DEBUG konteyner platforma TEST bot tokeni bilan "
+            "darhol ishga tushadi.\n\n"
+            "Javobga har doim (mavjud maydonlar o'zgarishsiz) bot_mode/bot_username/bot_link "
+            "qo'shiladi — create-from-template bilan bir xil qat'iy qo'shimcha maydonlar."
         ),
         request=CreateProjectSerializer,
         responses={
@@ -163,11 +169,93 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
                 "Loyiha yaratish",
                 value={"name": "Mening botim"},
                 request_only=True,
-            )
+            ),
+            OpenApiExample(
+                "Loyiha yaratish (managed bot bilan)",
+                value={"name": "Mening botim", "managed_bot_id": 12},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Loyiha yaratish (debug, tokensiz)",
+                value={"name": "Mening botim", "mode": "debug"},
+                request_only=True,
+            ),
         ],
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        mode = serializer.validated_data.get("mode") or "release"
+        managed_bot_id = serializer.validated_data.get("managed_bot_id")
+
+        if mode == "debug":
+            # Konteyner ishga tushirishdan OLDIN limitni tekshiramiz — create_from_template'dagi
+            # kabi, loyiha yaratilishidan avval (limit oshib ketsa orphan loyiha qolmasin).
+            check_running_bot_limit(request.user)
+
+        self.perform_create(serializer)
+        project = serializer.instance
+
+        bot_username = None
+        if mode == "debug":
+            bot_username = self._start_debug_container(project, request)
+        elif managed_bot_id:
+            bot_username = self._attach_managed_bot(project, managed_bot_id, request)
+
+        headers = self.get_success_headers(serializer.data)
+        data = dict(serializer.data)
+        data["bot_mode"] = mode
+        data["bot_username"] = bot_username
+        data["bot_link"] = f"https://t.me/{bot_username}" if bot_username else None
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def _start_debug_container(self, project, request):
+        """mode=debug: tokensiz DEBUG konteynerni platforma TEST_BOT_TOKEN fallback bilan
+        ishga tushiradi — create_from_template'ning debug tarmog'i bilan bir xil."""
+        debug, _created = DebugModel.objects.get_or_create(project=project)
+        try:
+            service = deploy_service(
+                project,
+                "debug",
+                project.flow,
+                project.id,
+                list(project_enviroment(project.id)),
+                webhook_uuid=str(project.debug_webhook_uuid),
+            )
+        except ApiException as exc:
+            debug.status = ContainerStatusEnum.FAILED.value
+            debug.save(update_fields=["status", "updated_at"])
+            raise _deployment_error(exc) from exc
+        debug.service_id = service.metadata.name
+        debug.status = "initializing"
+        debug.save()
+        try:
+            from core.apps.api.models.monitoring import DebugRunLog
+
+            DebugRunLog.objects.create(project=project, user=request.user)
+        except Exception:  # noqa: BLE001 — log yozilmasa ham debug ishga tushaversin
+            logger.warning("DebugRunLog yozishda xato", exc_info=True)
+        return _resolve_test_bot_username()
+
+    def _attach_managed_bot(self, project, managed_bot_id, request):
+        """managed_bot_id: tokenni ManagedBotModel'dan olib RELEASE_BOT_TOKEN sifatida yozadi —
+        create_from_template'ning managed_bot_id tarmog'i bilan bir xil (release/webhook YO'Q,
+        bu faqat token wiring; release keyingi /release/ chaqiruvi orqali yaratiladi)."""
+        from core.apps.api.models.managed_bot import ManagedBotModel
+
+        try:
+            managed_bot = ManagedBotModel.objects.get(id=managed_bot_id, owner=request.user)
+        except ManagedBotModel.DoesNotExist:
+            raise exceptions.ValidationError({"managed_bot_id": "Managed bot topilmadi"})
+        token = managed_bot.get_token()
+        # secret=True — UI env ro'yxatida token maskalanadi (set-token endpoint bilan bir xil).
+        EnviromentModel.objects.create(
+            key="RELEASE_BOT_TOKEN", value=token, project=project, user=request.user, secret=True
+        )
+        managed_bot.used = True
+        managed_bot.save(update_fields=["used"])
+        return managed_bot.username
 
     @extend_schema(
         summary="Loyihani yangilash",

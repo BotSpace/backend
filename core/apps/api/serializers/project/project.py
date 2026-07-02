@@ -116,6 +116,28 @@ class CreateProjectSerializer(BaseProjectSerializer):
     debug = CreateDebugSerializer(required=False)
     release = None
     flow_gz = serializers.CharField(required=False, write_only=True, allow_blank=False)
+    # mode/managed_bot_id — ProjectModel maydonlari EMAS. ProjectView.create() ularni
+    # is_valid() dan keyin serializer.validated_data orqali o'qib token/debug wiring
+    # qiladi (create_from_template'dagi mode/managed_bot_id bilan bir xil semantika).
+    # write_only, shuning uchun ModelSerializer.create() ga tushmasligi uchun
+    # create() override qilingan (pastda).
+    mode = serializers.ChoiceField(
+        choices=["release", "debug"],
+        default="release",
+        required=False,
+        write_only=True,
+        help_text=(
+            "release (standart): oddiy loyiha — bot ulanishi keyinroq (managed_bot_id yoki "
+            "keyingi /release/ chaqiruvi orqali). debug: tokensiz — loyiha yaratilishi bilanoq "
+            "DEBUG konteyner platforma TEST bot tokeni bilan ishga tushadi."
+        ),
+    )
+    managed_bot_id = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        write_only=True,
+        help_text="Managed bot ID (Telegram-managed bot). Berilsa tokeni RELEASE_BOT_TOKEN sifatida yoziladi.",
+    )
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -127,6 +149,14 @@ class CreateProjectSerializer(BaseProjectSerializer):
                 raise serializers.ValidationError({"flow_gz": str(exc)}) from exc
         return attrs
 
+    def create(self, validated_data):
+        # mode/managed_bot_id ProjectModel'da yo'q — ProjectModel.objects.create(**kwargs)
+        # ga tushmasin (TypeError bo'ladi). self.validated_data (view keyinroq o'qiydigan
+        # nusxa) o'zgarmaydi, chunki .save() bu yerga alohida dict yuboradi.
+        validated_data.pop("mode", None)
+        validated_data.pop("managed_bot_id", None)
+        return super().create(validated_data)
+
     class Meta(BaseProjectSerializer.Meta):
         fields = [
             "id",
@@ -134,6 +164,8 @@ class CreateProjectSerializer(BaseProjectSerializer):
             "debug",
             "flow",
             "flow_gz",
+            "mode",
+            "managed_bot_id",
         ]
         examples = [
             OpenApiExample(
@@ -141,10 +173,19 @@ class CreateProjectSerializer(BaseProjectSerializer):
                 value={
                     "name": "Mening botim",
                     "flow": {},
-                    "debug": {"token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"},
                 },
                 description="Loyiha yaratish (bepul, limitsiz)",
-            )
+            ),
+            OpenApiExample(
+                "Loyiha yaratish (managed bot bilan)",
+                value={"name": "Mening botim", "managed_bot_id": 12},
+                description="Telegram-managed bot biriktirilgan holda",
+            ),
+            OpenApiExample(
+                "Loyiha yaratish (debug, tokensiz)",
+                value={"name": "Mening botim", "mode": "debug"},
+                description="Tokensiz — DEBUG konteyner platforma TEST bot tokeni bilan ishga tushadi",
+            ),
         ]
 
 
