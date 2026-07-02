@@ -356,10 +356,16 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
         from django.db.models import Prefetch
 
         latest_release_qs = RelaseModel.objects.order_by("-id")
+        # DIQQAT: select_related("debug") ISHLATMAYMIZ. JOIN qilinsa debug.status
+        # ProjectModel so'rovi bilan birga cacheops'da 5 daqiqa keshlanadi
+        # ("api.projectmodel" profili), k8s-watcher esa statusni Postgres'ga
+        # to'g'ridan-to'g'ri yozadi — natijada API 5 daqiqagacha eski
+        # "initializing" qaytaradi (wizard launch-poll va constructor shu tufayli
+        # qotib qolgan edi). Alohida so'rov "api.debugmodel" (ops=()) profiliga
+        # tushadi va doim yangi o'qiladi.
         return (
             ProjectModel.objects
             .filter(owner=self.request.user)
-            .select_related("debug")
             .prefetch_related(Prefetch("relases", queryset=latest_release_qs, to_attr="prefetched_relases"))
             .order_by("-id")
         )
