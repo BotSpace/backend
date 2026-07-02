@@ -3,7 +3,8 @@ import random
 from datetime import datetime, timedelta
 
 from config.env import env
-from core.apps.accounts.tasks.sms import SendConfirm
+from core.apps.accounts.tasks.sms import send_confirm_sms
+from core.services import background
 from django_core import exceptions, models
 
 
@@ -43,7 +44,7 @@ class SmsService:
         )  # noqa
         sms_confirm.save()
 
-        SendConfirm.delay(phone, code)
+        background.run(send_confirm_sms, phone, code)
         return True
 
     @staticmethod

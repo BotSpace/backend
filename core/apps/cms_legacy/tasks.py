@@ -9,8 +9,7 @@ from bson import ObjectId
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
-def export_collection_to_excel(self, task_id: str):
+def export_collection_to_excel_sync(task_id: str):
     """
     Export collection data to Excel file
     
@@ -171,8 +170,15 @@ def export_collection_to_excel(self, task_id: str):
         except Exception:
             logger.exception("Failed to mark export task %s as FAILED", task_id)
         
-        # Retry if not max retries
+        raise
+
+
+@shared_task(bind=True, max_retries=3)
+def export_collection_to_excel(self, task_id: str):
+    """Backward-compat celery task (eski queue'dagi xabarlar uchun)."""
+    try:
+        export_collection_to_excel_sync(task_id)
+    except Exception as e:
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60)
-        
         raise

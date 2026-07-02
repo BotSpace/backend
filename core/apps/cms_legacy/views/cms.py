@@ -29,7 +29,8 @@ from core.apps.cms_legacy.serializers.cms.collection import (
     UpdateDataCollectionSerializer,
 )
 from core.apps.cms_legacy.services.action import ActionService
-from core.apps.cms_legacy.tasks import export_collection_to_excel
+from core.apps.cms_legacy.tasks import export_collection_to_excel_sync
+from core.services import background
 
 
 @extend_schema(tags=["collection"])
@@ -133,8 +134,7 @@ class CollectionView(BaseViewSetMixin, ModelViewSet):
         # Create export task
         export_task = ExportTaskModel.objects.create(collection=instance, status=ExportTaskModel.Status.PENDING)
 
-        # Start Celery task
-        export_collection_to_excel.delay(str(export_task.task_id))
+        background.run(export_collection_to_excel_sync, str(export_task.task_id))
 
         serializer = ExportTaskStatusSerializer(export_task, context={"request": request})
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)

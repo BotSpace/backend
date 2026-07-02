@@ -509,13 +509,25 @@ class ChatViewSet(BaseViewSetMixin, ViewSet):
                 message_id = None
             telegram_sent = False
             try:
-                send_telegram_message.delay(
-                    chat_id=chat_id,
-                    project_id=project_id,
-                    message_type=message_type,
-                    text=message,
-                    file_id=file_id,
-                )
+                from core.services import go_worker
+
+                if go_worker.enabled():
+                    go_worker.enqueue(
+                        "send_telegram_message",
+                        chat_id=chat_id,
+                        project_id=project_id,
+                        message_type=message_type,
+                        text=message,
+                        file_id=file_id,
+                    )
+                else:
+                    send_telegram_message.delay(
+                        chat_id=chat_id,
+                        project_id=project_id,
+                        message_type=message_type,
+                        text=message,
+                        file_id=file_id,
+                    )
                 telegram_sent = True
             except ImportError:
                 pass

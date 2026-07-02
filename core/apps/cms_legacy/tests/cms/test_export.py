@@ -26,10 +26,10 @@ class TestCollectionExport:
         client = APIClient()
         client.force_authenticate(user=user)
         
-        # Mock celery task
-        with patch('core.apps.cms_legacy.views.cms.export_collection_to_excel') as mock_task:
-            mock_task.delay = MagicMock()
-            
+        # Mock background export (thread'da chaqiriladigan sync funksiya)
+        with patch('core.apps.cms_legacy.views.cms.background') as mock_bg:
+            mock_bg.run = MagicMock()
+
             # Make request
             response = client.post(
                 f'/api/collection/{collection.name}/export-excel/?project={project.id}'

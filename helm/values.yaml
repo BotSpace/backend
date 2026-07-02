@@ -48,6 +48,8 @@ configMaps:
     CACHE_BACKEND: "django.core.cache.backends.redis.RedisCache"
     REDIS_PORT: "6379"
     CACHE_ENABLED: "true"
+    # On-demand tasklar (broadcast/chat/sync_bot) worker-golang Redis Stream orqali
+    GO_WORKER_TASKS: "true"
     CACHE_TIMEOUT: "120"
     # CMS umumiy database nomi (bot engine'lari shu DB'dan _project_id bilan o'qiydi).
     CMS_SHARED_DB: "botspace_cms"

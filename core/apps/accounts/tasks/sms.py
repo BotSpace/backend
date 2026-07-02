@@ -1,6 +1,10 @@
-#type: ignore
+# type: ignore
 """
-Base celery tasks
+SMS tasdiqlash kodi yuborish.
+
+send_confirm_sms — plain funksiya: core/services/sms.py uni background thread'da
+chaqiradi (celery'siz ishlaydi). SendConfirm celery task'i eski queue'da qolib
+ketgan xabarlar uchun backward-compat sifatida saqlangan.
 """
 
 import logging
@@ -12,16 +16,12 @@ from config.env import env
 from django.utils.translation import gettext as _
 
 
-@shared_task
-def SendConfirm(phone, code):
+def send_confirm_sms(phone, code):
     """Tasdiqlash ko'dini yuborish
 
     Args:
         phone (str, int): telefon no'mer
         code (str, int): tasdiqlash ko'di
-
-    Raises:
-        Exception: [TODO:description]
     """
     try:
         service = getattr(
@@ -36,3 +36,9 @@ def SendConfirm(phone, code):
             "Error: {phone}-{code}\n\n{error}".format(phone=phone, code=code, error=e)
         )  # noqa
         raise Exception
+
+
+@shared_task
+def SendConfirm(phone, code):
+    """Backward-compat celery task (eski queue'dagi xabarlar uchun)."""
+    send_confirm_sms(phone, code)

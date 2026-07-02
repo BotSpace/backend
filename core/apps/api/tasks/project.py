@@ -20,10 +20,10 @@ def sync_storage():
             logging.info("sync storage err=%s", err)
 
 
-@celery.shared_task(bind=True, max_retries=0)
-def enable_default_modules(self, project_id: int):
+def enable_default_modules_sync(project_id: int):
     """Yangi loyiha uchun barcha active+is_default modullarni avtomatik yoqish.
 
+    Plain funksiya — signal background thread'da chaqiradi (celery'siz ishlaydi).
     Best-effort: har modulni alohida try/except'ga o'rab ishlatamiz — bittasi
     yiqilsa qolganlar davom etadi. Idempotent: allaqachon enabled bo'lsa o'tkazib
     yuboriladi.
@@ -70,3 +70,9 @@ def enable_default_modules(self, project_id: int):
                 "enable_default_modules: modul yoqishda xatolik slug=%s project_id=%s: %s",
                 module.slug, project_id, exc,
             )
+
+
+@celery.shared_task(bind=True, max_retries=0)
+def enable_default_modules(self, project_id: int):
+    """Backward-compat celery task (eski queue'dagi xabarlar uchun)."""
+    enable_default_modules_sync(project_id)

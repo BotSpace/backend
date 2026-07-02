@@ -12,8 +12,9 @@ from core.apps.api.models.project import DebugModel, EnviromentModel
 from core.apps.api.services.docker_service import deploy_service, remove_service
 from core.apps.api.services.enviroment import project_enviroment
 from core.apps.api.tasks.bot import sync_bot
-from core.apps.api.tasks.project import enable_default_modules
+from core.apps.api.tasks.project import enable_default_modules_sync
 from core.services.redis_service import client as redis_client
+from core.services import background, go_worker
 
 
 @receiver(post_save, sender=ProjectModel)
@@ -46,7 +47,7 @@ def ProjectSignal(sender, instance, created, **kwargs):
 
         def schedule_default_modules():
             if not getattr(settings, "TESTING", False):
-                enable_default_modules.delay(instance.pk)
+                background.run(enable_default_modules_sync, instance.pk)
                 logging.info("enable_default_modules task scheduled for project_id=%s", instance.pk)
 
         transaction.on_commit(schedule_default_modules)
@@ -121,7 +122,10 @@ def RelaseSignal(sender, instance: RelaseModel, created, **kwargs):
 @receiver(post_save, sender=EnviromentModel)
 def EnviromentSignal(sender, instance: EnviromentModel, created, **kwargs):
     if instance.key == "RELEASE_BOT_TOKEN" and instance._value != instance.value:
-        sync_bot.delay()
+        if go_worker.enabled():
+            go_worker.enqueue("sync_bot")
+        else:
+            sync_bot.delay()
 
 
 @receiver(post_delete, sender=RelaseModel)
