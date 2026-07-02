@@ -670,6 +670,21 @@ class ProjectView(BaseViewSetMixin, ModelViewSet):
 
         project = self.get_object()  # owner-checked via get_queryset
         token = (request.data.get("token") or "").strip()
+        managed_bot_id = request.data.get("managed_bot_id")
+
+        # Manager bot orqali yaratilgan botni ulash — token o'rniga managed_bot_id
+        # keladi (dashboard "Telegram orqali" tabi).
+        if not token and managed_bot_id:
+            from core.apps.api.models.managed_bot import ManagedBotModel
+
+            try:
+                managed_bot = ManagedBotModel.objects.get(id=managed_bot_id, owner=request.user)
+            except ManagedBotModel.DoesNotExist:
+                return Response({"detail": _("Managed bot topilmadi")}, status=status.HTTP_400_BAD_REQUEST)
+            token = managed_bot.get_token()
+            managed_bot.used = True
+            managed_bot.save(update_fields=["used"])
+
         if not token:
             return Response({"detail": _("Token kiritilmagan")}, status=status.HTTP_400_BAD_REQUEST)
 
