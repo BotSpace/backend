@@ -42,7 +42,7 @@ jobs:
           --health-retries 5
 
       mongodb:
-        image: mongo:7
+        image: mongo:4.4
         options: >-
           --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' || exit 1"
           --health-interval 10s
