@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build-test-push:
-    runs-on: self-hosted
+    runs-on: [self-hosted, worker]
 
     services:
       postgres:
